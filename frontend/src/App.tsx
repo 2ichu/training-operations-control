@@ -10,6 +10,12 @@ import { RequireAuth, RequirePermission } from './routing/guards'
 import { CourseCreatePage } from './pages/course/CourseCreatePage'
 import { CourseDetailPage } from './pages/course/CourseDetailPage'
 import { CourseListPage } from './pages/course/CourseListPage'
+import { EnrollmentReviewPage } from './pages/trainee/EnrollmentReviewPage'
+import { TraineeChangeLogPage } from './pages/trainee/TraineeChangeLogPage'
+import { TraineeCreatePage } from './pages/trainee/TraineeCreatePage'
+import { TraineeDetailPage } from './pages/trainee/TraineeDetailPage'
+import { TraineeEditPage } from './pages/trainee/TraineeEditPage'
+import { TraineeListPage } from './pages/trainee/TraineeListPage'
 import { ActionLogPage } from './pages/verification/ActionLogPage'
 import { VerificationCaseDetailPage } from './pages/verification/VerificationCaseDetailPage'
 import { VerificationCaseListPage } from './pages/verification/VerificationCaseListPage'
@@ -39,6 +45,46 @@ export function AppRoutes() {
           element={
             <RequirePermission screenId="S22">
               <VerificationCaseListPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/enrollments"
+          element={
+            <RequirePermission screenId="S02">
+              <EnrollmentReviewPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/trainees"
+          element={
+            <RequirePermission screenId="S03">
+              <TraineeListPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/trainees/new"
+          element={
+            <RequirePermission screenId="S04" action="C">
+              <TraineeCreatePage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/trainees/:id/edit"
+          element={
+            <RequirePermission screenId="S04" action="U">
+              <TraineeEditPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/trainee-change-logs"
+          element={
+            <RequirePermission screenId="S06">
+              <TraineeChangeLogPage />
             </RequirePermission>
           }
         />
@@ -77,7 +123,7 @@ export function AppRoutes() {
             }
           />
         ))}
-        {/* 상세 화면: S16·S23 구현, S05 훈련생 상세는 다음 단계에서 구현 */}
+        {/* 상세 화면: S16 과정·S23 확인 필요·S05 훈련생 */}
         <Route
           path="/courses/:id"
           element={
@@ -98,7 +144,7 @@ export function AppRoutes() {
           path="/trainees/:id"
           element={
             <RequirePermission screenId="S05">
-              <NotImplementedPage title="훈련생 상세" />
+              <TraineeDetailPage />
             </RequirePermission>
           }
         />

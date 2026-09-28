@@ -27,3 +27,9 @@ export function formatTrainees(names: string[]): string {
   if (names.length <= 2) return names.join(', ')
   return `${names[0]} 외 ${names.length - 1}명`
 }
+
+const dateFormat = new Intl.DateTimeFormat('sv-SE', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' })
+
+/** 오늘 날짜(KST) 'YYYY-MM-DD' */
+export const todayKst = (now: Date = new Date()): string => dateFormat.format(now)
+

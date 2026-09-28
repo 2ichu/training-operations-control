@@ -262,6 +262,8 @@ export class AttendanceService {
     await this.scope.requireTrainee(request, traineeId);
     const courseId = qInt(query, 'course_id');
     if (!courseId) throw new BadRequestException({ code: 'VALIDATION', field: 'course_id', message: '필수입니다' });
+    // 훈련생 접근 권한과 별개로 과정 범위도 확인한다(강사는 같은 훈련생이라도 본인 배정 과정의 출결만 — V2·V4)
+    await this.scope.requireCourse(request, courseId);
     if ((await this.db.query(`SELECT 1 FROM trainee_enrollment WHERE trainee_id = $1 AND course_id = $2`, [traineeId, courseId])).rows.length === 0) {
       throw new NotFoundException('대상을 찾을 수 없습니다.');
     }

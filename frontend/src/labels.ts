@@ -84,3 +84,25 @@ export const ASSIGNMENT_STATUS_LABELS: Record<string, string> = {
   CANCELLED: '배정 취소',
 }
 
+// attendance 표시 상태(baseline 3-3). NOT_CHECKED 는 저장하지 않는 계산값
+export const ATTENDANCE_STATUS_LABELS: Record<string, string> = {
+  NOT_CHECKED: '미출결',
+  PRESENT: '출석',
+  LATE: '지각',
+  EARLY_LEAVE: '조퇴',
+  ABSENT: '결석',
+  EXCUSED: '인정결석',
+}
+
+// submission(baseline 3-5)
+export const SUBMIT_STATUS_LABELS: Record<string, string> = {
+  SUBMITTED: '제출됨',
+  LATE_SUBMITTED: '기한후제출',
+}
+export const REVIEW_STATUS_LABELS: Record<string, string> = {
+  PENDING: '대기',
+  APPROVED: '적합',
+  REVISION_REQUESTED: '보완요청',
+  REJECTED: '부적합',
+}
+

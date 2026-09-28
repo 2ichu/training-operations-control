@@ -530,6 +530,11 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect(JSON.stringify([log, await auditSince(since)])).not.toMatch(/010-9999-8888|010-0000-1111/);
       const changes = (await (await as('exec')).get(`/api/v1/trainee-change-logs?trainee_id=${tConfirmed1}`).expect(200)).body;
       expect(changes.total).toBe(1);
+      expect(changes.items[0]).toMatchObject({ traineeId: tConfirmed1, traineeName: '확정1', courseName: null });
+      // 훈련생명 검색(S06): 인적정보 변경(TRAINEE)과 등록 건 변경(ENROLLMENT) 모두 이름으로 찾는다
+      await ops1.post(`/api/v1/enrollments/${await one(`SELECT enrollment_id id FROM trainee_enrollment WHERE trainee_id = $1`, [tApplied1])}/start-review`).send({}).expect(200);
+      const byName = (await (await as('exec')).get(`/api/v1/trainee-change-logs?trainee_name=${encodeURIComponent('신청')}`).expect(200)).body;
+      expect(byName.items).toEqual([expect.objectContaining({ entityType: 'ENROLLMENT', traineeId: tApplied1, traineeName: '신청1', courseName: '과정1' })]);
     });
 
     it('중복 후보 검색·훈련생 목록(S03): 마스킹, 기본은 확정 이후 상태만', async () => {
@@ -537,6 +542,9 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect(search.items).toEqual([expect.objectContaining({ traineeId: tConfirmed1, contact: '***-****-8888', birthDate: '1990-**-**', enrollmentCount: 1 })]);
       expect((await (await as('ops')).get('/api/v1/trainees/search')).status).toBe(400);
       const list = (await (await as('exec')).get(`/api/v1/trainees?size=100`).expect(200)).body;
+      expect(list.items.find((t: { traineeId: number }) => t.traineeId === tConfirmed1)).toMatchObject({ birthDate: '1990-**-**', contact: '***-****-8888' });
+      const s02 = (await (await as('ops')).get(`/api/v1/enrollments?course_id=${c1}`).expect(200)).body;
+      expect(s02.items.find((e: { traineeId: number }) => e.traineeId === tConfirmed1).birthDate).toBe('1990-**-**'); // S02 목록도 생년월일은 연도만
       const ids = list.items.map((t: { traineeId: number }) => t.traineeId);
       expect(ids).toEqual(expect.arrayContaining([tConfirmed1, tConfirmed2]));
       expect(ids).not.toContain(tApplied1);
@@ -573,6 +581,20 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect((await ops1.get(`/api/v1/trainees/${tConfirmed1}/attendance-summary?course_id=${c2}`)).status).toBe(404); // 등록 안 됨
       const ins1 = await as('ins1');
       expect((await ins1.get(`/api/v1/trainees/${tConfirmed1}/attendance-summary?course_id=${c1}`)).status).toBe(200); // 본인 배정 과정
+    });
+
+    it('S05 하위 조회의 강사 스코프: 같은 훈련생이라도 본인 미배정 과정의 출결·결과물은 보이지 않는다', async () => {
+      // tConfirmed1 을 강사2 담당 과정(c2)에도 확정 등록 — 강사1은 c1 을 통해서만 이 훈련생에 접근할 수 있다
+      await client.query(`INSERT INTO trainee_enrollment (trainee_id, course_id, status) VALUES ($1, $2, 'CONFIRMED')`, [tConfirmed1, c2]);
+      await client.query(`INSERT INTO submission (trainee_id, course_id, title, submitted_at) VALUES ($1, $2, 'c1 보고서', now()), ($1, $3, 'c2 보고서', now())`, [tConfirmed1, c1, c2]);
+      const ins1 = await as('ins1');
+      expect((await ins1.get(`/api/v1/trainees/${tConfirmed1}/attendance-summary?course_id=${c2}`)).status).toBe(404);
+      const insSubs = (await ins1.get(`/api/v1/trainees/${tConfirmed1}/submissions`).expect(200)).body.items as { courseId: number }[];
+      expect(insSubs.map((s) => s.courseId)).toEqual([c1]);
+      expect((await ins1.get(`/api/v1/trainees/${tConfirmed1}/submissions?course_id=${c2}`).expect(200)).body.items).toEqual([]);
+      const ops1 = await as('ops');
+      expect(((await ops1.get(`/api/v1/trainees/${tConfirmed1}/submissions`).expect(200)).body.items as unknown[]).length).toBe(2);
+      expect((await ops1.get(`/api/v1/trainees/${tConfirmed1}/submissions?course_id=abc`)).status).toBe(400); // 형식 오류는 500 이 아니라 400
     });
 
     it('S05 관련 확인 건: OPS·EXEC·SYS만, INSTRUCTOR 는 403', async () => {

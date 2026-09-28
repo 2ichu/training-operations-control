@@ -152,10 +152,25 @@ function toFormValues(c: CourseDetail): CourseFormValues {
 }
 
 function TraineeTab({ course }: { course: CourseDetail }) {
+  const { can } = useAuth()
   const counts = new Map(course.traineeSummary.map((s) => [s.status, s.count]))
   const rows = ENROLLMENT_STATUS_ORDER.filter((s) => counts.has(s))
-  if (rows.length === 0) return <EmptyText>등록된 훈련생이 없습니다.</EmptyText>
+  const links = (
+    <p className="toolbar">
+      {can('S03', 'R') && <Link to={`/trainees?course_id=${course.courseId}`}>훈련생 목록에서 보기</Link>}
+      {can('S02', 'R') && <Link to={`/enrollments?course_id=${course.courseId}`}>대상자 확인에서 보기</Link>}
+    </p>
+  )
+  if (rows.length === 0)
+    return (
+      <>
+        <EmptyText>등록된 훈련생이 없습니다.</EmptyText>
+        {links}
+      </>
+    )
   return (
+    <>
+    {links}
     <table className="compact">
       <thead>
         <tr>
@@ -172,6 +187,7 @@ function TraineeTab({ course }: { course: CourseDetail }) {
         ))}
       </tbody>
     </table>
+    </>
   )
 }
 

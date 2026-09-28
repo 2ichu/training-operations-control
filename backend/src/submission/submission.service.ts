@@ -3,7 +3,7 @@ import type pg from 'pg';
 import { AuditedTransactionService, type Row } from '../audit/audited-transaction.js';
 import { lockRow } from '../common/tx.js';
 import { escapeLike, toApi, Where } from '../common/api.js';
-import { asObject, type Obj, oneOf, qEnumList, qStr, reqInt, reqIso, reqStr } from '../common/validation.js';
+import { asObject, type Obj, oneOf, qEnumList, qInt, qStr, reqInt, reqIso, reqStr } from '../common/validation.js';
 import { PG_POOL } from '../database/database.module.js';
 import type { RbacRequest } from '../rbac/rbac.types.js';
 import { ScopeService } from '../rbac/scope.service.js';
@@ -131,8 +131,10 @@ export class SubmissionService {
     await this.scope.requireTrainee(request, traineeId);
     const where = new Where();
     where.add((p) => `s.trainee_id = ${p}`, traineeId);
-    const courseId = query.course_id;
-    if (typeof courseId === 'string' && courseId !== '') where.add((p) => `s.course_id = ${p}`, Number(courseId));
+    // 강사는 같은 훈련생이라도 본인 배정 과정의 결과물만 본다(V2·V4)
+    where.addFilter((i) => this.scope.courseScopeFilter(request.access!, 's.course_id', i));
+    const courseId = qInt(query, 'course_id');
+    if (courseId) where.add((p) => `s.course_id = ${p}`, courseId);
     const { rows } = await this.db.query(
       `SELECT s.submission_id, s.course_id, c.course_name, s.title, s.version, s.submitted_at, s.submit_status, s.review_status
          FROM submission s JOIN course c ON c.course_id = s.course_id WHERE ${where.sql} ORDER BY s.submitted_at DESC`,

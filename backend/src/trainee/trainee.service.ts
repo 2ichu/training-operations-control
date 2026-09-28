@@ -47,14 +47,15 @@ export class TraineeService {
 
     const page = pageOf(query);
     const { rows } = await this.db.query(
-      `SELECT te.enrollment_id, te.trainee_id, t.name, te.course_id, c.course_name, te.status, te.applied_at, te.confirmed_at, te.cancel_reason,
+      `SELECT te.enrollment_id, te.trainee_id, t.name, t.birth_date, te.course_id, c.course_name, te.status, te.applied_at, te.confirmed_at, te.cancel_reason,
               count(*) OVER() AS total
          FROM trainee_enrollment te JOIN trainee t ON t.trainee_id = te.trainee_id JOIN course c ON c.course_id = te.course_id
         WHERE ${where.sql} ORDER BY te.applied_at DESC, te.enrollment_id DESC LIMIT ${page.size} OFFSET ${page.offset}`,
       where.params,
     );
     const total = rows.length ? Number(rows[0].total) : 0;
-    return { items: rows.map(({ total: _t, ...r }) => toApi(r)), page: page.page, size: page.size, total };
+    // 생년월일은 S02 표 컬럼(system-design 7-A)이지만 목록 응답도 연도만 남긴다(baseline 10-1 마스킹)
+    return { items: rows.map(({ total: _t, ...r }) => toApi({ ...r, birth_date: maskBirthDate(r.birth_date) })), page: page.page, size: page.size, total };
   }
 
   async startReview(request: RbacRequest, id: number, body: unknown) {
@@ -259,14 +260,14 @@ export class TraineeService {
 
     const page = pageOf(query);
     const { rows } = await this.db.query(
-      `SELECT te.enrollment_id, te.trainee_id, t.name, t.contact, te.course_id, c.course_name, te.status, te.confirmed_at,
+      `SELECT te.enrollment_id, te.trainee_id, t.name, t.birth_date, t.contact, te.course_id, c.course_name, te.status, te.confirmed_at,
               count(*) OVER() AS total
          FROM trainee_enrollment te JOIN trainee t ON t.trainee_id = te.trainee_id JOIN course c ON c.course_id = te.course_id
         WHERE ${where.sql} ORDER BY t.name, te.enrollment_id LIMIT ${page.size} OFFSET ${page.offset}`,
       where.params,
     );
     const total = rows.length ? Number(rows[0].total) : 0;
-    return { items: rows.map(({ total: _t, ...r }) => toApi({ ...r, contact: maskTail(r.contact) })), page: page.page, size: page.size, total };
+    return { items: rows.map(({ total: _t, ...r }) => presentTrainee(r)), page: page.page, size: page.size, total };
   }
 
   async detail(request: RbacRequest, traineeId: number) {
@@ -299,6 +300,9 @@ export class TraineeService {
     const where = new Where();
     const traineeId = qInt(query, 'trainee_id');
     if (traineeId) where.add((p) => `((l.entity_type = 'TRAINEE' AND l.entity_id = ${p}) OR te.trainee_id = ${p})`, traineeId);
+    // 훈련생명 검색(system-design S06 검색조건). 현재 이름 기준이다(이름을 바꾼 경우 이전 이름으로는 찾지 않음).
+    const traineeName = qStr(query, 'trainee_name');
+    if (traineeName) where.add((p) => `t.name ILIKE ${p} ESCAPE '\\'`, `%${escapeLike(traineeName)}%`);
     const types = qEnumList(query, 'entity_type', ENTITY_TYPES);
     if (types) where.add((p) => `l.entity_type = ANY(${p}::trainee_change_entity[])`, types);
     const from = qDate(query, 'from');
@@ -309,10 +313,13 @@ export class TraineeService {
     const page = pageOf(query);
     const { rows } = await this.db.query(
       `SELECT l.log_id, l.entity_type, l.entity_id, l.changed_by, u.name AS changed_by_name, l.changed_at, l.before_value, l.after_value, l.reason,
+              t.trainee_id, t.name AS trainee_name, c.course_name,
               count(*) OVER() AS total
          FROM trainee_change_log l
          JOIN user_account u ON u.user_id = l.changed_by
          LEFT JOIN trainee_enrollment te ON l.entity_type = 'ENROLLMENT' AND te.enrollment_id = l.entity_id
+         LEFT JOIN course c ON c.course_id = te.course_id
+         JOIN trainee t ON t.trainee_id = CASE WHEN l.entity_type = 'TRAINEE' THEN l.entity_id ELSE te.trainee_id END
         WHERE ${where.sql} ORDER BY l.changed_at DESC, l.log_id DESC LIMIT ${page.size} OFFSET ${page.offset}`,
       where.params,
     );
