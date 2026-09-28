@@ -293,22 +293,22 @@
 | 화면 | 기능 | Method | 경로 | 입력 | 출력 | 권한 | 감사로그 |
 |---|---|---|---|---|---|---|---|
 | S01 대시보드 | 오늘 현황 요약 | GET | /dashboard | date, course_id, assignee_id | 오늘 회차 목록, 확인 건 상태별 건수·최근 N건(관련 훈련생 0~N), 미출결·퇴실미확인·운영일지 미작성·결과물 미제출·미검토 건수 | 전 역할(스코프) | 없음 |
-| S02 대상자 확인 | 대상자 목록 | GET | /enrollments | status, course_id, name, applied_from, applied_to | 등록 건 목록 | OPS·SYS·EXEC | 없음 |
+| S02 대상자 확인 | 대상자 목록 | GET | /enrollments | status, course_id, name, applied_from, applied_to | 등록 건 목록(생년월일은 연도만) | OPS·SYS·EXEC | 없음 |
 | | 확인 착수 | POST | /enrollments/{id}/start-review | — | 갱신된 등록 건 | OPS | UPDATE / trainee_enrollment / USER + trainee_change_log(ENROLLMENT) |
 | | 확정 | POST | /enrollments/{id}/confirm | — | 갱신된 등록 건 | OPS | UPDATE / trainee_enrollment / USER + change_log |
 | | 반려·취소 | POST | /enrollments/{id}/reject | cancel_reason(필수) | 갱신된 등록 건 | OPS | UPDATE / trainee_enrollment / USER + change_log |
 | | 수료·중도포기·제적 처리(D-05·P1-04 확정 2026-09-22) | POST | /enrollments/{id}/complete \| /drop \| /expel | reason(필수) | 갱신된 등록 건(status=COMPLETED\|DROPPED\|EXPELLED, CONFIRMED 상태에서만) | OPS | UPDATE / trainee_enrollment / USER + change_log |
-| S03 훈련생 목록 | 확정 훈련생 조회 | GET | /trainees | course_id, status, name, contact | 훈련생·등록 정보(연락처 마스킹) | OPS·SYS·EXEC, INSTRUCTOR ◎ | 없음 |
+| S03 훈련생 목록 | 확정 훈련생 조회 | GET | /trainees | course_id, status, name, contact | 훈련생·등록 정보(연락처·생년월일 마스킹) | OPS·SYS·EXEC, INSTRUCTOR ◎ | 없음 |
 | S04 훈련생 등록 | 중복 후보 검색 | GET | /trainees/search | name, birth_date | 일치 인물 후보 | OPS | 없음 |
 | | 등록(신규 인물 또는 기존 인물 선택 + 과정 지정) | POST | /enrollments | trainee(name, birth_date, contact) 또는 trainee_id, course_id, applied_at | 등록 건(status=APPLIED) | OPS | CREATE / trainee, trainee_enrollment / USER |
 | | 명단 일괄 등록 | POST | /enrollments/import | 엑셀, course_id | 행별 성공·오류 결과 | OPS | CREATE / trainee_enrollment / USER (건별) |
 | | 인적정보 수정 | PATCH | /trainees/{id} | 변경 필드, reason | 갱신된 훈련생 | OPS | UPDATE / trainee / USER + trainee_change_log(TRAINEE, 개인정보 마스킹) |
 | S05 훈련생 상세 | 기본정보 | GET | /trainees/{id} | — | 인적정보, 등록 건 | 전 역할(◎) | 없음 |
 | | 등록 이력 | GET | /trainees/{id}/enrollments | — | 등록 건 목록 | 〃 | 없음 |
-| | 출결 요약 | GET | /trainees/{id}/attendance-summary | course_id | 회차별 출결(미출결 계산 포함) | 〃 | 없음 |
-| | 결과물 현황 | GET | /trainees/{id}/submissions | course_id | 결과물 목록 | 〃 | 없음 |
+| | 출결 요약 | GET | /trainees/{id}/attendance-summary | course_id | 회차별 출결(미출결 계산 포함). 과정 범위도 확인(강사는 본인 배정 과정만, 아니면 404) | 〃 | 없음 |
+| | 결과물 현황 | GET | /trainees/{id}/submissions | course_id | 결과물 목록(강사는 본인 배정 과정 것만) | 〃 | 없음 |
 | | 관련 확인 건 | GET | /trainees/{id}/verification-cases | — | verification_case_trainee 기준 사건 목록 | OPS·EXEC·SYS | 없음 |
-| S06 훈련생 변경이력 | 이력 조회 | GET | /trainee-change-logs | trainee_id, entity_type, from, to | 이력 목록 | OPS·SYS·EXEC | 없음 |
+| S06 훈련생 변경이력 | 이력 조회 | GET | /trainee-change-logs | trainee_id, trainee_name, entity_type, from, to | 이력 목록(훈련생 이름, 등록 건이면 과정명 포함) | OPS·SYS·EXEC | 없음 |
 | S07 일일 출결 | 출결 명단(미출결 계산) | GET | /schedules/{scheduleId}/attendance-roster | status(미출결 포함) | 확정 훈련생 × attendance LEFT JOIN 결과, 표시상태 | OPS·SYS·EXEC, INSTRUCTOR ◎ | 없음 |
 | | 입실 확인(출결 확정) | POST | /schedules/{scheduleId}/attendance/check-in | trainee_ids[], check_in_time(선택), source_type(기본 MANUAL) | 생성된 attendance 목록, 이미 존재한 대상 목록(409 분리) | OPS, INSTRUCTOR ◎ | CREATE / attendance / USER |
 | | 퇴실 확인 | POST | /attendance/check-out | attendance_ids[], check_out_time(선택) | 갱신 결과(이미 값이 있는 건은 409 → 수정 명령 안내) | OPS, INSTRUCTOR ◎ | UPDATE / attendance / USER (최초 기록, change_log 없음) |

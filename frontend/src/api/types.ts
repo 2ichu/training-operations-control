@@ -178,3 +178,114 @@ export interface ClosureItem {
   classification: 'BLOCKING' | 'WARNING' | 'NOT_NEEDED'
   count: number
 }
+
+// ── 훈련생(S02~S06) ─────────────────────────────────────────────────────
+// 연락처·생년월일은 서버가 항상 마스킹해서 준다(원문 열람 미도입, decisions.md P1-08)
+export interface EnrollmentListItem {
+  enrollmentId: number
+  traineeId: number
+  name: string
+  birthDate: string | null
+  courseId: number
+  courseName: string
+  status: string
+  appliedAt: string
+  confirmedAt: string | null
+  cancelReason: string | null
+}
+
+export interface TraineeListItem {
+  enrollmentId: number
+  traineeId: number
+  name: string
+  birthDate: string | null
+  contact: string | null
+  courseId: number
+  courseName: string
+  status: string
+  confirmedAt: string | null
+}
+
+export interface TraineeEnrollment {
+  enrollmentId: number
+  courseId: number
+  courseName: string
+  status: string
+  appliedAt: string
+  confirmedAt: string | null
+  cancelReason: string | null
+}
+
+export interface TraineeDetail {
+  traineeId: number
+  name: string
+  birthDate: string | null
+  contact: string | null
+  registeredAt: string
+  enrollments: TraineeEnrollment[]
+}
+
+export interface TraineeSearchResult {
+  traineeId: number
+  name: string
+  birthDate: string | null
+  contact: string | null
+  enrollmentCount: number
+}
+
+export interface AttendanceSummaryItem {
+  scheduleId: number
+  roundNo: number
+  classDate: string
+  scheduleStatus: string
+  attendanceId: number | null
+  checkInTime: string | null
+  checkOutTime: string | null
+  /** 저장 상태 또는 계산값 NOT_CHECKED, 휴강 회차는 null */
+  displayStatus: string | null
+}
+
+export interface TraineeSubmission {
+  submissionId: number
+  courseId: number
+  courseName: string
+  title: string
+  version: number
+  submittedAt: string
+  submitStatus: string
+  reviewStatus: string
+}
+
+export interface TraineeCase {
+  caseId: number
+  courseId: number
+  courseName: string
+  ruleCode: string
+  ruleName: string
+  status: string
+  detectedAt: string
+  closedAt: string | null
+  priority: boolean
+}
+
+export interface CompletionCandidates {
+  ready: boolean
+  threshold: number
+  lateWeight: number
+  items: { traineeId: number; enrollmentId: number; name: string; attendanceRate: number }[]
+}
+
+export interface TraineeChangeLog {
+  logId: number
+  entityType: 'TRAINEE' | 'ENROLLMENT'
+  entityId: number
+  changedBy: number
+  changedByName: string
+  changedAt: string
+  beforeValue: Record<string, unknown> | null
+  afterValue: Record<string, unknown> | null
+  reason: string
+  traineeId: number
+  traineeName: string
+  courseName: string | null
+}
