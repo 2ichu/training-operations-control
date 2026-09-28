@@ -11,7 +11,7 @@ import {
 import { PG_POOL } from '../database/database.module.js';
 import type { AccessContext, RbacRequest } from '../rbac/rbac.types.js';
 import { ScopeService } from '../rbac/scope.service.js';
-import { SCHEDULE_TIMEZONE } from '../schedule/schedule.service.js';
+import { SCHEDULE_TIMEZONE, scheduleDisplayStatusSql } from '../schedule/schedule.service.js';
 import { ACTIVE_STATUSES } from '../verification/verification.constants.js';
 
 export const COURSE_STATUSES = ['PREPARING', 'RECRUITING', 'IN_PROGRESS', 'CLOSED', 'SUSPENDED'] as const;
@@ -28,7 +28,9 @@ export interface ClosureItem {
   count: number;
 }
 
-const COLUMNS = 'c.course_id, c.course_name, c.start_date, c.end_date, c.total_hours, c.training_site, c.manager_user_id, c.status, c.created_at, c.updated_at';
+// manager_name: 화면(S15 목록 "담당자" 열, S16 상세)에 이름으로 표시하기 위한 조인 값
+const COLUMNS = `c.course_id, c.course_name, c.start_date, c.end_date, c.total_hours, c.training_site, c.manager_user_id,
+  (SELECT u.name FROM user_account u WHERE u.user_id = c.manager_user_id) AS manager_name, c.status, c.created_at, c.updated_at`;
 // 강사(OWN_ASSIGNED)에게는 확정 이전·취소 상태의 등록 건을 집계에 포함하지 않는다(ScopeService.canAccessTrainee 와 동일 기준)
 const HIDDEN_FOR_SCOPED = `('APPLIED', 'REVIEWING', 'CANCELLED')`;
 
@@ -97,10 +99,11 @@ export class CourseService {
       scoped ? [courseId, access.instructorId] : [courseId],
     );
     const sf = this.scope.scheduleScopeFilter(access, 's.instructor_id', 2);
+    const tz = `$${2 + sf.params.length}::text`;
     const schedules = await this.db.query(
-      `SELECT s.schedule_id, s.round_no, s.class_date, s.start_time, s.end_time, s.instructor_id, s.status
+      `SELECT s.schedule_id, s.round_no, s.class_date, s.start_time, s.end_time, s.instructor_id, s.status, ${scheduleDisplayStatusSql(tz)} AS display_status
          FROM class_schedule s WHERE s.course_id = $1 AND ${sf.sql} ORDER BY s.round_no`,
-      [courseId, ...sf.params],
+      [courseId, ...sf.params, SCHEDULE_TIMEZONE],
     );
     return {
       ...toApi(rows[0]),
@@ -108,6 +111,18 @@ export class CourseService {
       instructorAssignments: assignments.rows.map((r) => toApi(r)),
       schedules: schedules.rows.map((r) => toApi(r)),
     };
+  }
+
+  // S16 등록·수정 화면의 담당자 선택 목록. P1-18 과 같은 기준(활성 + OPS_MANAGER 역할)이며, 사용자 관리(S25)가 시스템 관리자 전용이라
+  // 과정 수정 권한(S16:U) 보유자에게 필요한 최소 정보(ID·이름)만 따로 연다.
+  async managerCandidates() {
+    const { rows } = await this.db.query(
+      `SELECT u.user_id, u.name FROM user_account u
+        WHERE u.status = 'ACTIVE'
+          AND EXISTS (SELECT 1 FROM user_role ur JOIN role r ON r.role_id = ur.role_id WHERE ur.user_id = u.user_id AND r.role_code = 'OPS_MANAGER')
+        ORDER BY u.name, u.user_id`,
+    );
+    return { items: rows.map((r) => toApi(r)) };
   }
 
   // ── 등록·수정 ───────────────────────────────────────────────────────────

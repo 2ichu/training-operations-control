@@ -11,6 +11,10 @@ import { ScopeService } from '../rbac/scope.service.js';
 // 계산값 "진행완료"(휴강이 아니고 현재 시각이 종료 시각을 지남)의 기준 시간대. 확정 전 임시값(결정 필요).
 export const SCHEDULE_TIMEZONE = process.env.APP_TIMEZONE ?? 'Asia/Seoul';
 
+/** 회차 표시 상태(baseline 3-6): 저장값(예정/휴강) + 계산값 "진행완료". tz 는 SCHEDULE_TIMEZONE 을 받는 SQL 플레이스홀더 */
+export const scheduleDisplayStatusSql = (tz: string): string =>
+  `CASE WHEN s.status = 'CANCELLED' THEN 'CANCELLED' WHEN now() > ((s.class_date + s.end_time) AT TIME ZONE ${tz}) THEN 'COMPLETED' ELSE 'SCHEDULED' END`;
+
 const invalidTimes = () => new BadRequestException({ code: 'INVALID_TIME_RANGE', message: '종료 시각은 시작 시각보다 늦어야 합니다' });
 
 @Injectable()
@@ -40,9 +44,7 @@ export class ScheduleService {
     const { rows } = await this.db.query(
       `SELECT s.schedule_id, s.course_id, c.course_name, s.round_no, s.class_date, s.start_time, s.end_time, s.instructor_id, i.name AS instructor_name,
               s.content, s.status,
-              CASE WHEN s.status = 'CANCELLED' THEN 'CANCELLED'
-                   WHEN now() > ((s.class_date + s.end_time) AT TIME ZONE ${tz}) THEN 'COMPLETED'
-                   ELSE 'SCHEDULED' END AS display_status,
+              ${scheduleDisplayStatusSql(tz)} AS display_status,
               count(*) OVER() AS total
          FROM class_schedule s JOIN course c ON c.course_id = s.course_id JOIN instructor i ON i.instructor_id = s.instructor_id
         WHERE ${where.sql} ORDER BY s.class_date, s.start_time, s.schedule_id LIMIT ${page.size} OFFSET ${page.offset}`,

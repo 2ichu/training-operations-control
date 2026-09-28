@@ -66,3 +66,21 @@ export const ISSUE_CATEGORY_LABELS: Record<string, string> = {
   SAFETY: '안전',
   OTHER: '기타',
 }
+
+// trainee_enrollment.status (baseline 3-2)
+export const ENROLLMENT_STATUS_LABELS: Record<string, string> = {
+  APPLIED: '신청',
+  REVIEWING: '서류확인중',
+  CONFIRMED: '확정',
+  COMPLETED: '수료',
+  DROPPED: '중도포기',
+  EXPELLED: '제적',
+  CANCELLED: '취소',
+}
+export const ENROLLMENT_STATUS_ORDER = Object.keys(ENROLLMENT_STATUS_LABELS)
+
+export const ASSIGNMENT_STATUS_LABELS: Record<string, string> = {
+  ASSIGNED: '배정',
+  CANCELLED: '배정 취소',
+}
+

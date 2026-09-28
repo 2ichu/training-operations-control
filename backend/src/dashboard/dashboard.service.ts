@@ -6,7 +6,7 @@ import { qDate, qInt, type Obj } from '../common/validation.js';
 import { PG_POOL } from '../database/database.module.js';
 import type { AccessContext, RbacRequest } from '../rbac/rbac.types.js';
 import { ScopeService } from '../rbac/scope.service.js';
-import { SCHEDULE_TIMEZONE } from '../schedule/schedule.service.js';
+import { SCHEDULE_TIMEZONE, scheduleDisplayStatusSql } from '../schedule/schedule.service.js';
 import { CourseService, type ClosureItem } from '../course/course.service.js';
 import { VerificationCaseService } from '../verification/verification-case.service.js';
 
@@ -51,8 +51,11 @@ export class DashboardService {
     where.add((p) => `s.class_date = ${p}`, date);
     where.addFilter((i) => this.scope.courseScopeFilter(access, 's.course_id', i)); // baseline: 대시보드의 INSTRUCTOR 범위는 "본인 과정만"(회차 단위 ◎ 아님)
     if (courseIdFilter) where.add((p) => `s.course_id = ${p}`, courseIdFilter);
+    where.params.push(SCHEDULE_TIMEZONE);
+    const tz = `$${where.params.length}::text`;
     const { rows } = await this.db.query(
-      `SELECT s.schedule_id, s.course_id, c.course_name, s.round_no, s.start_time, s.end_time, s.instructor_id, i.name AS instructor_name, s.status
+      `SELECT s.schedule_id, s.course_id, c.course_name, s.round_no, s.start_time, s.end_time, s.instructor_id, i.name AS instructor_name, s.status,
+              ${scheduleDisplayStatusSql(tz)} AS display_status
          FROM class_schedule s JOIN course c ON c.course_id = s.course_id LEFT JOIN instructor i ON i.instructor_id = s.instructor_id
         WHERE ${where.sql} ORDER BY s.start_time`,
       where.params,

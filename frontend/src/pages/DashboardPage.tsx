@@ -108,7 +108,7 @@ export function DashboardPage() {
                         {formatTime(s.startTime)}~{formatTime(s.endTime)}
                       </td>
                       <td>{s.instructorName ?? '-'}</td>
-                      <td>{label(SCHEDULE_STATUS_LABELS, s.status)}</td>
+                      <td>{label(SCHEDULE_STATUS_LABELS, s.displayStatus)}</td>
                     </tr>
                   ))}
                 </tbody>

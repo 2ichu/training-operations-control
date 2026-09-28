@@ -50,7 +50,7 @@ export function dashboard(overrides: Partial<DashboardSummary> = {}): DashboardS
   return {
     date: '2026-09-28',
     todaySchedules: [
-      { scheduleId: 11, courseId: 3, courseName: '웹개발 1기', roundNo: 5, startTime: '09:00:00', endTime: '18:00:00', instructorId: 2, instructorName: '박강사', status: 'SCHEDULED' },
+      { scheduleId: 11, courseId: 3, courseName: '웹개발 1기', roundNo: 5, startTime: '09:00:00', endTime: '18:00:00', instructorId: 2, instructorName: '박강사', status: 'SCHEDULED', displayStatus: 'SCHEDULED' },
     ],
     counts: { notCheckedIn: 4, checkoutMissing: 1, operationLogMissing: 2, submissionMissing: 0, reviewPending: 3 },
     verificationSummary: {
