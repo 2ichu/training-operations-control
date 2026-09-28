@@ -38,6 +38,7 @@ function routes(controller: new (...args: never[]) => unknown): Record<string, s
 // baseline 5-2 의 화면·기능과 role_permission 매트릭스에 대응하는 기대값. 새 라우트는 여기에 추가해야 통과한다(권한 누락 방지).
 const EXPECTED: Record<string, string> = {
   'GET /courses': 'S15:R',
+  'GET /courses/manager-candidates': 'S16:U',
   'GET /courses/:id': 'S16:R',
   'POST /courses': 'S16:C',
   'PATCH /courses/:id': 'S16:U',

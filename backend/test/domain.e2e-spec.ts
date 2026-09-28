@@ -132,6 +132,37 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
   describe('과정 (S15·S16)', () => {
     const body = () => ({ course_name: '신규 과정', start_date: '2027-05-01', end_date: '2027-06-30', total_hours: 120, training_site: '별관', manager_user_id: ops });
 
+    it('담당자 후보: 활성 OPS_MANAGER 의 ID·이름만, 과정 수정 권한(OPS)만 조회 가능 / 목록·상세에 담당자 이름 포함', async () => {
+      const inactiveOps = await makeUser('e2e_ops_off', 'OPS_MANAGER');
+      await client.query(`UPDATE user_account SET status = 'INACTIVE' WHERE user_id = $1`, [inactiveOps]);
+      const ops1 = await as('ops');
+      const candidates = (await ops1.get('/api/v1/courses/manager-candidates').expect(200)).body.items as { userId: number; name: string }[];
+      expect(candidates).toContainEqual({ userId: ops, name: 'e2e_ops' });
+      const ids = candidates.map((c) => c.userId);
+      for (const excluded of [inactiveOps, sys, exec, insUser1]) expect(ids).not.toContain(excluded);
+      expect(Object.keys(candidates[0]).sort()).toEqual(['name', 'userId']); // 로그인 ID·이메일 등은 내보내지 않는다
+      for (const who of ['sys', 'exec', 'ins1'] as const) expect((await (await as(who)).get('/api/v1/courses/manager-candidates')).status, who).toBe(403);
+
+      const list = (await ops1.get('/api/v1/courses').expect(200)).body.items as { courseId: number; managerName: string }[];
+      expect(list.find((c) => c.courseId === c1)?.managerName).toBe('e2e_ops');
+      expect((await ops1.get(`/api/v1/courses/${c1}`).expect(200)).body.managerName).toBe('e2e_ops');
+    });
+
+    it('상세·대시보드의 회차에 표시 상태(displayStatus: 지난 회차는 COMPLETED 계산값) 포함', async () => {
+      await client.query(`INSERT INTO class_schedule (course_id, round_no, class_date, start_time, end_time, instructor_id) VALUES ($1, 90, '2020-01-01', '09:00', '10:00', $2)`, [c1, i1]);
+      await client.query(`INSERT INTO class_schedule (course_id, round_no, class_date, start_time, end_time, instructor_id, status) VALUES ($1, 91, '2020-01-02', '09:00', '10:00', $2, 'CANCELLED')`, [c1, i1]);
+      const ops1 = await as('ops');
+      const byRound = new Map(((await ops1.get(`/api/v1/courses/${c1}`).expect(200)).body.schedules as { roundNo: number; status: string; displayStatus: string }[]).map((s) => [s.roundNo, s]));
+      expect(byRound.get(90)).toMatchObject({ status: 'SCHEDULED', displayStatus: 'COMPLETED' });
+      expect(byRound.get(91)).toMatchObject({ status: 'CANCELLED', displayStatus: 'CANCELLED' });
+      expect(byRound.get(1)).toMatchObject({ status: 'SCHEDULED', displayStatus: 'SCHEDULED' }); // 2027-01-05 미래 회차
+      // 강사 스코프(본인 회차만)에서도 파라미터 순서가 맞아야 한다
+      const insSchedules = (await (await as('ins1')).get(`/api/v1/courses/${c1}`).expect(200)).body.schedules as { roundNo: number; displayStatus: string }[];
+      expect(insSchedules.find((s) => s.roundNo === 90)?.displayStatus).toBe('COMPLETED');
+      const past = (await ops1.get('/api/v1/dashboard?date=2020-01-01').expect(200)).body.todaySchedules as { roundNo: number; displayStatus: string }[];
+      expect(past.find((s) => s.roundNo === 90)?.displayStatus).toBe('COMPLETED');
+    });
+
     it('등록: PREPARING 으로 생성되고 audit_log(CREATE)와 created_by 가 남는다', async () => {
       const since = await maxAudit();
       const res = await (await as('ops')).post('/api/v1/courses').send(body()).expect(201);

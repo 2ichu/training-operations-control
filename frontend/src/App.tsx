@@ -7,6 +7,9 @@ import { DashboardPage } from './pages/DashboardPage'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage, NotImplementedPage } from './pages/PlaceholderPages'
 import { RequireAuth, RequirePermission } from './routing/guards'
+import { CourseCreatePage } from './pages/course/CourseCreatePage'
+import { CourseDetailPage } from './pages/course/CourseDetailPage'
+import { CourseListPage } from './pages/course/CourseListPage'
 import { ActionLogPage } from './pages/verification/ActionLogPage'
 import { VerificationCaseDetailPage } from './pages/verification/VerificationCaseDetailPage'
 import { VerificationCaseListPage } from './pages/verification/VerificationCaseListPage'
@@ -40,6 +43,22 @@ export function AppRoutes() {
           }
         />
         <Route
+          path="/courses"
+          element={
+            <RequirePermission screenId="S15">
+              <CourseListPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/courses/new"
+          element={
+            <RequirePermission screenId="S16" action="C">
+              <CourseCreatePage />
+            </RequirePermission>
+          }
+        />
+        <Route
           path="/verification-action-logs"
           element={
             <RequirePermission screenId="S24">
@@ -58,12 +77,12 @@ export function AppRoutes() {
             }
           />
         ))}
-        {/* 상세 화면: S23 은 구현, S16 과정 상세·S05 훈련생 상세는 다음 단계에서 구현 */}
+        {/* 상세 화면: S16·S23 구현, S05 훈련생 상세는 다음 단계에서 구현 */}
         <Route
           path="/courses/:id"
           element={
             <RequirePermission screenId="S16">
-              <NotImplementedPage title="과정 상세" />
+              <CourseDetailPage />
             </RequirePermission>
           }
         />

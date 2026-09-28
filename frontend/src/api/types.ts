@@ -47,6 +47,8 @@ export interface DashboardSchedule {
   instructorId: number | null
   instructorName: string | null
   status: string
+  /** 저장값 + 계산값 "진행완료"(COMPLETED, baseline 3-6) */
+  displayStatus: string
 }
 
 export interface DashboardCounts {
@@ -140,4 +142,39 @@ export interface VerificationCaseDetail {
   relatedCourseIssue: { issueId: number; category: string; content: string; status: string } | null
   relatedOperationLog: { operationLogId: number; scheduleId: number; content: string; writtenAt: string } | null
   actionLogs: ActionLogEntry[]
+}
+
+// GET /courses (S15), GET /courses/{id} (S16)
+export interface CourseListItem {
+  courseId: number
+  courseName: string
+  startDate: string
+  endDate: string
+  totalHours: number
+  trainingSite: string
+  managerUserId: number
+  managerName: string | null
+  status: string
+  createdAt: string
+  updatedAt: string
+  confirmedTraineeCount: number
+}
+
+export interface CourseDetail extends Omit<CourseListItem, 'confirmedTraineeCount'> {
+  traineeSummary: { status: string; count: number }[]
+  instructorAssignments: { assignmentId: number; instructorId: number; instructorName: string; roundNo: number | null; status: string; assignedAt: string }[]
+  schedules: { scheduleId: number; roundNo: number; classDate: string; startTime: string; endTime: string; instructorId: number; status: string; displayStatus: string }[]
+}
+
+export interface ManagerCandidate {
+  userId: number
+  name: string
+}
+
+// GET /courses/{id}/closure-checklist (baseline 9절)
+export interface ClosureItem {
+  item: number
+  label: string
+  classification: 'BLOCKING' | 'WARNING' | 'NOT_NEEDED'
+  count: number
 }

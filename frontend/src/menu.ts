@@ -84,5 +84,5 @@ export function visibleMenu(permissions: readonly PermissionGrant[]): MenuGroup[
 }
 
 // 화면이 구현된 메뉴 경로. 나머지 메뉴는 라우터가 "준비 중" 안내를 보여준다.
-const IMPLEMENTED_PATHS = new Set(['/', '/verification-cases', '/verification-action-logs'])
+const IMPLEMENTED_PATHS = new Set(['/', '/verification-cases', '/verification-action-logs', '/courses'])
 export const PLANNED_PATHS = MENU.flatMap((g) => g.items).filter((i) => !IMPLEMENTED_PATHS.has(i.path))

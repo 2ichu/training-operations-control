@@ -329,8 +329,9 @@
 | | 과정 단위 강사 배정 | POST | /courses/{id}/instructor-assignments | instructor_id, round_no(선택) | 배정 | OPS | CREATE / instructor_assignment / USER |
 | | 배정 취소 | POST | /instructor-assignments/{id}/cancel | reason | status=CANCELLED | OPS | UPDATE / instructor_assignment / USER + instructor_change_log |
 | S14 강사 변경이력 | 이력 조회 | GET | /instructor-change-logs | instructor_id, entity_type, from, to | 이력 목록 | OPS·SYS·EXEC | 없음 |
-| S15 과정 목록 | 과정 목록 | GET | /courses | name, status, from, to, manager_user_id | 과정 목록, 확정 훈련생 수 | 전 역할(◎) | 없음 |
-| S16 과정 등록/수정/상세 | 과정 상세 | GET | /courses/{id} | — | 과정, 훈련생·강사배정·일정 요약 | 전 역할(◎) | 없음 |
+| S15 과정 목록 | 과정 목록 | GET | /courses | name, status, from, to, manager_user_id | 과정 목록(담당자 이름 포함), 확정 훈련생 수 | 전 역할(◎) | 없음 |
+| S16 과정 등록/수정/상세 | 과정 상세 | GET | /courses/{id} | — | 과정(담당자 이름 포함), 훈련생·강사배정·일정 요약 | 전 역할(◎) | 없음 |
+| | 담당자 후보 | GET | /courses/manager-candidates | — | 활성 OPS_MANAGER 의 user_id·name 만 (P1-18 과 같은 기준). 사용자 관리(S25)가 SYS 전용이라 등록·수정 화면용으로 따로 연 조회 | OPS(S16:U) | 없음 |
 | | 과정 등록 | POST | /courses | 과정 기본정보, manager_user_id | course(PREPARING) | OPS | CREATE / course / USER |
 | | 과정 기본정보 수정 | PATCH | /courses/{id} | 변경 필드 | 갱신된 과정 | OPS | UPDATE / course / USER (before/after) |
 | | 모집 시작 | POST | /courses/{id}/open-recruitment | — | status=RECRUITING | OPS | UPDATE / course / USER |

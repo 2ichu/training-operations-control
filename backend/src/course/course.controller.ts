@@ -15,6 +15,13 @@ export class CourseController {
     return this.courses.list(req.access!, query);
   }
 
+  // ':id' 보다 먼저 선언해야 경로가 가려지지 않는다
+  @Get('manager-candidates')
+  @Authorize('S16', 'U')
+  managerCandidates() {
+    return this.courses.managerCandidates();
+  }
+
   @Get(':id')
   @Authorize('S16', 'R')
   detail(@Req() req: RbacRequest, @Param('id') id: string) {
