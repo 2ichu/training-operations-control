@@ -167,9 +167,9 @@ describe('mergeScopes / Authorize 입력 검증', () => {
     expect(mergeScopes(['OWN_ASSIGNED', 'ALL'])).toBe('ALL');
   });
   it('잘못된 화면 ID 는 애플리케이션 부팅 시점에 거부된다', () => {
-    expect(() => Authorize('S28', 'R')).toThrow();
+    expect(() => Authorize('S29', 'R')).toThrow();
     expect(() => Authorize('X01', 'R')).toThrow();
-    expect(() => Authorize('S27', 'R')).not.toThrow();
+    expect(() => Authorize('S28', 'R')).not.toThrow();
   });
 });
 

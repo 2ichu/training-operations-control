@@ -10,7 +10,8 @@ export interface RequiredPermission {
   action: PermissionAction;
 }
 
-export const SCREEN_ID_PATTERN = /^S(0[1-9]|1[0-9]|2[0-7])$/;
+// S28: 탐지규칙 파라미터 관리(Phase 5, migration 20260928000600)
+export const SCREEN_ID_PATTERN = /^S(0[1-9]|1[0-9]|2[0-8])$/;
 
 // 서비스들이 풀 또는 트랜잭션 클라이언트를 모두 받을 수 있게 하는 최소 인터페이스
 export type Queryable = Pick<pg.Pool, 'query'>;

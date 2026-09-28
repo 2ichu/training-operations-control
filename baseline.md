@@ -253,6 +253,7 @@
 | 이력 조회(S06·S10·S14·S24) | 조회 | R | R | — | R |
 | 사용자·권한(S25·S26) | 조회·생성·수정·비활성화 | O | — | — | — |
 | 감사로그(S27) | 조회 | R | — | — | R |
+| 탐지규칙(S28, Phase 5) | 파라미터 조회·수정, 활성/비활성 | O | — | — | — |
 
 ### 4-3. 서버/API 필수 검증 (UI 숨김으로 대체 불가)
 
@@ -367,6 +368,8 @@
 | | 비밀번호 초기화 | POST | /users/{id}/reset-password | — | 임시 절차 | SYS | UPDATE / user_account / USER (값 미기록) |
 | S26 권한 | 권한 조회 | GET | /roles/permissions | role_id | 화면×기능 매트릭스 | SYS | 없음 |
 | | 권한 저장 | PUT | /roles/{id}/permissions | 매트릭스 | 저장 결과 | SYS | UPDATE / role_permission / USER (before/after) |
+| S28 탐지규칙 (Phase 5) | 규칙 목록 | GET | /detection-rules | — | 규칙 목록(params·is_active·editable) | SYS | 없음 |
+| | 파라미터·활성 수정 | PATCH | /detection-rules/{id} | reason(필수), params(기존 키의 값만, 1~100000 정수), is_active | 갱신본. MANUAL 은 409 RULE_NOT_EDITABLE, initial_status 는 수정 불가(D-11) | SYS | UPDATE / detection_rule / USER (before/after, reason) |
 | S27 감사로그 | 로그 조회 | GET | /audit-logs | from·to(필수, 최대 범위 제한), actor_type, actor_user_id, target_table, action | 로그 목록 | SYS, EXEC | VIEW_SENSITIVE / audit_log / USER |
 | | 로그 상세(diff) | GET | /audit-logs/{id} | — | before/after | SYS, EXEC | VIEW_SENSITIVE / audit_log / USER |
 
@@ -378,6 +381,8 @@
 | RULE_03~06 평가 | 배치 | 6절 시점표 | SYSTEM_RULE | 스케줄러가 호출하되 결과 기록의 행위자는 탐지 엔진 |
 | 공식 출결 수집·대사·RULE_07 | 수신+배치 | 연동 방식 확정 후(#1) | SYSTEM_API / SYSTEM_BATCH | STEP 8.2 |
 | 과정 자동 운영중 전환 | 배치 | 매일 자정 직후 | SYSTEM_BATCH | 조건: 첫 교육일 도래 + 확정 훈련생 ≥ 1. 조건 미충족이면 전환하지 않음 |
+
+구현(Phase 5, 2026-09-28): 위 표에서 공식 출결 연동(#1 대기)을 제외한 전부가 가동된다. 시간 기반 배치는 `BatchSchedulerService`(APP_TIMEZONE 벽시계 기준) — 과정 자동 전환 00:05, RULE_03 매시 정각, RULE_04 22:00 + 익일 09:00 재확인, RULE_05 01:00, RULE_06 01:10이며, 시점표가 시각을 정하지 않은 항목(00:05·09:00·01:00·01:10)은 기술적 기본값이다. RULE_01·02는 입실 확인 커밋 직후 해당 회차만 비동기 평가하고, 유실 대비로 01:20·01:30에 전체 회차를 한 번 더 평가한다(멱등). 배치·이벤트는 `BATCH_ENABLED`로 끄고 켠다(decisions.md 11절).
 
 ### 5-4. 명세 갭(정의 없이 임의 구현 금지)
 
@@ -710,6 +715,7 @@
 | S25 | GET /users, GET /users/{id}, POST /users, PATCH /users/{id}, POST /users/{id}/reset-password |
 | S26 | GET /roles/permissions, PUT /roles/{id}/permissions |
 | S27 | GET /audit-logs, GET /audit-logs/{id} |
+| S28 | GET /detection-rules, PATCH /detection-rules/{id} |
 | 내부 처리 | RULE_01·02 이벤트, RULE_03~06 배치, 공식 수집·대사·RULE_07(#1), 과정 자동 전환 |
 
 ### D. 최종 권한 매트릭스 (요약)

@@ -7,6 +7,7 @@ import { AttendanceModule } from './attendance/attendance.module.js';
 import { AuditLogViewModule } from './audit-log/audit-log-view.module.js';
 import { AuditModule } from './audit/audit.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { BatchModule } from './batch/batch.module.js';
 import authConfig from './auth/auth.config.js';
 import { CommonModule } from './common/common.module.js';
 import { CourseIssueModule } from './course-issue/course-issue.module.js';
@@ -21,12 +22,13 @@ import { SubmissionModule } from './submission/submission.module.js';
 import { TraineeModule } from './trainee/trainee.module.js';
 import { UserModule } from './user/user.module.js';
 import { VerificationModule } from './verification/verification.module.js';
+import batchConfig from './config/batch.config.js';
 import databaseConfig from './config/database.config.js';
 import { DatabaseModule } from './database/database.module.js';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, load: [databaseConfig, authConfig] }),
+    ConfigModule.forRoot({ isGlobal: true, load: [databaseConfig, authConfig, batchConfig] }),
     DatabaseModule,
     AuditModule,
     AuthModule,
@@ -46,6 +48,7 @@ import { DatabaseModule } from './database/database.module.js';
     SubmissionModule,
     AttachmentModule,
     DashboardModule,
+    BatchModule,
   ],
   controllers: [AppController],
   providers: [AppService],

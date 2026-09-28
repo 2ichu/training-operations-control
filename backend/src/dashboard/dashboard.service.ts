@@ -1,10 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type pg from 'pg';
 import { toApi, Where } from '../common/api.js';
+import { todayIn } from '../common/today.js';
 import { qDate, qInt, type Obj } from '../common/validation.js';
 import { PG_POOL } from '../database/database.module.js';
 import type { AccessContext, RbacRequest } from '../rbac/rbac.types.js';
 import { ScopeService } from '../rbac/scope.service.js';
+import { SCHEDULE_TIMEZONE } from '../schedule/schedule.service.js';
 import { CourseService, type ClosureItem } from '../course/course.service.js';
 import { VerificationCaseService } from '../verification/verification-case.service.js';
 
@@ -23,7 +25,7 @@ export class DashboardService {
 
   async summary(request: RbacRequest, query: Obj) {
     const access = request.access!;
-    const date = qDate(query, 'date') ?? new Date().toISOString().slice(0, 10);
+    const date = qDate(query, 'date') ?? (await todayIn(this.db, SCHEDULE_TIMEZONE));
     const courseIdFilter = qInt(query, 'course_id');
     const assigneeIdFilter = qInt(query, 'assignee_id');
 

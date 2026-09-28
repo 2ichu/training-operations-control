@@ -73,7 +73,7 @@ export class RolePermissionService {
       const item = asObject(raw, `items[${i}]`);
       const screenId = item.screenId;
       if (typeof screenId !== 'string' || !SCREEN_ID_PATTERN.test(screenId)) {
-        throw new BadRequestException({ code: 'VALIDATION', field: `items[${i}].screenId`, message: 'S01~S27 형식이어야 합니다' });
+        throw new BadRequestException({ code: 'VALIDATION', field: `items[${i}].screenId`, message: 'S01~S28 형식이어야 합니다' });
       }
       const action = oneOf(item.action, `items[${i}].action`, ACTIONS);
       const scope = item.scope === undefined ? 'ALL' : oneOf(item.scope, `items[${i}].scope`, SCOPES);

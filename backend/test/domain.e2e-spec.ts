@@ -6,6 +6,7 @@ import request from 'supertest';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module.js';
 import { hashPassword } from '../src/auth/password.js';
+import { CourseService } from '../src/course/course.service.js';
 import { PG_POOL } from '../src/database/database.module.js';
 import { DetectionRuleService } from '../src/verification/detection-rule.service.js';
 import { RollbackPool } from './support/rollback-pool.js';
@@ -597,6 +598,18 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect(ins2Summary.verificationSummary.recent.some((r: { caseId: number }) => r.caseId === caseId)).toBe(false);
     });
 
+    it('date 생략 시 기본값은 UTC 가 아니라 APP_TIMEZONE(기본 Asia/Seoul) 기준 오늘', async () => {
+      const tz = process.env.APP_TIMEZONE ?? 'Asia/Seoul';
+      const expected = (await rows(`SELECT to_char((now() AT TIME ZONE $1)::date, 'YYYY-MM-DD') AS d`, [tz]))[0].d as string;
+      const kstSchedule = await one(
+        `INSERT INTO class_schedule (course_id, round_no, class_date, start_time, end_time, instructor_id) VALUES ($1, 97, $2::date, '09:00', '10:00', $3) RETURNING schedule_id id`,
+        [c1, expected, i1],
+      );
+      const summary = (await (await as('ops')).get('/api/v1/dashboard').expect(200)).body;
+      expect(summary.date).toBe(expected);
+      expect(summary.todaySchedules.map((s: { scheduleId: number }) => s.scheduleId)).toContain(kstSchedule);
+    });
+
     it('권한: 미인증 401, course_id 필터는 해당 과정으로만 제한', async () => {
       expect((await (await as('anon')).get('/api/v1/dashboard')).status).toBe(401);
       const ops1 = await as('ops');
@@ -1128,6 +1141,127 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       await client.query(`UPDATE detection_rule SET is_active = false WHERE rule_code = 'RULE_04'`);
       const r1 = await detection.runRule04();
       expect(r1).toEqual({ skipped: true, casesCreated: 0, casesUpdated: 0 });
+    });
+  });
+
+  // ── Phase 5: 탐지 규칙 회차 범위 평가 + S28 파라미터 관리 + P1-10 자동 운영중 전환 ─────────────
+  describe('탐지 엔진 회차 범위 평가 (RULE_01·02 출결 이벤트용)', () => {
+    it('scheduleId 를 지정하면 그 회차만 평가하고, 지정하지 않으면 전체를 평가한다', async () => {
+      await client.query(`UPDATE detection_rule SET params = '{"min_trainees":2,"window_minutes":10}' WHERE rule_code = 'RULE_01'`);
+      const t2 = await one(`INSERT INTO trainee (name) VALUES ('EV-2') RETURNING trainee_id id`);
+      await client.query(`INSERT INTO trainee_enrollment (trainee_id, course_id, status) VALUES ($1, $2, 'CONFIRMED')`, [t2, c1]);
+      const ops1 = await as('ops');
+      await ops1.post(`/api/v1/schedules/${s1}/attendance/check-in`).send({ trainee_ids: [tConfirmed1, t2], check_in_time: new Date().toISOString(), related_info: { device_id: 'dev-ev' } }).expect(201);
+
+      expect(await detection.runRule01({ scheduleId: s2 })).toMatchObject({ skipped: false, casesCreated: 0, casesUpdated: 0 });
+      expect(await detection.runRule01({ scheduleId: s1 })).toMatchObject({ skipped: false, casesCreated: 1 });
+      expect(await detection.runRule01()).toMatchObject({ casesCreated: 0, casesUpdated: 1 }); // 전체 평가: 같은 건(멱등)
+    });
+  });
+
+  describe('탐지규칙 파라미터 관리 (S28)', () => {
+    const rule = async (code: string) => (await rows(`SELECT rule_id, params, is_active FROM detection_rule WHERE rule_code = $1`, [code]))[0];
+
+    it('조회·수정은 SYS_ADMIN 만 가능하다', async () => {
+      const list = await (await as('sys')).get('/api/v1/detection-rules').expect(200);
+      const codes = (list.body.items as { ruleCode: string; editable: boolean }[]).map((r) => `${r.ruleCode}:${r.editable}`);
+      expect(codes).toEqual(expect.arrayContaining(['RULE_01:true', 'RULE_06:true', 'MANUAL:false']));
+      const r04 = await rule('RULE_04');
+      for (const who of ['ops', 'exec', 'ins1'] as const) {
+        expect((await (await as(who)).get('/api/v1/detection-rules')).status, who).toBe(403);
+        expect((await (await as(who)).patch(`/api/v1/detection-rules/${r04.rule_id}`).send({ reason: 'x', is_active: false })).status, who).toBe(403);
+      }
+    });
+
+    it('기존 키의 값만 부분 수정, 사유 필수, audit_log(UPDATE, before/after, 사유) 기록, 다음 실행부터 적용', async () => {
+      const sys1 = await as('sys');
+      const r04 = await rule('RULE_04');
+      expect((await sys1.patch(`/api/v1/detection-rules/${r04.rule_id}`).send({ params: { delay_hours: 5 } })).status).toBe(400); // 사유 없음
+      expect((await sys1.patch(`/api/v1/detection-rules/${r04.rule_id}`).send({ reason: 'x', params: { nope: 1 } })).status).toBe(400);
+      expect((await sys1.patch(`/api/v1/detection-rules/${r04.rule_id}`).send({ reason: 'x', params: { delay_hours: 0 } })).status).toBe(400);
+      expect((await sys1.patch(`/api/v1/detection-rules/${r04.rule_id}`).send({ reason: 'x' })).status).toBe(400); // 바꿀 값 없음
+
+      const since = await maxAudit();
+      const res = await sys1.patch(`/api/v1/detection-rules/${r04.rule_id}`).send({ reason: '실측 반영', params: { delay_hours: 5 } }).expect(200);
+      expect(res.body).toMatchObject({ ruleCode: 'RULE_04', params: { delay_hours: 5 }, isActive: true });
+      const logs = (await auditSince(since)).filter((r) => r.target_table === 'detection_rule');
+      expect(logs).toHaveLength(1);
+      expect(logs[0]).toMatchObject({ action: 'UPDATE', actor_type: 'USER', actor_user_id: String(sys), reason: '실측 반영', target_id: String(r04.rule_id) });
+      expect(logs[0].before_value.params).toEqual({ delay_hours: 2 });
+      expect(logs[0].after_value.params).toEqual({ delay_hours: 5 });
+
+      await sys1.patch(`/api/v1/detection-rules/${r04.rule_id}`).send({ reason: '일시 중지', is_active: false }).expect(200);
+      expect(await detection.runRule04()).toEqual({ skipped: true, casesCreated: 0, casesUpdated: 0 });
+    });
+
+    it('MANUAL 은 수정할 수 없다(409), 없는 규칙은 404', async () => {
+      const sys1 = await as('sys');
+      const manual = await rule('MANUAL');
+      expect((await sys1.patch(`/api/v1/detection-rules/${manual.rule_id}`).send({ reason: 'x', is_active: false })).body).toMatchObject({ code: 'RULE_NOT_EDITABLE' });
+      expect((await sys1.patch(`/api/v1/detection-rules/999999999`).send({ reason: 'x', is_active: false })).status).toBe(404);
+    });
+  });
+
+  describe('과정 자동 운영중 전환 배치 (P1-10)', () => {
+    let courses: CourseService;
+    beforeAll(() => {
+      courses = app.get(CourseService);
+    });
+    const newCourse = (name: string, status: string) =>
+      one(`INSERT INTO course (course_name, start_date, end_date, total_hours, training_site, manager_user_id, status) VALUES ($1, '2027-01-01', '2027-03-31', 100, '본원', $2, $3) RETURNING course_id id`, [name, ops, status]);
+    const addSchedule = (course: number, round: number, date: string, status = 'SCHEDULED') =>
+      client.query(`INSERT INTO class_schedule (course_id, round_no, class_date, start_time, end_time, instructor_id, status) VALUES ($1, $2, $3, '09:00', '18:00', $4, $5)`, [course, round, date, i1, status]);
+    const confirm = async (course: number) => {
+      const t = await one(`INSERT INTO trainee (name) VALUES ('AS') RETURNING trainee_id id`);
+      await client.query(`INSERT INTO trainee_enrollment (trainee_id, course_id, status) VALUES ($1, $2, 'CONFIRMED')`, [t, course]);
+    };
+    const status = async (course: number) => (await rows(`SELECT status FROM course WHERE course_id = $1`, [course]))[0].status;
+
+    it('첫 교육일 도래 + 확정 훈련생 ≥ 1 인 준비중·모집중 과정만 SYSTEM_BATCH 로 전환하고, 재실행은 멱등', async () => {
+      const due1 = await newCourse('자동-준비중', 'PREPARING');
+      await addSchedule(due1, 1, '2027-01-05');
+      await confirm(due1);
+      const due2 = await newCourse('자동-모집중', 'RECRUITING');
+      await addSchedule(due2, 1, '2027-01-04');
+      await addSchedule(due2, 2, '2027-01-20');
+      await confirm(due2);
+      const noTrainee = await newCourse('확정 없음', 'RECRUITING');
+      await addSchedule(noTrainee, 1, '2027-01-05');
+      const notYet = await newCourse('첫 교육일 전', 'PREPARING');
+      await addSchedule(notYet, 1, '2027-01-06');
+      await confirm(notYet);
+      const onlyCancelled = await newCourse('휴강만', 'PREPARING');
+      await addSchedule(onlyCancelled, 1, '2027-01-05', 'CANCELLED');
+      await addSchedule(onlyCancelled, 2, '2027-01-10');
+      await confirm(onlyCancelled);
+      const suspended = await newCourse('중단', 'SUSPENDED');
+      await addSchedule(suspended, 1, '2027-01-01');
+      await confirm(suspended);
+
+      const since = await maxAudit();
+      const r1 = await courses.autoStartDue('2027-01-05');
+      expect(r1).toEqual({ date: '2027-01-05', started: [due1, due2], failed: [] });
+      expect(await status(due1)).toBe('IN_PROGRESS');
+      expect(await status(due2)).toBe('IN_PROGRESS');
+      for (const c of [noTrainee, notYet, onlyCancelled]) expect(await status(c)).not.toBe('IN_PROGRESS');
+      expect(await status(suspended)).toBe('SUSPENDED');
+
+      const logs = (await auditSince(since)).filter((r) => r.target_table === 'course');
+      expect(logs).toHaveLength(2); // 상태를 바꾼 건만 기록(baseline 7절 #32)
+      for (const log of logs) {
+        expect(log).toMatchObject({ action: 'UPDATE', actor_type: 'SYSTEM_BATCH', actor_user_id: null, reason: 'batch:course-auto-start' });
+        expect(log.after_value.status).toBe('IN_PROGRESS');
+      }
+
+      const r2 = await courses.autoStartDue('2027-01-05');
+      expect(r2.started).toEqual([]);
+      expect((await auditSince(since)).filter((r) => r.target_table === 'course')).toHaveLength(2);
+    });
+
+    it('기준일을 생략하면 APP_TIMEZONE 기준 오늘로 판정한다', async () => {
+      const r = await courses.autoStartDue();
+      expect(r.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(r.failed).toEqual([]);
     });
   });
 
