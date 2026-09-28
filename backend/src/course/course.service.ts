@@ -3,6 +3,7 @@ import type pg from 'pg';
 import { AuditContext } from '../audit/audit-context.js';
 import { type AuditedTx, AuditedTransactionService, type Row } from '../audit/audited-transaction.js';
 import { escapeLike, pageOf, toApi, Where } from '../common/api.js';
+import { todayIn } from '../common/today.js';
 import { assertCourseOpen, conflict, lockRow } from '../common/tx.js';
 import {
   asObject, isValidDate, type Obj, optStr, qDate, qEnumList, qInt, qStr, reqDate, reqInt, reqStr,
@@ -177,7 +178,7 @@ export class CourseService {
   // 후보가 된다(멱등). 전환 직전에 행을 잠그고 조건을 다시 확인하므로 그 사이 수동 전환·중단된 과정은 건너뛴다.
   // 감사는 상태를 바꾼 건만 남는다(baseline 7절 #32). today 는 테스트용이며 기본은 APP_TIMEZONE 기준 오늘이다.
   async autoStartDue(today?: string): Promise<{ date: string; started: number[]; failed: { courseId: number; error: string }[] }> {
-    const date = today ?? ((await this.db.query(`SELECT to_char((now() AT TIME ZONE $1)::date, 'YYYY-MM-DD') AS d`, [SCHEDULE_TIMEZONE])).rows[0].d as string);
+    const date = today ?? (await todayIn(this.db, SCHEDULE_TIMEZONE));
     const { rows } = await this.db.query(`SELECT c.course_id FROM course c WHERE ${AUTO_START_DUE} ORDER BY c.course_id`, [date]);
     const started: number[] = [];
     const failed: { courseId: number; error: string }[] = [];

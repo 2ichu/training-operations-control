@@ -598,6 +598,18 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect(ins2Summary.verificationSummary.recent.some((r: { caseId: number }) => r.caseId === caseId)).toBe(false);
     });
 
+    it('date 생략 시 기본값은 UTC 가 아니라 APP_TIMEZONE(기본 Asia/Seoul) 기준 오늘', async () => {
+      const tz = process.env.APP_TIMEZONE ?? 'Asia/Seoul';
+      const expected = (await rows(`SELECT to_char((now() AT TIME ZONE $1)::date, 'YYYY-MM-DD') AS d`, [tz]))[0].d as string;
+      const kstSchedule = await one(
+        `INSERT INTO class_schedule (course_id, round_no, class_date, start_time, end_time, instructor_id) VALUES ($1, 97, $2::date, '09:00', '10:00', $3) RETURNING schedule_id id`,
+        [c1, expected, i1],
+      );
+      const summary = (await (await as('ops')).get('/api/v1/dashboard').expect(200)).body;
+      expect(summary.date).toBe(expected);
+      expect(summary.todaySchedules.map((s: { scheduleId: number }) => s.scheduleId)).toContain(kstSchedule);
+    });
+
     it('권한: 미인증 401, course_id 필터는 해당 과정으로만 제한', async () => {
       expect((await (await as('anon')).get('/api/v1/dashboard')).status).toBe(401);
       const ops1 = await as('ops');
