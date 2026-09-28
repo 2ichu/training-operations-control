@@ -1,32 +1,30 @@
-# React + TypeScript + Vite
+# Frontend (React + TypeScript + Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+훈련과정 통합관리 및 내부통제 시스템의 웹 화면. 화면 명세는 `system-design.md` STEP 3·7·7-A, 권한은 `baseline.md` 4-2 를 따른다.
 
-Currently, two official plugins are available:
+## 실행
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. 백엔드를 먼저 띄운다(`backend/README.md` — `migrate:up`, `db:seed`, `npm run start:dev`, 기본 포트 3000).
+2. `npm install` 후 `npm run dev` — 개발 서버가 `/api` 요청을 백엔드로 넘긴다(`vite.config.ts`, 대상 변경은 `API_PROXY_TARGET`).
+3. `npm test`(vitest + Testing Library, jsdom), `npm run lint`, `npm run build`.
 
-## React Compiler
+세션은 백엔드가 발급하는 httpOnly 쿠키(SameSite=Lax)라 **화면과 API 가 같은 출처**여야 한다. 개발은 Vite 프록시, 운영은 리버스 프록시로 정적 파일과 `/api` 를 한 도메인에서 제공하는 것을 전제로 한다.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 구조
 
-## Expanding the Oxlint configuration
+- `src/api` — `client.ts`(fetch 래퍼, 오류 응답 `{ code, field, message }` → `ApiError`, 401 이면 세션 만료 처리), `useApi.ts`(조회 훅), `types.ts`(응답 타입)
+- `src/auth` — 세션 상태의 원본은 서버(`GET /auth/me`)이며 브라우저 저장소에 사용자·권한을 두지 않는다. `can(screenId, action)`은 메뉴·버튼 노출용일 뿐이고 통제는 서버가 요청마다 재검증한다(system-design 2.3).
+- `src/menu.ts` — system-design 3.2 메뉴 구조. 각 항목은 해당 화면의 조회(R) 권한이 있을 때만 보인다(S20 은 S19 권한으로 판정).
+- `src/routing/guards.tsx` — 로그인 필수, 초기 비밀번호 상태면 변경 화면만 허용(baseline 10-2 #5), 화면 권한 없으면 안내.
+- `src/labels.ts` — 상태 코드 → 표시명(baseline 3절 상태값 사전).
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## 구현 범위 (1단계)
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+- 로그인·로그아웃, 세션 만료 시 로그인 화면으로 복귀, 본인 비밀번호 변경(강제 변경 포함)
+- 역할별 메뉴·레이아웃, 권한 없는 화면 안내
+- **S01 대시보드**: 날짜 회차 목록, 확인 필요 상태별 건수 + 최근 발생 건(관련 훈련생 "외 N명" 축약), 미처리 건수. 필터(날짜·과정·내 담당 건만)는 URL 쿼리에 유지된다. 담당자 필터는 사용자 목록 조회(S25)가 시스템 관리자 전용이라 확인/조치 처리 권한(S22:A)이 있는 사용자에게 "내 담당 건만"으로 제공한다.
+- **확인/조치(S22·S23·S24)**
+  - S22 목록: 발생일 범위·과정·탐지유형·훈련생명·상태(기본 진행중만)·내 담당 필터, 선택 건 "나에게 배정"(배정 가능한 사용자 목록 API 가 시스템 관리자 전용이라 본인 배정만 제공)
+  - S23 상세: 탐지 근거를 사실 그대로 나열(회차·훈련생 ID 는 이름으로 표시, 해석 문구 없음), 관련 훈련생, 확인·조치 내용, 현재 상태에서 가능한 처리만 폼으로 제공(baseline 3-4 전이표), 처리이력. 다른 사용자가 먼저 처리해 409 가 오면 안내 후 최신 상태를 다시 불러온다
+  - S24 조치이력: 기간·과정·처리 유형·내 담당 필터
+- 나머지 메뉴와 상세 이동 대상(S16 과정 상세, S05 훈련생 상세)은 "준비 중" 안내만 있다 — 다음 단계에서 채운다.

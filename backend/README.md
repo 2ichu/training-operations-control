@@ -9,7 +9,7 @@
    - `npm run db:verify:live` — 실제 DB 검증(카탈로그·제약·append-only 트리거·시드 대조, 변경 테스트는 롤백)
 5. 운영에서는 `db/roles.example.sql` 을 참고해 소유자 계정과 앱 계정을 분리한다(로그 테이블 UPDATE/DELETE 차단).
 
-**CI**(`.github/workflows/ci.yml`): PR·master push 마다 Postgres 16 서비스로 위 절차 + 린트·빌드·단위·e2e·`db:verify:live`·`db:verify:rbac`·`db:verify:audit-tx`·마이그레이션 down/up 을 실행하고, 프론트엔드는 린트·빌드한다. Node 24(npm 11)를 쓴다 — npm 10 은 선택적 peer 의존성 처리 차이로 현재 lockfile 과 `npm ci` 가 맞지 않는다. e2e 는 깨끗한 DB 를 전제로 하므로 실제 COMMIT 을 남기는 `db:verify:audit-tx` 보다 먼저 돈다.
+**CI**(`.github/workflows/ci.yml`): PR·master push 마다 Postgres 16 서비스로 위 절차 + 린트·빌드·단위·e2e·`db:verify:live`·`db:verify:rbac`·`db:verify:audit-tx`·마이그레이션 down/up 을 실행하고, 프론트엔드는 린트·테스트(vitest)·빌드한다. Node 24(npm 11)를 쓴다 — npm 10 은 선택적 peer 의존성 처리 차이로 현재 lockfile 과 `npm ci` 가 맞지 않는다. e2e 는 깨끗한 DB 를 전제로 하므로 실제 COMMIT 을 남기는 `db:verify:audit-tx` 보다 먼저 돈다.
 
 ---
 
