@@ -227,7 +227,7 @@ try {
   await expectFail('FK: 존재하지 않는 manager_user_id 차단', `INSERT INTO course (course_name, start_date, end_date, total_hours, training_site, manager_user_id) VALUES ('t','2026-10-01','2026-10-31',1,'s',999999999)`, '23503');
   await expectFail('enum: 잘못된 course.status 차단', `UPDATE course SET status = 'BOGUS' WHERE course_id = $1`, '22P02', [courseId]);
   await expectFail('CHECK: 종료일 < 시작일 차단', `UPDATE course SET end_date = '2020-01-01' WHERE course_id = $1`, '23514', [courseId]);
-  await expectFail('CHECK: role_permission.screen_id 형식(S28 차단)', `INSERT INTO role_permission (role_id, screen_id, action) SELECT role_id, 'S28', 'R' FROM role LIMIT 1`, '23514');
+  await expectFail('CHECK: role_permission.screen_id 형식(S29 차단)', `INSERT INTO role_permission (role_id, screen_id, action) SELECT role_id, 'S29', 'R' FROM role LIMIT 1`, '23514');
   await expectFail('UNIQUE: 강사 1인 1계정 (linked_instructor_id)', `INSERT INTO user_account (login_id, password_hash, name, linked_instructor_id) VALUES ('dup1','h','n',$1),('dup2','h','n',$1)`, '23505', [instA]);
 
   // attendance: 동일 (trainee_id, schedule_id) 중복 차단(C1), enum·CHECK

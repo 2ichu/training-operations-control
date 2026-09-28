@@ -190,7 +190,7 @@ Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 ## 확인 필요·조치 — 탐지 엔진 + S22~S24 (Phase 3)
 
 - 모듈: `src/verification`(`DetectionRuleService` — RULE_01~06, `VerificationCaseService` — S22~S24). `detection_rule`은 RULE_01~06 + `MANUAL`(수동 전환용 고정 레코드)로 시드되며(`seed/detection-rules.ts`), 전 규칙 `initial_status=NEEDS_CHECK`(D-11 확정: 규칙별 우선확인 미지정).
-- **탐지 실행은 서비스 호출로만 제공한다.** `DetectionRuleService.runRule01()`~`runRule06()`(또는 `runAll()`)은 HTTP 라우트가 없다 — baseline 지시대로 자동 배치 스케줄러를 아직 추가하지 않았다. 행위자는 `AuditContext.runAsSystem('SYSTEM_RULE', 'RULE_0X', …)`로 태깅되어(기존 audit-tx 선례) 향후 스케줄러·SYSTEM_BATCH 확장이 그대로 붙을 수 있다.
+- **탐지 실행은 서비스 호출로만 제공한다.** `DetectionRuleService.runRule01()`~`runRule06()`(또는 `runAll()`)은 HTTP 라우트가 없다. Phase 5 에서 배치 스케줄러(RULE_03~06)와 출결 이벤트 평가(RULE_01·02)가 붙었다(아래 "Phase 5" 절). 행위자는 `AuditContext.runAsSystem('SYSTEM_RULE', 'RULE_0X', …)`로 태깅된다(기존 audit-tx 선례).
 - 각 규칙은 baseline 8.1 그대로 구현했다: RULE_01(동일 device_id 복수 훈련생), RULE_02(짧은 시간 복수 채널 — **채널 식별자는 baseline `[결정 필요]` #2 미확정이라 `attendance.related_info.channel`을 임시 필드로 사용**, #2 확정 후 조정 필요), RULE_03(회차 종료 후 운영기록 지연, 훈련생 0명), RULE_04(퇴실정보 누락, PRESENT/LATE만), RULE_05(반복 출결 수정, USER 수정만), RULE_06(출결상태 반복 변경, USER 수정만). RULE_07은 D-12(공식 출결 연동) 미확정으로 제외.
 - **중복 방지(멱등)**: 활성(미종결) 건 중 같은 규칙·같은 `evidence.dedupe_key`가 있으면 새 사건을 만들지 않고 `evidence.items`에 근거만 추가한다(항목은 자체 `id`로 병합해 재실행해도 내용이 같으면 완전히 무변화). RULE_01·02로 새로 매칭된 훈련생은 기존 건에 `verification_case_trainee` 행만 추가한다(신규 사건 아님).
 - **출결 API 확장**: `POST /schedules/{id}/attendance/check-in`에 선택 필드 `related_info`(객체, 그대로 JSONB 저장)를 추가했다 — RULE_01·02가 읽는 유일한 쓰기 경로라 기존 계약을 깨지 않는 추가 필드로 열었다(기존 호출자는 영향 없음).
@@ -220,6 +220,16 @@ Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 - 쿼리: `date`(기본 오늘, "오늘 회차 목록"에만 적용 — 집계 건수는 항상 현재 시점 기준), `course_id`, `assignee_id`(확인 필요 요약만 필터). "최근 N건"의 N=10은 baseline이 구체적으로 정하지 않은 화면 표시 개수라 기술적 기본값으로 정했다(정책 아님).
 - **권한**: `S01:R`(기존 Phase 1 권한 그대로, 역할별 스코프만 다름) — SYS_ADMIN·EXECUTIVE는 전체, OPS_MANAGER도 전체(D-02), **INSTRUCTOR는 본인 배정 과정만**(`ScopeService.courseScopeFilter`). baseline이 명시한 "S22~S24 메뉴 미노출, 대시보드 요약만 ◎" 예외를 그대로 구현했다 — INSTRUCTOR는 확인 필요 사건의 상세·조치는 볼 수 없지만(S22/23 권한 없음) 이 대시보드의 확인 필요 요약에는 본인 과정 범위로 나타난다.
 - S05 훈련생 상세의 남아 있던 두 하위 리소스도 이번에 연결했다: `GET /trainees/{id}/attendance-summary`(`S05:R`, course_id 필수, 회차별 출결 + 미출결 계산 — `AttendanceService`에 추가), `GET /trainees/{id}/verification-cases`(`S05:A`, OPS·EXEC·SYS 전용 — S05:R은 INSTRUCTOR도 있어 구분하려고 A를 재사용, `VerificationCaseService`에 추가).
+
+## Phase 5 — 배치 스케줄러 + 탐지규칙 파라미터 관리(S28)
+
+- **스케줄러**: `src/batch`(`BatchSchedulerService`). 외부 cron 라이브러리 없이 APP_TIMEZONE 벽시계 기준 다음 실행 시각을 계산(`next-run.ts`)해 `setTimeout`으로 돌린다. 작업은 과정 자동 운영중 전환(00:05, P1-10), RULE_03(매시 정각), RULE_04(22:00 + 09:00 재확인), RULE_05(01:00), RULE_06(01:10), RULE_01·02 보정 전체 평가(01:20·01:30). 시각의 근거와 기술적 기본값은 decisions.md 11절(P5-03·P5-05). 실패는 로그만 남기고 다음 주기에 재시도하며(모든 작업 멱등), 같은 작업이 실행 중이면 그 주기는 건너뛴다. 종료 시 타이머를 멈추고 실행 중인 작업이 끝나길 기다린다.
+- **P1-10 과정 자동 운영중 전환**: `CourseService.autoStartDue(today?)`. PREPARING·RECRUITING 중 첫 교육일(휴강 제외 최소 class_date)이 기준일 이하이고 확정 훈련생이 1명 이상인 과정만, 과정마다 별도 트랜잭션에서 행을 잠그고 조건을 다시 확인한 뒤 전환한다. 행위자는 `SYSTEM_BATCH`, audit_log.reason 은 `batch:course-auto-start`, 전환한 건만 기록된다.
+- **RULE_01·02 출결 이벤트**: `POST /schedules/{id}/attendance/check-in`이 커밋된 뒤 `DetectionEventService`가 해당 회차만 비동기로 평가한다(응답은 기다리지 않음, related_info 에 device_id·channel 이 있을 때만). `runRule01/02({ scheduleId })`로 범위를 줄일 수 있고, 인자가 없으면 전체 회차를 평가한다.
+- **동시 실행**: 탐지 규칙은 실행마다 트랜잭션 advisory lock(`detection:RULE_0X`)을 잡고 그 뒤에 규칙 행을 읽는다 — 배치·이벤트·여러 인스턴스가 겹쳐도 같은 dedupe_key 건이 두 번 생기지 않고, S28에서 바꾼 값이 다음 실행에 바로 반영된다.
+- **`BATCH_ENABLED`**: 배치·이벤트 평가를 함께 켜고 끈다. 기본 켜짐, `NODE_ENV=test`(vitest)에서만 꺼진다 — 테스트는 서비스를 직접 호출한다. 여러 인스턴스면 한 대만 켠다.
+- **S28 탐지규칙 파라미터 관리**: `GET /detection-rules`(`S28:R`), `PATCH /detection-rules/{id}`(`S28:U`, SYS_ADMIN 전용). `reason` 필수, `params`는 기존 키의 값만(1~100000 정수, 부분 수정), `is_active` 전환 가능. `initial_status`는 D-11 확정값이라 열지 않고 `MANUAL`은 409 `RULE_NOT_EDITABLE`. 변경은 audit_log(UPDATE, before/after, reason)로 남는다. 화면 ID 범위는 migration `20260928000600`으로 S01~S28 로 넓혔다.
+- 이번 범위 밖(Phase 5 잔여): 공식 출결 연계·RULE_07(D-12·#1 대기), 감사로그 조회 UI(프론트엔드 — API 는 S27 로 이미 제공), 권한 세분화·엑셀 내보내기(범위 미정).
 
 ## 최종 통합 검증(2026-09-28)에서 발견·수정한 사항
 

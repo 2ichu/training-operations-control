@@ -14,6 +14,7 @@ import { ScheduleController } from '../schedule/schedule.controller.js';
 import { SubmissionController } from '../submission/submission.controller.js';
 import { TraineeController } from '../trainee/trainee.controller.js';
 import { UserController } from '../user/user.controller.js';
+import { DetectionRuleController } from '../verification/detection-rule.controller.js';
 import { VerificationCaseController } from '../verification/verification-case.controller.js';
 
 const REQUEST_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
@@ -84,6 +85,9 @@ const EXPECTED: Record<string, string> = {
   'GET /audit-logs': 'S27:R',
   'GET /audit-logs/:id': 'S27:R',
 
+  'GET /detection-rules': 'S28:R',
+  'PATCH /detection-rules/:id': 'S28:U',
+
   'GET /users': 'S25:R',
   'GET /users/:id': 'S25:R',
   'POST /users': 'S25:C',
@@ -146,6 +150,7 @@ describe('도메인 API 라우트 권한 메타데이터', () => {
     ...routes(OperationLogController),
     ...routes(CourseIssueController),
     ...routes(VerificationCaseController),
+    ...routes(DetectionRuleController),
     ...routes(SubmissionController),
     ...routes(AttachmentController),
     ...routes(DashboardController),

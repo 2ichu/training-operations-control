@@ -9,6 +9,7 @@ import {
 import { PG_POOL } from '../database/database.module.js';
 import type { AccessContext, RbacRequest } from '../rbac/rbac.types.js';
 import { ScopeService } from '../rbac/scope.service.js';
+import { DetectionEventService } from '../verification/detection-event.service.js';
 
 // baseline 3-3: 저장 상태 5종(계산값 NOT_CHECKED 는 저장하지 않음)
 const STATUSES = ['PRESENT', 'LATE', 'EARLY_LEAVE', 'ABSENT', 'EXCUSED'] as const;
@@ -24,6 +25,7 @@ export class AttendanceService {
     @Inject(PG_POOL) private readonly db: pg.Pool,
     @Inject(ScopeService) private readonly scope: ScopeService,
     @Inject(AuditedTransactionService) private readonly transactions: AuditedTransactionService,
+    @Inject(DetectionEventService) private readonly detectionEvents: DetectionEventService,
   ) {}
 
   // ── S07 일일 출결 ───────────────────────────────────────────────────────
@@ -55,7 +57,7 @@ export class AttendanceService {
     // related_info: RULE_01(device_id)·RULE_02(channel, baseline `[결정 필요]` #2) 탐지 근거. 값 자체는 클라이언트가 보낸 그대로 저장한다(스키마 없는 JSON).
     const relatedInfo = optObj(o, 'related_info');
 
-    return this.transactions.run(async (tx) => {
+    const result = await this.transactions.run(async (tx) => {
       const schedule = await lockRow(tx, 'class_schedule', 'schedule_id', scheduleId);
       if (schedule.status === 'CANCELLED') throw conflict('SCHEDULE_CANCELLED', '휴강 처리된 회차는 출결을 기록할 수 없습니다.');
       const eligible = await this.eligibleTraineeIds(tx, Number(schedule.course_id), traineeIds);
@@ -81,6 +83,9 @@ export class AttendanceService {
         notEligible,
       };
     });
+    // 커밋 후 RULE_01·02 비동기 평가(baseline 5-3). 기다리지 않으므로 응답 시간에 영향이 없다.
+    if (result.created.length > 0) this.detectionEvents.attendanceCheckedIn(scheduleId, relatedInfo);
+    return result;
   }
 
   async confirmAbsence(request: RbacRequest, scheduleId: number, body: unknown) {

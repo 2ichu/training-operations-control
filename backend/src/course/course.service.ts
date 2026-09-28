@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type pg from 'pg';
+import { AuditContext } from '../audit/audit-context.js';
 import { type AuditedTx, AuditedTransactionService, type Row } from '../audit/audited-transaction.js';
 import { escapeLike, pageOf, toApi, Where } from '../common/api.js';
 import { assertCourseOpen, conflict, lockRow } from '../common/tx.js';
@@ -30,12 +31,20 @@ const COLUMNS = 'c.course_id, c.course_name, c.start_date, c.end_date, c.total_h
 // 강사(OWN_ASSIGNED)에게는 확정 이전·취소 상태의 등록 건을 집계에 포함하지 않는다(ScopeService.canAccessTrainee 와 동일 기준)
 const HIDDEN_FOR_SCOPED = `('APPLIED', 'REVIEWING', 'CANCELLED')`;
 
+export const AUTO_START_TAG = 'batch:course-auto-start';
+// P1-10 자동 운영중 전환 조건(baseline 3-1·5-3): 첫 교육일(휴강 제외 최소 class_date, system-design 1.3) 도래 + 확정 훈련생 ≥ 1.
+// $1 = 기준일(YYYY-MM-DD). 후보 조회와 전환 직전 재확인에 같은 조건을 쓴다.
+const AUTO_START_DUE = `c.status IN ('PREPARING', 'RECRUITING')
+  AND (SELECT min(s.class_date) FROM class_schedule s WHERE s.course_id = c.course_id AND s.status <> 'CANCELLED') <= $1::date
+  AND EXISTS (SELECT 1 FROM trainee_enrollment te WHERE te.course_id = c.course_id AND te.status = 'CONFIRMED')`;
+
 @Injectable()
 export class CourseService {
   constructor(
     @Inject(PG_POOL) private readonly db: pg.Pool,
     @Inject(ScopeService) private readonly scope: ScopeService,
     @Inject(AuditedTransactionService) private readonly transactions: AuditedTransactionService,
+    @Inject(AuditContext) private readonly auditContext: AuditContext,
   ) {}
 
   // ── 조회 ────────────────────────────────────────────────────────────────
@@ -161,6 +170,35 @@ export class CourseService {
         throw conflict('NO_CONFIRMED_TRAINEES', '확정 훈련생이 없습니다. 확인 후 acknowledge_no_confirmed_trainees=true 로 다시 요청하세요.');
       }
     });
+  }
+
+  // P1-10(2026-09-22 설계 확정): 매일 자정 직후 BatchSchedulerService 가 호출한다. 조건을 만족하는 과정만 SYSTEM_BATCH 로 전환하고
+  // (조건 미충족이면 전환하지 않음), 과정마다 별도 트랜잭션이라 한 건이 실패해도 나머지는 진행되며 실패 건은 다음 실행에서 다시
+  // 후보가 된다(멱등). 전환 직전에 행을 잠그고 조건을 다시 확인하므로 그 사이 수동 전환·중단된 과정은 건너뛴다.
+  // 감사는 상태를 바꾼 건만 남는다(baseline 7절 #32). today 는 테스트용이며 기본은 APP_TIMEZONE 기준 오늘이다.
+  async autoStartDue(today?: string): Promise<{ date: string; started: number[]; failed: { courseId: number; error: string }[] }> {
+    const date = today ?? ((await this.db.query(`SELECT to_char((now() AT TIME ZONE $1)::date, 'YYYY-MM-DD') AS d`, [SCHEDULE_TIMEZONE])).rows[0].d as string);
+    const { rows } = await this.db.query(`SELECT c.course_id FROM course c WHERE ${AUTO_START_DUE} ORDER BY c.course_id`, [date]);
+    const started: number[] = [];
+    const failed: { courseId: number; error: string }[] = [];
+    for (const { course_id } of rows) {
+      const courseId = Number(course_id);
+      try {
+        const changed = await this.auditContext.runAsSystem('SYSTEM_BATCH', AUTO_START_TAG, () =>
+          this.transactions.run(async (tx) => {
+            await lockRow(tx, 'course', 'course_id', courseId);
+            const due = await tx.query(`SELECT 1 FROM course c WHERE c.course_id = $2 AND ${AUTO_START_DUE}`, [date, courseId]);
+            if (due.rows.length === 0) return false;
+            await tx.update('course', { course_id: courseId }, { status: 'IN_PROGRESS' });
+            return true;
+          }),
+        );
+        if (changed) started.push(courseId);
+      } catch (error) {
+        failed.push({ courseId, error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+    return { date, started, failed };
   }
 
   async suspend(request: RbacRequest, courseId: number, body: unknown) {

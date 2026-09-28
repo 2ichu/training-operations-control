@@ -41,6 +41,8 @@ export const PHASE1_PERMISSIONS: PermissionSeed[] = [
   ...grant('SYS_ADMIN', ['S16', 'S05'], ['A']),
   ...grant('SYS_ADMIN', ['S25'], ['C', 'R', 'U']),
   ...grant('SYS_ADMIN', ['S26'], ['R', 'U']),
+  // S28 탐지규칙 파라미터 관리(Phase 5): system-design STEP 8.4 "시스템 관리자가 detection_rule 화면에서 조정" — SYS_ADMIN 전용
+  ...grant('SYS_ADMIN', ['S28'], ['R', 'U']),
 
   // OPS_MANAGER: 과정~일정 전체 업무 (전체 과정 접근, D-02)
   ...grant('OPS_MANAGER', ['S01', 'S03', 'S05', 'S06', 'S08', 'S10', 'S11', 'S14'], ['R']),
