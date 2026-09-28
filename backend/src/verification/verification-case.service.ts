@@ -5,6 +5,7 @@ import { escapeLike, pageOf, toApi, Where } from '../common/api.js';
 import { conflict, lockRow } from '../common/tx.js';
 import { asObject, type Obj, optStr, qDate, qEnumList, qInt, qStr, reqInt, reqIntArray, reqStr } from '../common/validation.js';
 import { PG_POOL } from '../database/database.module.js';
+import { SCHEDULE_TIMEZONE } from '../schedule/schedule.service.js';
 import { ACTION_TYPES, CASE_STATUSES } from './verification.constants.js';
 
 type ActionType = (typeof ACTION_TYPES)[number];
@@ -22,6 +23,15 @@ export class VerificationCaseService {
     const where = new Where();
     const period = qDate(query, 'period');
     if (period) where.add((p) => `vc.detected_at::date = ${p}`, period);
+    // 발생일 범위(system-design 7.2 검색조건 "기간(발생일 범위)"). 날짜 경계는 일정과 같은 APP_TIMEZONE 기준.
+    const from = qDate(query, 'from');
+    const to = qDate(query, 'to');
+    if (from || to) {
+      where.addFilter((i) => ({
+        sql: `(vc.detected_at AT TIME ZONE $${i})::date BETWEEN coalesce($${i + 1}::date, '-infinity'::date) AND coalesce($${i + 2}::date, 'infinity'::date)`,
+        params: [SCHEDULE_TIMEZONE, from ?? null, to ?? null],
+      }));
+    }
     const courseId = qInt(query, 'course_id');
     if (courseId) where.add((p) => `vc.course_id = ${p}`, courseId);
     const assigneeId = qInt(query, 'assignee_id');
@@ -76,8 +86,9 @@ export class VerificationCaseService {
   // ── S23 ─────────────────────────────────────────────────────────────────
   async detail(caseId: number) {
     const { rows } = await this.db.query(
-      `SELECT vc.*, dr.rule_code, dr.rule_name, c.course_name
+      `SELECT vc.*, dr.rule_code, dr.rule_name, c.course_name, ua.name AS assignee_name
          FROM verification_case vc JOIN detection_rule dr ON dr.rule_id = vc.detection_rule_id JOIN course c ON c.course_id = vc.course_id
+         LEFT JOIN user_account ua ON ua.user_id = vc.assignee_id
         WHERE vc.case_id = $1`,
       [caseId],
     );
@@ -106,7 +117,7 @@ export class VerificationCaseService {
       ...toApi({
         case_id: row.case_id, course_id: row.course_id, course_name: row.course_name, detection_rule_id: row.detection_rule_id,
         rule_code: row.rule_code, rule_name: row.rule_name, detected_at: row.detected_at, evidence, status: row.status,
-        assignee_id: row.assignee_id, confirmation_note: row.confirmation_note, action_note: row.action_note, closed_at: row.closed_at,
+        assignee_id: row.assignee_id, assignee_name: row.assignee_name, confirmation_note: row.confirmation_note, action_note: row.action_note, closed_at: row.closed_at,
       }),
       priority: row.status === 'PRIORITY_CHECK',
       trainees,
@@ -124,7 +135,8 @@ export class VerificationCaseService {
 
   async completeConfirmation(caseId: number, body: unknown) {
     const note = optStr(asObject(body), 'confirmation_note', 2000) ?? null;
-    return this.doTransition(caseId, ['IN_REVIEW'], 'CONFIRMED', 'CLOSE', { confirmation_note: note, closed_at: new Date().toISOString() }, note);
+    // 메모를 생략하면 확인 시작 때 적은 confirmation_note 를 그대로 둔다(null 로 덮어쓰지 않음)
+    return this.doTransition(caseId, ['IN_REVIEW'], 'CONFIRMED', 'CLOSE', { ...(note !== null ? { confirmation_note: note } : {}), closed_at: new Date().toISOString() }, note);
   }
 
   async requireAction(caseId: number, body: unknown) {
@@ -134,7 +146,8 @@ export class VerificationCaseService {
 
   async completeAction(caseId: number, body: unknown) {
     const note = optStr(asObject(body), 'action_note', 2000) ?? null;
-    return this.doTransition(caseId, ['ACTION_REQUIRED'], 'ACTION_DONE', 'CLOSE', { action_note: note, closed_at: new Date().toISOString() }, note);
+    // 메모를 생략하면 조치 필요 때 적은 action_note 를 그대로 둔다
+    return this.doTransition(caseId, ['ACTION_REQUIRED'], 'ACTION_DONE', 'CLOSE', { ...(note !== null ? { action_note: note } : {}), closed_at: new Date().toISOString() }, note);
   }
 
   async reopen(caseId: number, body: unknown) {

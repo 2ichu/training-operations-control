@@ -46,3 +46,23 @@ export const RULE_LABELS: Record<string, string> = {
 }
 
 export const label = (dict: Record<string, string>, code: string): string => dict[code] ?? code
+
+// verification_action_log.action_type (backend verification.constants.ts)
+export const ACTION_TYPE_LABELS: Record<string, string> = {
+  CHECK: '확인 시작',
+  ACTION_ENTRY: '조치 필요 기록',
+  CLOSE: '종결',
+  REOPEN: '재오픈',
+  STATUS_CHANGE: '상태 변경',
+}
+
+// 진행중(미종결) 상태 — S22 기본 필터(system-design 7.2 "기본값=진행중 상태만", baseline 3-4 종결=확인완료·조치완료)
+export const ACTIVE_CASE_STATUSES = ['NEEDS_CHECK', 'PRIORITY_CHECK', 'IN_REVIEW', 'ACTION_REQUIRED', 'FOLLOW_UP']
+
+// course_issue.category (system-design 5.3: 시설/민원/안전/기타)
+export const ISSUE_CATEGORY_LABELS: Record<string, string> = {
+  FACILITY: '시설',
+  COMPLAINT: '민원',
+  SAFETY: '안전',
+  OTHER: '기타',
+}

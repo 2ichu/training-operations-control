@@ -7,6 +7,9 @@ import { DashboardPage } from './pages/DashboardPage'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage, NotImplementedPage } from './pages/PlaceholderPages'
 import { RequireAuth, RequirePermission } from './routing/guards'
+import { ActionLogPage } from './pages/verification/ActionLogPage'
+import { VerificationCaseDetailPage } from './pages/verification/VerificationCaseDetailPage'
+import { VerificationCaseListPage } from './pages/verification/VerificationCaseListPage'
 
 export function AppRoutes() {
   return (
@@ -28,6 +31,22 @@ export function AppRoutes() {
             </RequirePermission>
           }
         />
+        <Route
+          path="/verification-cases"
+          element={
+            <RequirePermission screenId="S22">
+              <VerificationCaseListPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/verification-action-logs"
+          element={
+            <RequirePermission screenId="S24">
+              <ActionLogPage />
+            </RequirePermission>
+          }
+        />
         {PLANNED_PATHS.map((item) => (
           <Route
             key={item.path}
@@ -39,7 +58,7 @@ export function AppRoutes() {
             }
           />
         ))}
-        {/* 대시보드 행 클릭 이동 대상(S16 과정 상세, S23 확인 필요 상세) — 다음 단계에서 구현 */}
+        {/* 상세 화면: S23 은 구현, S16 과정 상세·S05 훈련생 상세는 다음 단계에서 구현 */}
         <Route
           path="/courses/:id"
           element={
@@ -52,7 +71,15 @@ export function AppRoutes() {
           path="/verification-cases/:id"
           element={
             <RequirePermission screenId="S23">
-              <NotImplementedPage title="확인 필요 상세" />
+              <VerificationCaseDetailPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/trainees/:id"
+          element={
+            <RequirePermission screenId="S05">
+              <NotImplementedPage title="훈련생 상세" />
             </RequirePermission>
           }
         />

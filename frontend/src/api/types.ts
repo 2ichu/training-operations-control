@@ -84,3 +84,60 @@ export interface DashboardSummary {
     recent: DashboardRecentCase[]
   }
 }
+
+// GET /verification-cases (S22)
+export interface VerificationCaseListItem {
+  caseId: number
+  courseId: number
+  courseName: string
+  ruleCode: string
+  ruleName: string
+  detectedAt: string
+  status: string
+  assigneeId: number | null
+  assigneeName: string | null
+  closedAt: string | null
+  priority: boolean
+  trainees: CaseTrainee[]
+}
+
+// GET /verification-cases/{id} (S23)
+export interface CaseTraineeLink extends CaseTrainee {
+  attendanceId: number | null
+}
+
+export interface ActionLogEntry {
+  logId: number
+  caseId?: number
+  courseId?: number
+  courseName?: string
+  actorId: number
+  actorName: string
+  actionAt: string
+  actionType: string
+  previousStatus: string | null
+  newStatus: string | null
+  note: string | null
+}
+
+export interface VerificationCaseDetail {
+  caseId: number
+  courseId: number
+  courseName: string
+  ruleCode: string
+  ruleName: string
+  detectedAt: string
+  evidence: { dedupe_key?: string; items: Record<string, unknown>[] }
+  status: string
+  assigneeId: number | null
+  assigneeName: string | null
+  confirmationNote: string | null
+  actionNote: string | null
+  closedAt: string | null
+  priority: boolean
+  trainees: CaseTraineeLink[]
+  schedules: { scheduleId: number; roundNo: number; classDate: string }[]
+  relatedCourseIssue: { issueId: number; category: string; content: string; status: string } | null
+  relatedOperationLog: { operationLogId: number; scheduleId: number; content: string; writtenAt: string } | null
+  actionLogs: ActionLogEntry[]
+}

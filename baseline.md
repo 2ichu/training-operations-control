@@ -353,7 +353,7 @@
 | S20 결과물 미제출 | 미제출 목록 | GET | /courses/{id}/submission-status | missing_only=true | 미제출 계산 대상자(제출기한 관련 열은 #24 확정 전 보류) | OPS·EXEC·SYS, INSTRUCTOR ◎ | 없음 (S19 API 재사용) |
 | S21 결과물 검토 | 결과물 상세·이력 | GET | /submissions/{id} | — | 제출 정보, 버전별 첨부, 검토 이력 | OPS·EXEC·SYS | 없음 |
 | | 검토 저장 | POST | /submissions/{id}/reviews | review_result, review_comment | submission_review_log, review_status 갱신 | OPS | CREATE / submission_review_log 동시 UPDATE / submission / USER |
-| S22 확인 필요 목록 | 확인 건 목록 | GET | /verification-cases | period, course_id, trainee_name, assignee_id, rule_code, status[] | 사건 목록(관련 훈련생 0~N, 우선순위 계산) | OPS·SYS·EXEC | 없음 |
+| S22 확인 필요 목록 | 확인 건 목록 | GET | /verification-cases | period 또는 from·to(발생일 범위, APP_TIMEZONE 기준), course_id, trainee_name, assignee_id, rule_code, status[] | 사건 목록(관련 훈련생 0~N, 우선순위 계산) | OPS·SYS·EXEC | 없음 |
 | | 담당자 일괄 배정 | POST | /verification-cases/assign | case_ids[], assignee_id | 갱신 건수 | OPS, EXEC | UPDATE / verification_case / USER (건별) |
 | S23 확인 필요 상세 | 상세 | GET | /verification-cases/{id} | — | 근거(evidence.items), 관련 훈련생·출결 목록, 특이사항·운영일지·회차 링크, 처리 이력 | OPS·EXEC·SYS | 없음 |
 | | 확인 시작 | POST | /verification-cases/{id}/start-review | confirmation_note(필수), 기대 status | status=IN_REVIEW | OPS, EXEC | UPDATE / verification_case / USER 동시 verification_action_log(CHECK) |

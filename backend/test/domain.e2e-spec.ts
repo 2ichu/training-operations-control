@@ -1292,6 +1292,12 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect((await ops1.get(`/api/v1/verification-cases?course_id=${c1}`).expect(200)).body.total).toBe(1);
       expect((await ops1.get(`/api/v1/verification-cases?status=PRIORITY_CHECK`).expect(200)).body.total).toBe(1);
       expect((await ops1.get(`/api/v1/verification-cases?rule_code=MANUAL`).expect(200)).body.total).toBe(2);
+      // 발생일 범위(from·to, KST 기준): 오늘 생성된 건은 오늘~오늘 범위에 들고, 미래 범위에는 없다
+      const todayKst = (await rows(`SELECT to_char((now() AT TIME ZONE 'Asia/Seoul')::date, 'YYYY-MM-DD') d`))[0].d as string;
+      expect((await ops1.get(`/api/v1/verification-cases?course_id=${c1}&from=${todayKst}&to=${todayKst}`).expect(200)).body.total).toBe(1);
+      expect((await ops1.get(`/api/v1/verification-cases?course_id=${c1}&from=2999-01-01`).expect(200)).body.total).toBe(0);
+      expect((await ops1.get(`/api/v1/verification-cases?course_id=${c1}&to=2000-01-01`).expect(200)).body.total).toBe(0);
+      expect((await ops1.get(`/api/v1/verification-cases?from=bad`)).status).toBe(400);
     });
 
     it('S22 담당자 배정: 일괄 배정, 존재하지 않는 건은 notFound', async () => {
@@ -1315,6 +1321,9 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect(detail.trainees).toEqual([expect.objectContaining({ traineeId: tConfirmed1 })]);
       expect(detail.schedules).toEqual([expect.objectContaining({ scheduleId: s1 })]);
       expect(detail.actionLogs).toEqual([]);
+      expect(detail).toMatchObject({ assigneeId: null, assigneeName: null });
+      await client.query(`UPDATE verification_case SET assignee_id = $1 WHERE case_id = $2`, [ops, c]);
+      expect((await ops1.get(`/api/v1/verification-cases/${c}`).expect(200)).body).toMatchObject({ assigneeId: ops, assigneeName: 'e2e_ops' });
       expect((await ops1.get('/api/v1/verification-cases/999999')).status).toBe(404);
     });
 
@@ -1331,6 +1340,7 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       const confirmed = (await ops1.post(`/api/v1/verification-cases/${c}/complete-confirmation`).send({}).expect(200)).body;
       expect(confirmed.status).toBe('CONFIRMED');
       expect(confirmed.closedAt).toBeTruthy();
+      expect(confirmed.confirmationNote).toBe('근거 확인 중'); // 종결 시 메모를 생략하면 확인 시작 때 적은 내용을 지우지 않는다
 
       const logs = (await rows(`SELECT action_type, previous_status, new_status FROM verification_action_log WHERE case_id = $1 ORDER BY log_id`, [c]));
       expect(logs).toEqual([
@@ -1346,6 +1356,7 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect(actionRequired.status).toBe('ACTION_REQUIRED');
       const actionDone = (await ops1.post(`/api/v1/verification-cases/${c}/complete-action`).send({}).expect(200)).body;
       expect(actionDone.status).toBe('ACTION_DONE');
+      expect(actionDone.actionNote).toBe('현장 지도 필요'); // 조치 완료 시 메모를 생략하면 조치 필요 때 적은 내용을 유지
       expect((await ops1.post(`/api/v1/verification-cases/${c}/complete-action`).send({})).body.code).toBe('INVALID_STATE_TRANSITION'); // 이미 종결
     });
 
