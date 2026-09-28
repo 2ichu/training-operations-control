@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: training_owner
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: training_mgmt
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U training_owner -d training_mgmt"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # CI 전용 일회성 DB 자격증명(서비스 컨테이너 안에서만 유효)
+      DATABASE_URL: postgres://training_owner:ci-only-password@localhost:5432/training_mgmt
+      SEED_ADMIN_LOGIN_ID: ci_admin
+      SEED_ADMIN_PASSWORD: Ci-only-passw0rd!
+      SEED_ADMIN_NAME: CI 관리자
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # npm 11(Node 24 동봉)이어야 package-lock.json 과 npm ci 가 일치한다(npm 10 은 선택적 peer 의존성 처리 차이로 실패)
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      # migrate:up 이 --envPath .env 를 읽는다
+      - run: echo "DATABASE_URL=$DATABASE_URL" > .env
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run db:verify
+      - run: npm run migrate:up
+      - run: npm run db:seed
+      - run: npm test
+      # e2e 는 깨끗한 DB 를 전제로 하므로(롤백 검증) 실제 COMMIT 을 남기는 db:verify:audit-tx 보다 먼저 실행한다
+      - run: npm run test:e2e
+      - run: npm run db:verify:live
+      - run: npm run db:verify:rbac
+      - run: npm run db:verify:audit-tx
+      - name: migration down/up
+        run: npm run migrate:down && npm run migrate:up
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run build
