@@ -84,8 +84,9 @@ export class DashboardService {
     const byStatus = statusRows.map((r) => ({ status: r.status as string, count: Number(r.n) }));
 
     const { rows: recentRows } = await this.db.query(
-      `SELECT vc.case_id, vc.course_id, c.course_name, dr.rule_code, vc.status, vc.assignee_id, vc.detected_at
+      `SELECT vc.case_id, vc.course_id, c.course_name, dr.rule_code, vc.status, vc.assignee_id, ua.name AS assignee_name, vc.detected_at
          FROM verification_case vc JOIN course c ON c.course_id = vc.course_id JOIN detection_rule dr ON dr.rule_id = vc.detection_rule_id
+         LEFT JOIN user_account ua ON ua.user_id = vc.assignee_id -- system-design 7.1 표 컬럼 "담당자"(이름 표시)
         WHERE ${where.sql} ORDER BY vc.detected_at DESC LIMIT ${RECENT_CASES_LIMIT}`,
       where.params,
     );

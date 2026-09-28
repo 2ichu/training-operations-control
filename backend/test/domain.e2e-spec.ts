@@ -589,6 +589,10 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       const summary = (await ops1.get('/api/v1/dashboard').expect(200)).body;
       expect(summary.verificationSummary.byStatus).toEqual(expect.arrayContaining([{ status: 'NEEDS_CHECK', count: expect.any(Number) }]));
       expect(summary.verificationSummary.recent[0]).toMatchObject({ caseId, trainees: [expect.objectContaining({ traineeId: tConfirmed1 })] });
+      expect(summary.verificationSummary.recent[0]).toMatchObject({ assigneeId: null, assigneeName: null });
+      await client.query(`UPDATE verification_case SET assignee_id = $1 WHERE case_id = $2`, [ops, caseId]);
+      const assigned = (await ops1.get('/api/v1/dashboard').expect(200)).body;
+      expect(assigned.verificationSummary.recent[0]).toMatchObject({ caseId, assigneeId: ops, assigneeName: 'e2e_ops' });
 
       const ins1 = await as('ins1'); // c1 배정
       const insSummary = (await ins1.get('/api/v1/dashboard').expect(200)).body;
