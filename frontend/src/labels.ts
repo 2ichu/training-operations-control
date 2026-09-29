@@ -149,3 +149,79 @@ export const ISSUE_STATUS_LABELS: Record<string, string> = {
   IN_REVIEW: '확인중',
   RESOLVED: '조치완료',
 }
+
+// 화면 ID → 화면명(system-design 7-A 화면 목록, S28 은 Phase 5 추가) — S26 권한 매트릭스 행 이름
+export const SCREEN_NAMES: Record<string, string> = {
+  S01: '대시보드',
+  S02: '대상자 확인',
+  S03: '훈련생 목록',
+  S04: '훈련생 등록/수정',
+  S05: '훈련생 상세',
+  S06: '훈련생 변경이력',
+  S07: '일일 출결',
+  S08: '과정별 출결',
+  S09: '출결 수정',
+  S10: '출결 수정이력',
+  S11: '강사 목록',
+  S12: '강사 등록/수정',
+  S13: '강의 일정/교육일정',
+  S14: '강사 변경이력',
+  S15: '과정 목록',
+  S16: '과정 등록/수정/상세',
+  S17: '회차별 운영일지',
+  S18: '특이사항',
+  S19: '결과물 제출현황(미제출 포함)',
+  S20: '결과물 미제출(S19 권한 사용)',
+  S21: '결과물 검토',
+  S22: '확인 필요 목록',
+  S23: '확인 필요 상세',
+  S24: '조치이력',
+  S25: '사용자',
+  S26: '권한',
+  S27: '감사로그',
+  S28: '탐지규칙',
+}
+
+// role_permission.action (baseline 4-1)
+export const PERMISSION_ACTION_LABELS: Record<string, string> = {
+  C: '등록',
+  R: '조회',
+  U: '수정',
+  D: '삭제',
+  A: '확인처리',
+}
+
+// audit_log.action / actor_type
+export const AUDIT_ACTION_LABELS: Record<string, string> = {
+  CREATE: '생성',
+  UPDATE: '수정',
+  DELETE: '삭제',
+  VIEW_SENSITIVE: '민감정보 조회',
+  LOGIN: '로그인',
+  LOGOUT: '로그아웃',
+  LOGIN_FAILED: '로그인 실패',
+  ACCESS_DENIED: '접근 거부',
+}
+export const ACTOR_TYPE_LABELS: Record<string, string> = {
+  USER: '사용자',
+  SYSTEM_RULE: '시스템(탐지규칙)',
+  SYSTEM_BATCH: '시스템(배치)',
+  SYSTEM_API: '시스템(연동)',
+}
+
+// role_permission.scope_type (system-design 5.3: 전체/본인담당)
+export const SCOPE_LABELS: Record<string, string> = {
+  ALL: '전체',
+  OWN_ASSIGNED: '본인 담당',
+}
+
+// detection_rule.params 키 → 표시명(단위 포함). 키 자체는 규칙 로직과 묶여 있어 화면에서 추가·삭제하지 않는다(P5-02)
+export const RULE_PARAM_LABELS: Record<string, string> = {
+  min_trainees: '최소 훈련생 수(명)',
+  window_minutes: '시간 범위(분)',
+  min_events: '최소 출결 건수(건)',
+  delay_hours: '지연 기준(시간)',
+  window_days: '집계 기간(일)',
+  min_changes: '최소 수정 횟수(회)',
+  min_flips: '최소 반복 변경 횟수(회)',
+}

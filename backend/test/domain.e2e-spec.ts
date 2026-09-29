@@ -1700,6 +1700,22 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect((await ins.get(`/api/v1/trainees/${tConfirmed1}`)).status).toBe(200);
     });
 
+    it('역할 목록(S26 역할 선택용), 시스템 관리자 역할에서 S26 조회·저장을 빼면 409(잠금 방지)', async () => {
+      const sysAgent = await as('sys');
+      const roles = (await sysAgent.get('/api/v1/roles').expect(200)).body.items;
+      expect(roles.map((r: { roleCode: string }) => r.roleCode).sort()).toEqual(['EXECUTIVE', 'INSTRUCTOR', 'OPS_MANAGER', 'SYS_ADMIN']);
+      expect(roles[0]).toEqual(expect.objectContaining({ roleId: expect.any(Number), roleName: expect.any(String) }));
+      expect((await (await as('ops')).get('/api/v1/roles')).status).toBe(403);
+
+      const sysRoleId = roles.find((r: { roleCode: string }) => r.roleCode === 'SYS_ADMIN').roleId;
+      const current = (await sysAgent.get(`/api/v1/roles/permissions?role_id=${sysRoleId}`).expect(200)).body.items;
+      const withoutS26U = current.filter((i: { screenId: string; action: string }) => !(i.screenId === 'S26' && i.action === 'U'));
+      expect((await sysAgent.put(`/api/v1/roles/${sysRoleId}/permissions`).send({ items: withoutS26U })).body.code).toBe('SELF_LOCKOUT');
+      expect(await num(`SELECT count(*) n FROM role_permission WHERE role_id = $1 AND screen_id = 'S26'`, [sysRoleId])).toBe(2); // 그대로
+      const withoutS25 = current.filter((i: { screenId: string }) => i.screenId !== 'S25'); // S26 이 남아 있으면 다른 조정은 허용
+      await sysAgent.put(`/api/v1/roles/${sysRoleId}/permissions`).send({ items: withoutS25 }).expect(200);
+    });
+
     it('SYS_ADMIN 외 역할은 조회·저장 모두 403', async () => {
       const instructorRoleId = await one(`SELECT role_id id FROM role WHERE role_code = 'INSTRUCTOR'`);
       for (const who of ['ops', 'exec', 'ins1'] as const) {
@@ -1725,7 +1741,7 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       const since = await maxAudit();
       const list = (await sysAgent.get(`/api/v1/audit-logs?from=${today}&to=${today}&target_table=course&action=CREATE`).expect(200)).body;
       const found = list.items.find((r: { targetId: number }) => r.targetId === created.courseId);
-      expect(found).toMatchObject({ action: 'CREATE', targetTable: 'course', actorType: 'USER', actorUserId: ops });
+      expect(found).toMatchObject({ action: 'CREATE', targetTable: 'course', actorType: 'USER', actorUserId: ops, actorName: 'e2e_ops', actorLoginId: 'e2e_ops' });
       const viewLogs = (await auditSince(since)).filter((r) => r.action === 'VIEW_SENSITIVE' && r.target_table === 'audit_log');
       expect(viewLogs).toHaveLength(1); // 목록 조회 자체가 감사 대상(1건)
       expect(Number(viewLogs[0].target_id)).toBe(Math.max(...list.items.map((r: { logId: number }) => r.logId)));
@@ -1734,6 +1750,7 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       const detailSince = await maxAudit();
       const detail = (await sysAgent.get(`/api/v1/audit-logs/${found.logId}`).expect(200)).body;
       expect(detail.afterValue).toMatchObject({ course_name: '감사조회용' });
+      expect(detail.actorName).toBe('e2e_ops');
       const detailViews = (await auditSince(detailSince)).filter((r) => r.action === 'VIEW_SENSITIVE' && r.target_table === 'audit_log');
       expect(detailViews).toHaveLength(1);
       expect(Number(detailViews[0].target_id)).toBe(found.logId);
@@ -1747,6 +1764,20 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
 
   // ── 사용자 관리 (S25) ───────────────────────────────────────────────────
   describe('사용자 관리 (S25)', () => {
+    it('마지막 활성 시스템 관리자는 비활성화·역할 변경 불가(409 LAST_ADMIN), 다른 관리자가 있으면 가능', async () => {
+      const sysAgent = await as('sys');
+      const other = await makeUser('e2e_sys2', 'SYS_ADMIN');
+      await sysAgent.patch(`/api/v1/users/${other}`).send({ status: 'INACTIVE' }).expect(200); // e2e_sys 가 남아 있음
+      // e2e_sys 외 활성 시스템 관리자를 모두 비활성화(시드 admin 포함) → e2e_sys 가 마지막
+      await client.query(
+        `UPDATE user_account SET status = 'INACTIVE' WHERE user_id <> $1 AND user_id IN (SELECT ur.user_id FROM user_role ur JOIN role r ON r.role_id = ur.role_id WHERE r.role_code = 'SYS_ADMIN')`,
+        [sys],
+      );
+      expect((await sysAgent.patch(`/api/v1/users/${sys}`).send({ status: 'INACTIVE' })).body.code).toBe('LAST_ADMIN');
+      expect((await sysAgent.patch(`/api/v1/users/${sys}`).send({ role: 'OPS_MANAGER' })).body.code).toBe('LAST_ADMIN');
+      await sysAgent.patch(`/api/v1/users/${sys}`).send({ name: '이름만 변경' }).expect(200); // 관리자 권한을 잃지 않는 수정은 허용
+    });
+
     it('등록: 임시 비밀번호 1회 노출·must_change_password=true, INSTRUCTOR 는 linked_instructor_id 필수, 응답에 password_hash 없음', async () => {
       const sysAgent = await as('sys');
       const created = (await sysAgent.post('/api/v1/users').send({ login_id: 'e2e_new_ops', name: '신규담당자', role: 'OPS_MANAGER' }).expect(201)).body;

@@ -23,22 +23,23 @@ export class AuditLogViewService {
   async list(query: Obj) {
     const { from, to } = this.requireRange(query);
     const where = new Where();
-    where.add((p) => `action_at >= ${p}::date`, from);
-    where.add((p) => `action_at < (${p}::date + 1)`, to);
+    where.add((p) => `l.action_at >= ${p}::date`, from);
+    where.add((p) => `l.action_at < (${p}::date + 1)`, to);
     const actorType = qEnumList(query, 'actor_type', ACTOR_TYPES);
-    if (actorType) where.add((p) => `actor_type = ANY(${p}::audit_actor_type[])`, actorType);
+    if (actorType) where.add((p) => `l.actor_type = ANY(${p}::audit_actor_type[])`, actorType);
     const actorUserId = qInt(query, 'actor_user_id');
-    if (actorUserId) where.add((p) => `actor_user_id = ${p}`, actorUserId);
+    if (actorUserId) where.add((p) => `l.actor_user_id = ${p}`, actorUserId);
     const targetTable = qStr(query, 'target_table', 100);
-    if (targetTable) where.add((p) => `target_table = ${p}`, targetTable);
+    if (targetTable) where.add((p) => `l.target_table = ${p}`, targetTable);
     const action = qEnumList(query, 'action', ACTIONS);
-    if (action) where.add((p) => `action = ANY(${p}::audit_action[])`, action);
+    if (action) where.add((p) => `l.action = ANY(${p}::audit_action[])`, action);
 
     const page = pageOf(query);
     const { rows } = await this.db.query(
-      `SELECT log_id, actor_type, actor_user_id, action, target_table, target_id, action_at, reason, ip_address,
+      `SELECT l.log_id, l.actor_type, l.actor_user_id, u.name AS actor_name, u.login_id AS actor_login_id, l.action, l.target_table, l.target_id, l.action_at, l.reason, l.ip_address,
               count(*) OVER() AS total
-         FROM audit_log WHERE ${where.sql} ORDER BY action_at DESC, log_id DESC LIMIT ${page.size} OFFSET ${page.offset}`,
+         FROM audit_log l LEFT JOIN user_account u ON u.user_id = l.actor_user_id
+        WHERE ${where.sql} ORDER BY l.action_at DESC, l.log_id DESC LIMIT ${page.size} OFFSET ${page.offset}`,
       where.params,
     );
     const total = rows.length ? Number(rows[0].total) : 0;
@@ -59,8 +60,9 @@ export class AuditLogViewService {
 
   async detail(id: number) {
     const { rows } = await this.db.query(
-      `SELECT log_id, actor_type, actor_user_id, action, target_table, target_id, before_value, after_value, action_at, reason, ip_address
-         FROM audit_log WHERE log_id = $1`,
+      `SELECT l.log_id, l.actor_type, l.actor_user_id, u.name AS actor_name, u.login_id AS actor_login_id, l.action, l.target_table, l.target_id,
+              l.before_value, l.after_value, l.action_at, l.reason, l.ip_address
+         FROM audit_log l LEFT JOIN user_account u ON u.user_id = l.actor_user_id WHERE l.log_id = $1`,
       [id],
     );
     if (rows.length === 0) throw new NotFoundException('대상을 찾을 수 없습니다.');

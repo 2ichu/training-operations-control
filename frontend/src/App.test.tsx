@@ -37,7 +37,8 @@ describe('인증 흐름', () => {
     await user.click(screen.getByRole('button', { name: '로그인' }))
     expect(await screen.findByRole('heading', { name: '대시보드' })).toBeInTheDocument()
     expect(window.location.search).toBe('?course_id=3')
-    expect(calls.find((c) => c.path === '/dashboard')?.query.get('course_id')).toBe('3')
+    // 제목은 요청보다 먼저 그려질 수 있어 요청이 나갈 때까지 기다린다
+    await waitFor(() => expect(calls.find((c) => c.path === '/dashboard')?.query.get('course_id')).toBe('3'))
   })
 
   it('초기 비밀번호 상태면 메뉴 없이 비밀번호 변경만 가능하고, 변경 후 대시보드로 간다', async () => {
