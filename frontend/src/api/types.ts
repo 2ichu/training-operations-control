@@ -273,8 +273,8 @@ export interface TraineeCase {
 export interface CompletionCandidates {
   ready: boolean
   threshold: number
-  lateWeight: number
-  earlyLeaveWeight: number
+  /** 지각·조퇴 몇 회를 결석 1일로 환산하는지(공식 출석부 방식, 3) */
+  lateToAbsence: number
   items: { traineeId: number; enrollmentId: number; name: string; attendanceRate: number }[]
 }
 

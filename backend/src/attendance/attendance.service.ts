@@ -2,7 +2,7 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import type pg from 'pg';
 import { type AuditedTx, AuditedTransactionService, type Row } from '../audit/audited-transaction.js';
 import { escapeLike, pageOf, toApi, Where } from '../common/api.js';
-import { ATTENDANCE_WEIGHTS } from '../common/attendance-weight.js';
+import { attendedDays } from '../common/attendance-rate.js';
 import { assertCourseOpen, conflict, lockRow } from '../common/tx.js';
 import {
   asObject, type Obj, oneOf, optIso, optObj, qDate, qEnumList, qInt, qStr, reqIntArray, reqStr,
@@ -133,7 +133,7 @@ export class AttendanceService {
     return this.transactions.run(async (tx) => {
       const sf = this.scope.scheduleScopeFilter(access, 's.instructor_id', 2);
       // D-08: 퇴실 시각 < 수업 종료 − 조퇴 유예분 이면 조퇴. 출석(PRESENT)만 조퇴로 바꾸고, 지각(LATE)은 지각으로 둔다
-      // (지각·조퇴가 겹치면 먼저 확정된 지각 유지 — 출석률 가중치 0.5 가 이미 반영된 상태를 되돌리지 않음).
+      // (지각·조퇴가 겹치면 먼저 확정된 지각 유지 — 지각·조퇴 3회 = 결석 1일 환산에서 한 번만 세어지도록 상태를 하나로 둔다).
       const p = 2 + sf.params.length;
       const { rows } = await tx.query(
         `SELECT a.attendance_id, a.check_out_time, a.attendance_status,
@@ -193,7 +193,7 @@ export class AttendanceService {
     const byKey = new Map(attendances.map((a) => [`${a.trainee_id}:${a.schedule_id}`, a]));
 
     const items = trainees.map((t) => {
-      let present = 0;
+      const counts = { present: 0, late: 0, earlyLeave: 0, excused: 0 };
       let applicable = 0;
       const cells = schedules.map((s) => {
         const cancelled = s.status === 'CANCELLED';
@@ -201,12 +201,15 @@ export class AttendanceService {
         const status = (found?.attendance_status as string | undefined) ?? null;
         if (!cancelled) {
           applicable += 1;
-          if (status) present += ATTENDANCE_WEIGHTS[status] ?? 0; // 수료 후보(S02)와 같은 가중 출석률
+          if (status === 'PRESENT') counts.present += 1;
+          else if (status === 'LATE') counts.late += 1;
+          else if (status === 'EARLY_LEAVE') counts.earlyLeave += 1;
+          else if (status === 'EXCUSED') counts.excused += 1;
         }
         // attendanceId: 셀에서 S09 정정으로 들어가기 위한 키(미출결 셀은 null — 최초 입실·결석 확정은 S07, C1)
         return { scheduleId: Number(s.schedule_id), attendanceId: found ? Number(found.attendance_id) : null, displayStatus: status ?? (cancelled ? null : NOT_CHECKED) };
       });
-      return { traineeId: Number(t.trainee_id), name: t.name as string, attendanceRate: applicable > 0 ? present / applicable : null, cells };
+      return { traineeId: Number(t.trainee_id), name: t.name as string, attendanceRate: applicable > 0 ? attendedDays(counts) / applicable : null, cells }; // 수료 후보(S02)와 같은 산식(common/attendance-rate.ts)
     });
     const filtered = statusFilter ? items.filter((r) => r.cells.some((c) => c.displayStatus !== null && (statusFilter as readonly string[]).includes(c.displayStatus))) : items;
     return { schedules: schedules.map((s) => toApi(s)), items: filtered };
