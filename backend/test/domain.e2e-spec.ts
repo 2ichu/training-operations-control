@@ -1056,6 +1056,125 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
     });
   });
 
+  // ── 공식 출결 대사 (S29, D-12 확정: CSV 업로드) ───────────────────────────
+  describe('공식 출결 대사 (S29)', () => {
+    const HEADER = 'round_no,trainee_name,birth_date,status,check_in,check_out\n';
+    const upload = async (who: 'ops' | 'exec' | 'sys' | 'ins1', csv: string, course = c1, name = '공식출결.csv') =>
+      (await as(who)).post(`/api/v1/courses/${course}/official-attendance`).attach('file', Buffer.from(csv, 'utf8'), { filename: name, contentType: 'text/csv' });
+    const uploadOk = async (who: 'ops' | 'exec' | 'sys' | 'ins1', csv: string) => {
+      const res = await upload(who, csv);
+      expect(res.status, JSON.stringify(res.body)).toBe(201);
+      return res;
+    };
+    const attRow = async () => (await rows(`SELECT * FROM attendance WHERE schedule_id = $1 AND trainee_id = $2`, [s1, tConfirmed1]))[0];
+    // s1: 2027-01-05 09:00~18:00 KST(UTC+9)
+
+    it('내부 기록이 없으면 공식 값으로 생성하고, 검증 오류 행은 그 행만 미반영·원본은 모두 보존하며, 재업로드는 멱등', async () => {
+      const csv = `${HEADER}1,확정1,1990-03-05,출석,09:00,18:00\n1,없는사람,1990-03-05,출석,09:00,18:00\n9,확정1,1990-03-05,출석,,\n1,확정1,1990-03-05,모름,,\n`;
+      const since = await maxAudit();
+      const res = (await uploadOk('ops', csv)).body;
+      expect(res.total).toBe(4);
+      expect(res.counts).toEqual({ CREATED: 1, ERROR: 3 });
+      expect(res.rows.map((r: { result: string }) => r.result)).toEqual(['CREATED', 'ERROR', 'ERROR', 'ERROR']);
+      expect(res.rows[1].message).toContain('일치하는 사람이 없습니다');
+      // 생년월일이 다르면 다른 사람이므로 오류, 비우면 이름만으로 찾는다
+      expect((await uploadOk('ops', `${HEADER}1,확정1,1999-01-01,출석,,\n`)).body.rows[0].message).toContain('일치하는 사람이 없습니다');
+      expect((await uploadOk('ops', `${HEADER}1,확정1,,출석,09:00,18:00\n`)).body.counts).toEqual({ UNCHANGED: 1 });
+      expect(res.rows[2].message).toContain('9회차가 없습니다');
+      const att = await attRow();
+      expect(att).toMatchObject({ attendance_status: 'PRESENT', source_type: 'OFFICIAL' });
+      expect(new Date(att.check_in_time).toISOString()).toBe('2027-01-05T00:00:00.000Z');
+      expect(new Date(att.check_out_time).toISOString()).toBe('2027-01-05T09:00:00.000Z');
+      expect(await num(`SELECT count(*) n FROM attendance_source_raw WHERE batch_id = $1`, [res.batchId])).toBe(4); // 오류 행 포함 원본 보존
+      expect(await num(`SELECT count(*) n FROM attendance_source_raw WHERE batch_id = $1 AND processed`, [res.batchId])).toBe(1);
+      const audits = (await auditSince(since)).filter((r) => r.target_table === 'attendance');
+      expect(audits).toEqual([expect.objectContaining({ actor_type: 'SYSTEM_BATCH', action: 'CREATE' })]);
+      expect(audits[0].reason).toContain(`official-import:user=${ops}`);
+
+      const again = (await uploadOk('ops', csv)).body;
+      expect(again.counts).toEqual({ UNCHANGED: 1, ERROR: 3 });
+      expect(await num(`SELECT count(*) n FROM attendance`)).toBe(1);
+
+      // 원본은 append-only
+      await expect(client.query(`UPDATE attendance_source_raw SET message = 'x'`)).rejects.toThrow();
+    });
+
+    it('내부 기록과 임계치(15분) 이내면 공식 값으로 갱신·공식 전환(SYSTEM_BATCH 이력, S09 낙관적 잠금 갱신)', async () => {
+      const ops1 = await as('ops');
+      await ops1.post(`/api/v1/schedules/${s1}/attendance/check-in`).send({ trainee_ids: [tConfirmed1], check_in_time: '2027-01-05T00:05:00Z' }).expect(201); // 09:05, PRESENT, MANUAL
+      const res = (await uploadOk('ops', `${HEADER}1,확정1,1990-03-05,PRESENT,09:15,18:00\n`)).body;
+      expect(res.counts).toEqual({ CONVERTED: 1 });
+      const att = await attRow();
+      expect(att).toMatchObject({ attendance_status: 'PRESENT', source_type: 'OFFICIAL' });
+      expect(new Date(att.check_in_time).toISOString()).toBe('2027-01-05T00:15:00.000Z');
+      expect(att.last_modified_at).not.toBeNull();
+      const log = await rows(`SELECT * FROM attendance_change_log WHERE attendance_id = $1`, [att.attendance_id]);
+      expect(log).toHaveLength(1);
+      expect(log[0]).toMatchObject({ actor_type: 'SYSTEM_BATCH', changed_by: null });
+      expect(log[0].before_value).toMatchObject({ source_type: 'MANUAL' });
+      expect(log[0].after_value).toMatchObject({ source_type: 'OFFICIAL' });
+
+      // 이미 공식인 기록에 다른 공식 값 → 정정(UPDATED)
+      const fix = (await uploadOk('ops', `${HEADER}1,확정1,1990-03-05,지각,09:40,18:00\n`)).body;
+      expect(fix.counts).toEqual({ UPDATED: 1 });
+      expect((await attRow()).attendance_status).toBe('LATE');
+      expect(await num(`SELECT count(*) n FROM attendance_change_log WHERE attendance_id = $1`, [att.attendance_id])).toBe(2);
+      expect(await num(`SELECT count(*) n FROM verification_case`)).toBe(0); // 정정은 확인 필요 건을 만들지 않는다
+    });
+
+    it('임계치 초과·상태 불일치는 attendance 를 바꾸지 않고 RULE_07 건 1개를 만들며, 재업로드해도 근거가 중복되지 않는다', async () => {
+      const ops1 = await as('ops');
+      await ops1.post(`/api/v1/schedules/${s1}/attendance/check-in`).send({ trainee_ids: [tConfirmed1], check_in_time: '2027-01-05T00:00:00Z' }).expect(201); // 09:00 PRESENT MANUAL
+      const csv = `${HEADER}1,확정1,1990-03-05,결석,,\n`;
+      const res = (await uploadOk('ops', csv)).body;
+      expect(res.counts).toEqual({ CASE: 1 });
+      const att = await attRow();
+      expect(att).toMatchObject({ attendance_status: 'PRESENT', source_type: 'MANUAL' }); // 자동 덮어쓰기 없음
+      const cases = await rows(`SELECT vc.*, r.rule_code FROM verification_case vc JOIN detection_rule r ON r.rule_id = vc.detection_rule_id`);
+      expect(cases).toHaveLength(1);
+      expect(cases[0]).toMatchObject({ rule_code: 'RULE_07', status: 'NEEDS_CHECK' });
+      expect(cases[0].evidence.dedupe_key).toBe(String(att.attendance_id));
+      expect(cases[0].evidence.items).toHaveLength(1);
+      expect(cases[0].evidence.items[0]).toMatchObject({ official: { status: 'ABSENT' }, internal: { status: 'PRESENT', source_type: 'MANUAL' }, tolerance_minutes: 15 });
+      expect(await num(`SELECT count(*) n FROM verification_case_trainee WHERE case_id = $1 AND trainee_id = $2 AND attendance_id = $3`, [cases[0].case_id, tConfirmed1, att.attendance_id])).toBe(1);
+
+      await uploadOk('ops', csv);
+      expect(await num(`SELECT count(*) n FROM verification_case`)).toBe(1);
+      expect((await rows(`SELECT evidence FROM verification_case`))[0].evidence.items).toHaveLength(1);
+      // 시각 차이가 임계치를 넘는 경우(같은 상태) 도 불일치 — 근거 항목이 하나 더 쌓인다
+      const time = (await uploadOk('ops', `${HEADER}1,확정1,1990-03-05,출석,09:16,\n`)).body;
+      expect(time.counts).toEqual({ CASE: 1 });
+      expect((await rows(`SELECT evidence FROM verification_case`))[0].evidence.items).toHaveLength(2);
+      expect(await num(`SELECT count(*) n FROM attendance_change_log`)).toBe(0);
+    });
+
+    it('RULE_07 이 꺼져 있으면 불일치는 건 없이 MISMATCH 로만 알린다', async () => {
+      await client.query(`UPDATE detection_rule SET is_active = false WHERE rule_code = 'RULE_07'`);
+      await (await as('ops')).post(`/api/v1/schedules/${s1}/attendance/check-in`).send({ trainee_ids: [tConfirmed1] }).expect(201);
+      const res = (await uploadOk('ops', `${HEADER}1,확정1,1990-03-05,결석,,\n`)).body;
+      expect(res.counts).toEqual({ MISMATCH: 1 });
+      expect(await num(`SELECT count(*) n FROM verification_case`)).toBe(0);
+    });
+
+    it('권한·검증: 강사·임원은 업로드 불가(403), 임원·시스템은 이력 조회 가능, 잘못된 파일 400, 종료 과정 409', async () => {
+      const csv = `${HEADER}1,확정1,1990-03-05,출석,09:00,18:00\n`;
+      expect((await upload('ins1', csv)).status).toBe(403);
+      expect((await upload('exec', csv)).status).toBe(403);
+      const batch = (await uploadOk('ops', csv)).body.batchId;
+      for (const who of ['ops', 'exec', 'sys'] as const) {
+        const list = (await (await as(who)).get(`/api/v1/official-attendance-imports?course_id=${c1}`).expect(200)).body;
+        expect(list.items).toEqual([expect.objectContaining({ batchId: batch, fileName: '공식출결.csv', total: 1, created: 1, errors: 0, courseName: '과정1' })]);
+        expect((await (await as(who)).get(`/api/v1/official-attendance-imports/${batch}`).expect(200)).body.items).toEqual([expect.objectContaining({ rowNo: 2, roundNo: '1', traineeName: '확정1', result: 'CREATED' })]);
+      }
+      expect((await (await as('ins1')).get('/api/v1/official-attendance-imports')).status).toBe(403);
+      expect((await upload('ops', 'round_no,status\n1,PRESENT\n')).body.code).toBe('INVALID_FILE');
+      expect((await (await as('ops')).post(`/api/v1/courses/${c1}/official-attendance`)).status).toBe(400); // 파일 없음
+      expect((await upload('ops', csv, c2)).status).toBe(201); // OPS 는 전체 과정(D-02) — c2 에는 '확정1'이 없어 행 오류로 보고
+      await client.query(`UPDATE course SET status = 'CLOSED' WHERE course_id = $1`, [c1]);
+      expect((await upload('ops', csv)).body.code).toBe('COURSE_LOCKED');
+    });
+  });
+
   // ── 회차별 운영일지 (S17, Phase 2) ──────────────────────────────────────
   describe('회차별 운영일지 (S17)', () => {
     it('작성: 본인 회차만, 회차당 1건(409), 휴강 회차 거부, written_at·instructor_id 저장(Rule 03 근거)', async () => {

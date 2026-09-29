@@ -23,7 +23,7 @@ export interface RuleRunResult {
   casesUpdated: number;
 }
 
-// Phase 3 탐지 엔진: RULE_01~06 (RULE_07 은 D-12 공식 출결 연동 확정 전이라 제외 — baseline 3-6·7절).
+// Phase 3 탐지 엔진: RULE_01~06 + RULE_07(공식 출결 업로드 시 recordOfficialMismatch 로 호출, D-12 확정).
 // HTTP 라우트는 없다. Phase 5 에서 호출 경로가 붙었다: RULE_03~06 은 BatchSchedulerService(baseline 6절 시점표),
 // RULE_01·02 는 입실 확인 커밋 후 DetectionEventService 가 해당 회차만 평가한다. 테스트는 직접 호출한다.
 // 행위자는 runAsSystem('SYSTEM_RULE', ruleCode) 로 태깅한다(기존 audit-tx 선례, src/audit/audit-context.ts 참고).
@@ -232,6 +232,30 @@ export class DetectionRuleService {
       }
       return { casesCreated, casesUpdated };
     });
+  }
+
+  // RULE_07 공식-내부 정보 불일치(D-12 확정): 다른 규칙과 달리 배치가 아니라 공식 출결 업로드(S29) 처리 중 호출된다.
+  // 호출한 트랜잭션 안에서 건을 만들거나 근거만 누적한다(attendance 는 절대 자동으로 덮어쓰지 않는다 — STEP 8.2).
+  // 규칙이 꺼져 있으면 건을 만들지 않고 null 을 돌려준다. dedupe 키는 attendance_id, 근거 항목 id 는 공식값 내용이라
+  // 같은 파일을 다시 올려도 근거가 중복되지 않는다.
+  async recordOfficialMismatch(
+    tx: AuditedTx,
+    input: { courseId: number; traineeId: number; attendanceId: number; scheduleId: number; official: Row; internal: Row },
+  ): Promise<{ caseId: number; created: boolean; toleranceMinutes: number } | null> {
+    await tx.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, ['detection:RULE_07']);
+    const { rows } = await tx.query(`SELECT * FROM detection_rule WHERE rule_code = 'RULE_07'`);
+    const rule = rows[0];
+    if (!rule || rule.is_active !== true) return null;
+    const toleranceMinutes = Number((rule.params as { tolerance_minutes: number }).tolerance_minutes);
+    const dedupeKey = String(input.attendanceId);
+    const itemId = `official:${input.attendanceId}:${JSON.stringify(input.official)}`;
+    const { created, caseId } = await this.upsertCase(tx, rule, {
+      courseId: input.courseId,
+      dedupeKey,
+      items: [{ id: itemId, schedule_id: input.scheduleId, official: input.official, internal: input.internal, tolerance_minutes: toleranceMinutes }],
+      traineeAttendance: new Map([[input.traineeId, input.attendanceId]]),
+    });
+    return { caseId, created, toleranceMinutes };
   }
 
   async runAll(): Promise<Record<string, RuleRunResult>> {

@@ -586,6 +586,40 @@ export interface AuditLogDetail extends AuditLogEntry {
 }
 
 // GET /detection-rules (S28)
+// S29 공식 출결 대사(D-12): POST /courses/{id}/official-attendance, GET /official-attendance-imports
+export type OfficialImportResultCode = 'CREATED' | 'UPDATED' | 'CONVERTED' | 'UNCHANGED' | 'CASE' | 'MISMATCH' | 'ERROR'
+export interface OfficialImportRow {
+  rowNo: number
+  roundNo: string | null
+  traineeName: string | null
+  result: OfficialImportResultCode
+  message: string
+  attendanceId: number | null
+  caseId: number | null
+}
+export interface OfficialImportResult {
+  batchId: string
+  fileName: string
+  total: number
+  counts: Partial<Record<OfficialImportResultCode, number>>
+  rows: OfficialImportRow[]
+}
+export interface OfficialImportBatch {
+  batchId: string
+  fileName: string
+  receivedAt: string
+  courseId: number
+  courseName: string
+  uploadedByName: string
+  total: number
+  created: number
+  updated: number
+  converted: number
+  unchanged: number
+  mismatched: number
+  errors: number
+}
+
 // D-08 지각·조퇴 판정 유예분(S28)
 export interface AttendanceSetting {
   lateGraceMinutes: number

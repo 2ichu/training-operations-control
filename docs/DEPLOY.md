@@ -93,7 +93,7 @@ docker run --rm -v training-ops_uploads:/data -v "$PWD":/backup alpine sh -c 'rm
 docker compose --env-file deploy.env start backend web
 ```
 
-- 감사로그(`audit_log`)·변경이력은 append-only 이고 계속 쌓인다. 보존 기간·정리 정책은 정해지지 않았다(baseline 결정 필요 사항) — 정해질 때까지 지우지 않는다.
+- 감사로그(`audit_log`)·변경이력은 append-only 이고 계속 쌓인다. 보존 기간은 **무기한 보관 유지**로 확정했다(D-16, 삭제·파기 기능 없음). 법정 기간·파기 절차가 정해지면 그때 개발한다. 그래서 DB·첨부(`uploads` 볼륨) 용량은 시간이 지날수록 늘어난다 — 디스크 여유를 정기적으로 확인하고 백업 보관 위치도 함께 늘려 둔다.
 
 ## 6. 점검·장애 대응
 
@@ -112,5 +112,6 @@ docker compose --env-file deploy.env start backend web
 
 코드는 임시값으로 동작하며, 정해지면 환경변수·설정만 바꾼다.
 
-- 감사로그 보존 기간, 첨부 저장소(현재 서버 로컬 볼륨, D-14)
+- 첨부 저장소(현재 서버 로컬 볼륨, D-14)
+- 단말·출결 채널 식별(#2, RULE_01·02 정식 가동 범위)
 - 공식 출결 연계·RULE_07(D-12)

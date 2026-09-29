@@ -43,6 +43,8 @@ export const PHASE1_PERMISSIONS: PermissionSeed[] = [
   ...grant('SYS_ADMIN', ['S26'], ['R', 'U']),
   // S28 탐지규칙 파라미터 관리(Phase 5): system-design STEP 8.4 "시스템 관리자가 detection_rule 화면에서 조정" — SYS_ADMIN 전용
   ...grant('SYS_ADMIN', ['S28'], ['R', 'U']),
+  // S29 공식 출결 대사(D-12): 파일 업로드·반영은 OPS_MANAGER, 결과 조회는 SYS_ADMIN·EXECUTIVE 도 가능(강사는 불가)
+  ...grant('SYS_ADMIN', ['S29'], ['R']),
 
   // OPS_MANAGER: 과정~일정 전체 업무 (전체 과정 접근, D-02)
   ...grant('OPS_MANAGER', ['S01', 'S03', 'S05', 'S06', 'S08', 'S10', 'S11', 'S14'], ['R']),
@@ -52,6 +54,7 @@ export const PHASE1_PERMISSIONS: PermissionSeed[] = [
   ...grant('OPS_MANAGER', ['S05'], ['A']), // 관련 확인 건 조회
 
   ...grant('OPS_MANAGER', ['S07'], ['C', 'R', 'U', 'A']),
+  ...grant('OPS_MANAGER', ['S29'], ['C', 'R']),
   ...grant('OPS_MANAGER', ['S09'], ['R', 'U']),
   ...grant('OPS_MANAGER', ['S15'], ['C', 'R']),
   ...grant('OPS_MANAGER', ['S17'], ['R', 'U']), // 작성은 강사만(검수 목적 수정만 O)
@@ -71,5 +74,6 @@ export const PHASE1_PERMISSIONS: PermissionSeed[] = [
   ...grant('EXECUTIVE', ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'S18', 'S19', 'S21', 'S22', 'S23', 'S24', 'S27'], ['R']),
   ...grant('EXECUTIVE', ['S18'], ['A']), // 확인 필요로 전환(escalate)만, 수정·조치완료는 불가
   ...grant('EXECUTIVE', ['S22', 'S23'], ['A']),
+  ...grant('EXECUTIVE', ['S29'], ['R']),
   ...grant('EXECUTIVE', ['S16', 'S05'], ['A']), // 종료 체크리스트·관련 확인 건 조회
 ];

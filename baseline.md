@@ -254,6 +254,8 @@
 | 사용자·권한(S25·S26) | 조회·생성·수정·비활성화 | O | — | — | — |
 | 감사로그(S27) | 조회 | R | — | — | R |
 | 탐지규칙(S28, Phase 5) | 파라미터 조회·수정, 활성/비활성 | O | — | — | — |
+| 공식 출결 대사(S29) | 업로드·반영 | — | O | — | — |
+| | 업로드 이력 조회 | R | R | — | R |
 
 ### 4-3. 서버/API 필수 검증 (UI 숨김으로 대체 불가)
 
@@ -370,6 +372,9 @@
 | S26 권한 | 역할 목록 | GET | /roles | — | 역할(role_id·role_code·role_name, 4개 고정 — D-18) | SYS | 없음 |
 | | 권한 조회 | GET | /roles/permissions | role_id | 화면×기능 매트릭스 | SYS | 없음 |
 | | 권한 저장 | PUT | /roles/{id}/permissions | 매트릭스 | 저장 결과. SYS_ADMIN 역할에서 S26 R·U 를 빼면 409 SELF_LOCKOUT(잠금 방지) | SYS | UPDATE / role_permission / USER (before/after) |
+| S29 공식 출결 대사 | 파일 업로드·반영 | POST | /courses/{id}/official-attendance | file(CSV, multipart) | batchId, 행별 결과(CREATED·UPDATED·CONVERTED·UNCHANGED·CASE·MISMATCH·ERROR), 결과별 건수 | OPS | CREATE / attendance_source_raw / SYSTEM_BATCH + 반영된 attendance CREATE·UPDATE + attendance_change_log(SYSTEM_BATCH). 종료·중단 과정 409 COURSE_LOCKED |
+| | 업로드 이력 | GET | /official-attendance-imports | course_id, page, size | 배치별 건수 요약 | OPS·SYS·EXEC | 없음 |
+| | 업로드 상세 | GET | /official-attendance-imports/{batchId} | — | 행별 원본·결과·attendance_id·case_id | OPS·SYS·EXEC | 없음 |
 | S28 탐지규칙 (Phase 5) | 규칙 목록 | GET | /detection-rules | — | 규칙 목록(params·is_active·editable) | SYS | 없음 |
 | | 파라미터·활성 수정 | PATCH | /detection-rules/{id} | reason(필수), params(기존 키의 값만, 1~100000 정수), is_active | 갱신본. MANUAL 은 409 RULE_NOT_EDITABLE, initial_status 는 수정 불가(D-11) | SYS | UPDATE / detection_rule / USER (before/after, reason) |
 | | 지각·조퇴 판정 기준 조회 | GET | /attendance-settings | — | lateGraceMinutes·earlyLeaveGraceMinutes | SYS | 없음 |
@@ -383,7 +388,7 @@
 |---|---|---|---|---|
 | RULE_01·02 평가 | 이벤트 처리 | attendance INSERT 커밋 후 비동기(출결 저장을 지연시키지 않음) | SYSTEM_RULE | 6절 |
 | RULE_03~06 평가 | 배치 | 6절 시점표 | SYSTEM_RULE | 스케줄러가 호출하되 결과 기록의 행위자는 탐지 엔진 |
-| 공식 출결 수집·대사·RULE_07 | 수신+배치 | 연동 방식 확정 후(#1) | SYSTEM_API / SYSTEM_BATCH | STEP 8.2 |
+| 공식 출결 수집·대사·RULE_07 | 파일 업로드(S29) | #1 확정(2026-09-29, CSV 업로드): 업로드 요청 안에서 즉시 대사 | SYSTEM_BATCH(업로더는 raw·audit 사유에 기록) | STEP 8.2, decisions.md 12절 |
 | 과정 자동 운영중 전환 | 배치 | 매일 자정 직후 | SYSTEM_BATCH | 조건: 첫 교육일 도래 + 확정 훈련생 ≥ 1. 조건 미충족이면 전환하지 않음 |
 
 구현(Phase 5, 2026-09-28): 위 표에서 공식 출결 연동(#1 대기)을 제외한 전부가 가동된다. 시간 기반 배치는 `BatchSchedulerService`(APP_TIMEZONE 벽시계 기준) — 과정 자동 전환 00:05, RULE_03 매시 정각, RULE_04 22:00 + 익일 09:00 재확인, RULE_05 01:00, RULE_06 01:10이며, 시점표가 시각을 정하지 않은 항목(00:05·09:00·01:00·01:10)은 기술적 기본값이다. RULE_01·02는 입실 확인 커밋 직후 해당 회차만 비동기 평가하고, 유실 대비로 01:20·01:30에 전체 회차를 한 번 더 평가한다(멱등). 배치·이벤트는 `BATCH_ENABLED`로 끄고 켠다(decisions.md 11절).
@@ -410,7 +415,7 @@
 | RULE_04 | 퇴실정보 누락 | 매일 22:00 배치 + 익일 오전 재확인 | attendance(attendance_status, check_out_time), class_schedule.end_time | **attendance_status IN (PRESENT, LATE)** 이고 check_out_time IS NULL 이며 종료 시각 + delay_hours(기본 2) 경과 | 훈련생별 1건. dedupe: attendance_id | 해당 훈련생 1명(attendance_id 연결) | ABSENT·EXCUSED 행, EARLY_LEAVE 행, attendance 행이 없는 미출결, 휴강 회차 제외(미출결은 종료 체크리스트에서 별도 집계) | 자동: 건 생성만 |
 | RULE_05 | 반복적인 출결 수정 | 매일 1회 배치 | attendance_change_log(actor_type=USER 행만) | 동일 훈련생의 수정 건수가 window_days(기본 30)일 내 min_changes(기본 3)회 이상 | 훈련생별 1건. dedupe: trainee·집계 시작일 | 해당 훈련생 1명(대표 attendance_id = 최근 수정 건) | 시스템(공식 대사) 갱신 이력 제외, 종료·중단 과정 제외 | 자동: 건 생성만 |
 | RULE_06 | 출결상태 반복 변경 | 매일 1회 배치 | attendance_change_log.before_value/after_value(actor_type=USER 행만) | 동일 attendance 또는 훈련생에서 특정 상태 조합(예: 결석↔출석)이 window_days(기본 30) 내 min_flips(기본 2)회 이상 반복 | 1건. dedupe: trainee·상태조합 | 해당 훈련생 1명 | 시스템 갱신 제외 | 자동: 건 생성만 |
-| RULE_07 | 공식-내부 정보 불일치 | 공식 데이터 수신·대사 배치 직후(연동 방식 #1 확정 후 가동) | attendance_source_raw, attendance(source_type=MANUAL/LINKED) | 시간 차이가 tolerance_minutes(기본 15) 초과 또는 상태 불일치 | 훈련생별 1건, evidence에 공식값·내부값 병기. dedupe: attendance_id | 해당 훈련생 1명(attendance_id 연결) | 공식 데이터 없음, source_type=OFFICIAL 행은 정정으로 처리(건 미생성). 공식 시스템이 없으면 규칙 비활성 또는 내부 입력 소스 간 비교로 대체(#1) | 자동: 건 생성만 — attendance는 절대 자동 덮어쓰지 않음 |
+| RULE_07 | 공식-내부 정보 불일치 | 공식 출결 업로드(S29) 처리 중(#1 확정, 2026-09-29 가동) | attendance_source_raw, attendance(source_type=MANUAL/LINKED) | 시간 차이가 tolerance_minutes(기본 15) 초과 또는 상태 불일치 | 훈련생별 1건, evidence에 공식값·내부값 병기. dedupe: attendance_id | 해당 훈련생 1명(attendance_id 연결) | 공식 데이터 없음, source_type=OFFICIAL 행은 정정으로 처리(건 미생성). 공식 시스템이 없으면 규칙 비활성 또는 내부 입력 소스 간 비교로 대체(#1) | 자동: 건 생성만 — attendance는 절대 자동 덮어쓰지 않음 |
 | MANUAL | 수동 확인 필요 전환 | 사용자 액션(S18) | course_issue | 조건 없음(담당자 판단) | 1건, evidence에 특이사항 원문 스냅샷, related_course_issue_id 연결 | 0~1명(담당자가 선택) | 같은 특이사항에 활성 건이 있으면 재전환 거부(409) | 수동(자동 아님) |
 
 이 표의 일치 규칙: RULE_03은 어떤 문서에도 "현장정보 미확인"이라는 의미로 남지 않는다(STEP 1.4, 5.1, 8.1, 8.1-A를 모두 "회차 운영기록 지연"으로 정리했고 부록 B~D는 수정 전 스냅샷으로 표시). RULE_04는 attendance_status IN (PRESENT, LATE)를 반영했다. 훈련생 개별 중간 현장 확인은 데이터 소스가 없으므로 MVP 규칙에서 제외하며, 도입은 `[결정 필요]` #16.
@@ -759,7 +764,7 @@ O=허용, R=조회만, —=불가, ◎=서버 스코프 재검증, △=결정 �
 - (확정 완료 2026-09-22: #17·#30·#13 종료·강행·종결 승인 구조 — decisions.md D-06. API 구현 시점은 Phase 2~4, P1-03 참고)
 
 **기능 착수 시점에 확정해도 되는 것**
-- #1 공식 출결 연동, #2 출결 환경 — RULE_01·02·07 정식 가동 전
+- ~~#1 공식 출결 연동~~ — **확정(D-12, CSV 업로드)**, #2 출결 환경(단말·채널) — RULE_01·02 정식 가동 전
 - #26 조치 기준·initial_status 시드 — 탐지 엔진 시드 데이터 작성 전
 - #25 출결 수정 허용 범위 — S09 정책 구현 전
 - #19·#21 예외 수정·중도 등록 — 해당 API 구현 전
@@ -773,6 +778,6 @@ O=허용, R=조회만, —=불가, ◎=서버 스코프 재검증, △=결정 �
 ## 14. 이 기준선의 준비 상태
 
 - **준비된 부분**: 데이터 모델(25개 테이블 제약·인덱스·삭제 정책), 상태값 사전, 권한 매트릭스와 서버 검증 항목, 27개 화면의 API 요구사항, 규칙 표, 감사 이벤트 정책, 종료 조건 기본 분류, 개인정보·보안 요구사항.
-- **남은 위험**: (1) 결과물 제출 주체 미확정, (2) 수료 전이 명세 갭, (3) ~~제출기한 저장 위치 없음~~(D-04 확정), (4) 공식 출결 연동 미확정으로 RULE_07 가동 불가, (5) ~~결석 확정 운영 규칙(권한·마감)과 지각 판정 기준 없음~~(D-07·D-08 확정) — 조퇴 가중치도 0.5 로 확정.
+- **남은 위험**: (1) 결과물 제출 주체 미확정, (2) 수료 전이 명세 갭, (3) ~~제출기한 저장 위치 없음~~(D-04 확정), (4) ~~공식 출결 연동 미확정~~(D-12 #1 확정: CSV 업로드, RULE_07 가동) — 단말·채널(#2)은 미확정, (5) ~~결석 확정 운영 규칙(권한·마감)과 지각 판정 기준 없음~~(D-07·D-08 확정) — 조퇴 가중치도 0.5 로 확정.
 - **바로 개발 가능한 영역**: 인증·권한·감사 프레임워크, 과정·훈련생 등록·확정, 강사·교육일정, 출결 조회(미출결 계산)·입실·퇴실·출결 수정, 운영일지·특이사항, 확인 건 처리 워크플로우, RULE_01~06.
-- **정책 확정 후 개발할 영역**: 결과물 등록·검토·미제출, 수료 처리, ~~결석 확정·지각 판정~~(D-07·D-08 구현), 공식 출결 대사·RULE_07, 과정 종료 정책 세부.
+- **정책 확정 후 개발할 영역**: 결과물 등록·검토·미제출, 수료 처리, ~~결석 확정·지각 판정~~(D-07·D-08 구현), ~~공식 출결 대사·RULE_07~~(D-12 구현), 과정 종료 정책 세부.
