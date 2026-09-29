@@ -36,7 +36,7 @@ export class AttendanceService {
     const cancelled = schedule.status === 'CANCELLED';
 
     const { rows } = await this.db.query(
-      `SELECT t.trainee_id, t.name, a.attendance_id, a.check_in_time, a.check_out_time, a.attendance_status,
+      `SELECT t.trainee_id, t.name, a.attendance_id, a.check_in_time, a.check_out_time, a.attendance_status, a.source_type,
               CASE WHEN a.attendance_id IS NOT NULL THEN a.attendance_status::text
                    WHEN $2 THEN NULL ELSE '${NOT_CHECKED}' END AS display_status
          FROM trainee_enrollment te JOIN trainee t ON t.trainee_id = te.trainee_id
@@ -168,21 +168,23 @@ export class AttendanceService {
 
     const scheduleIds = schedules.map((s) => s.schedule_id);
     const attendances = scheduleIds.length
-      ? (await this.db.query(`SELECT trainee_id, schedule_id, attendance_status FROM attendance WHERE schedule_id = ANY($1::bigint[])`, [scheduleIds])).rows
+      ? (await this.db.query(`SELECT attendance_id, trainee_id, schedule_id, attendance_status FROM attendance WHERE schedule_id = ANY($1::bigint[])`, [scheduleIds])).rows
       : [];
-    const byKey = new Map(attendances.map((a) => [`${a.trainee_id}:${a.schedule_id}`, a.attendance_status as string]));
+    const byKey = new Map(attendances.map((a) => [`${a.trainee_id}:${a.schedule_id}`, a]));
 
     const items = trainees.map((t) => {
       let present = 0;
       let applicable = 0;
       const cells = schedules.map((s) => {
         const cancelled = s.status === 'CANCELLED';
-        const status = byKey.get(`${t.trainee_id}:${s.schedule_id}`) ?? null;
+        const found = byKey.get(`${t.trainee_id}:${s.schedule_id}`);
+        const status = (found?.attendance_status as string | undefined) ?? null;
         if (!cancelled) {
           applicable += 1;
           if (status === 'PRESENT' || status === 'LATE') present += 1;
         }
-        return { scheduleId: Number(s.schedule_id), displayStatus: status ?? (cancelled ? null : NOT_CHECKED) };
+        // attendanceId: 셀에서 S09 정정으로 들어가기 위한 키(미출결 셀은 null — 최초 입실·결석 확정은 S07, C1)
+        return { scheduleId: Number(s.schedule_id), attendanceId: found ? Number(found.attendance_id) : null, displayStatus: status ?? (cancelled ? null : NOT_CHECKED) };
       });
       return { traineeId: Number(t.trainee_id), name: t.name as string, attendanceRate: applicable > 0 ? present / applicable : null, cells };
     });
@@ -234,6 +236,8 @@ export class AttendanceService {
     if (courseId) where.add((p) => `s.course_id = ${p}`, courseId);
     const traineeId = qInt(query, 'trainee_id');
     if (traineeId) where.add((p) => `l.trainee_id = ${p}`, traineeId);
+    const traineeName = qStr(query, 'trainee_name');
+    if (traineeName) where.add((p) => `t.name ILIKE ${p} ESCAPE '\\'`, `%${escapeLike(traineeName)}%`);
     const from = qDate(query, 'from');
     if (from) where.add((p) => `l.changed_at >= ${p}::date`, from);
     const to = qDate(query, 'to');
@@ -244,10 +248,12 @@ export class AttendanceService {
     const page = pageOf(query);
     const { rows } = await this.db.query(
       `SELECT l.log_id, l.attendance_id, l.trainee_id, t.name AS trainee_name, l.actor_type, l.changed_by, u.name AS changed_by_name,
-              l.changed_at, l.before_value, l.after_value, l.reason, count(*) OVER() AS total
+              l.changed_at, l.before_value, l.after_value, l.reason, s.schedule_id, s.round_no, s.class_date, s.course_id, c.course_name,
+              count(*) OVER() AS total
          FROM attendance_change_log l
          JOIN attendance a ON a.attendance_id = l.attendance_id
          JOIN class_schedule s ON s.schedule_id = a.schedule_id
+         JOIN course c ON c.course_id = s.course_id
          JOIN trainee t ON t.trainee_id = l.trainee_id
          LEFT JOIN user_account u ON u.user_id = l.changed_by
         WHERE ${where.sql} ORDER BY l.changed_at DESC, l.log_id DESC LIMIT ${page.size} OFFSET ${page.offset}`,

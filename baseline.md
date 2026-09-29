@@ -309,14 +309,14 @@
 | | 결과물 현황 | GET | /trainees/{id}/submissions | course_id | 결과물 목록(강사는 본인 배정 과정 것만) | 〃 | 없음 |
 | | 관련 확인 건 | GET | /trainees/{id}/verification-cases | — | verification_case_trainee 기준 사건 목록 | OPS·EXEC·SYS | 없음 |
 | S06 훈련생 변경이력 | 이력 조회 | GET | /trainee-change-logs | trainee_id, trainee_name, entity_type, from, to | 이력 목록(훈련생 이름, 등록 건이면 과정명 포함) | OPS·SYS·EXEC | 없음 |
-| S07 일일 출결 | 출결 명단(미출결 계산) | GET | /schedules/{scheduleId}/attendance-roster | status(미출결 포함) | 확정 훈련생 × attendance LEFT JOIN 결과, 표시상태 | OPS·SYS·EXEC, INSTRUCTOR ◎ | 없음 |
+| S07 일일 출결 | 출결 명단(미출결 계산) | GET | /schedules/{scheduleId}/attendance-roster | status(미출결 포함) | 확정 훈련생 × attendance LEFT JOIN 결과, 표시상태, 출처(source_type) | OPS·SYS·EXEC, INSTRUCTOR ◎ | 없음 |
 | | 입실 확인(출결 확정) | POST | /schedules/{scheduleId}/attendance/check-in | trainee_ids[], check_in_time(선택), source_type(기본 MANUAL) | 생성된 attendance 목록, 이미 존재한 대상 목록(409 분리) | OPS, INSTRUCTOR ◎ | CREATE / attendance / USER |
 | | 퇴실 확인 | POST | /attendance/check-out | attendance_ids[], check_out_time(선택) | 갱신 결과(이미 값이 있는 건은 409 → 수정 명령 안내) | OPS, INSTRUCTOR ◎ | UPDATE / attendance / USER (최초 기록, change_log 없음) |
 | | 결석 확정 | POST | /schedules/{scheduleId}/attendance/confirm-absence | trainee_ids[] | 생성된 attendance(ABSENT) | OPS (강사 허용은 #20) | CREATE / attendance / USER |
-| S08 과정별 출결 | 출결 매트릭스 | GET | /courses/{id}/attendance-matrix | trainee_name, status | 훈련생 × 회차 셀(미출결 계산 포함), 출석률 | OPS·SYS·EXEC, INSTRUCTOR ◎ | 없음 |
+| S08 과정별 출결 | 출결 매트릭스 | GET | /courses/{id}/attendance-matrix | trainee_name, status | 훈련생 × 회차 셀(미출결 계산 포함, 기록 있는 셀은 attendance_id — S09 진입), 출석률 | OPS·SYS·EXEC, INSTRUCTOR ◎ | 없음 |
 | S09 출결 수정 | 수정 대상 조회 | GET | /attendance/{id} | — | 현재 값, last_modified_at | OPS | 없음 |
 | | 출결 수정 | POST | /attendance/{id}/correct | check_in_time, check_out_time, attendance_status(변경 항목), reason(필수), 기대 last_modified_at | 갱신된 attendance, 임계치 초과 안내 여부 | OPS | UPDATE / attendance / USER 동시 attendance_change_log(actor USER) |
-| S10 출결 수정이력 | 이력 조회 | GET | /attendance-change-logs | course_id, trainee_id, from, to, actor_type | 이력 목록 | OPS·SYS·EXEC | 없음 |
+| S10 출결 수정이력 | 이력 조회 | GET | /attendance-change-logs | course_id, trainee_id, trainee_name, from, to, actor_type | 이력 목록(과정·회차·교육일 포함) | OPS·SYS·EXEC | 없음 |
 | S11 강사 목록 | 강사 목록 | GET | /instructors | name, status | 강사 목록, 담당 과정 수 | OPS·EXEC·SYS, INSTRUCTOR 본인 ◎ | 없음 |
 | S12 강사 등록/수정 | 강사 상세 | GET | /instructors/{id} | — | 강사, 연결 계정 정보(읽기전용) | 〃 | 없음 |
 | | 강사 등록 | POST | /instructors | name, contact, status | 강사 | OPS | CREATE / instructor / USER |

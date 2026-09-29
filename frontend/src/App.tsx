@@ -7,6 +7,9 @@ import { DashboardPage } from './pages/DashboardPage'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage, NotImplementedPage } from './pages/PlaceholderPages'
 import { RequireAuth, RequirePermission } from './routing/guards'
+import { AttendanceChangeLogPage } from './pages/attendance/AttendanceChangeLogPage'
+import { CourseAttendancePage } from './pages/attendance/CourseAttendancePage'
+import { DailyAttendancePage } from './pages/attendance/DailyAttendancePage'
 import { CourseCreatePage } from './pages/course/CourseCreatePage'
 import { CourseDetailPage } from './pages/course/CourseDetailPage'
 import { CourseListPage } from './pages/course/CourseListPage'
@@ -45,6 +48,30 @@ export function AppRoutes() {
           element={
             <RequirePermission screenId="S22">
               <VerificationCaseListPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/attendance/daily"
+          element={
+            <RequirePermission screenId="S07">
+              <DailyAttendancePage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/attendance/course"
+          element={
+            <RequirePermission screenId="S08">
+              <CourseAttendancePage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/attendance-change-logs"
+          element={
+            <RequirePermission screenId="S10">
+              <AttendanceChangeLogPage />
             </RequirePermission>
           }
         />

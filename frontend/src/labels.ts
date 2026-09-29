@@ -106,3 +106,20 @@ export const REVIEW_STATUS_LABELS: Record<string, string> = {
   REJECTED: '부적합',
 }
 
+// attendance.source_type (baseline 3-3)
+export const SOURCE_TYPE_LABELS: Record<string, string> = {
+  OFFICIAL: '공식',
+  MANUAL: '내부수기',
+  LINKED: '연계자동',
+}
+
+// S08 매트릭스 셀 약어
+export const ATTENDANCE_SHORT_LABELS: Record<string, string> = {
+  NOT_CHECKED: '미',
+  PRESENT: '출',
+  LATE: '지',
+  EARLY_LEAVE: '조',
+  ABSENT: '결',
+  EXCUSED: '인',
+}
+
