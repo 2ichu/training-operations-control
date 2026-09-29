@@ -1,7 +1,8 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type pg from 'pg';
 import { maskTail } from '../audit/audit-registry.js';
-import { AuditedTransactionService, type Row } from '../audit/audited-transaction.js';
+import { SUBMIT_TIMEZONE, submitStatusSql } from '../common/submit-status.js';
+import { type AuditedTx, AuditedTransactionService, type Row } from '../audit/audited-transaction.js';
 import { lockRow } from '../common/tx.js';
 import { escapeLike, toApi, Where } from '../common/api.js';
 import { asObject, type Obj, oneOf, qEnumList, qInt, qStr, reqInt, reqIso, reqStr } from '../common/validation.js';
@@ -11,8 +12,6 @@ import { ScopeService } from '../rbac/scope.service.js';
 
 const REVIEW_STATUSES = ['PENDING', 'APPROVED', 'REVISION_REQUESTED', 'REJECTED'] as const;
 const REVIEW_RESULTS = ['APPROVED', 'REVISION_REQUESTED', 'REJECTED'] as const;
-// D-04 §24(제출기한 저장 위치) 결정 전까지 기한후제출 자동판정은 보류(baseline 2-4) — 항상 SUBMITTED로 생성(D-08 지각판정 보류와 동일한 원칙).
-const DEFAULT_SUBMIT_STATUS = 'SUBMITTED';
 
 // S19 결과물 제출현황(+S20 미제출, API 재사용) / S21 결과물 검토 (baseline 3-5·5-2).
 @Injectable()
@@ -32,20 +31,30 @@ export class SubmissionService {
     const traineeName = qStr(query, 'trainee_name');
     const reviewStatus = qEnumList(query, 'review_status', REVIEW_STATUSES);
     const missingOnly = this.qBool(query, 'missing_only');
+    // S20(system-design 7-A): 미제출(행 없음, 계산) + 기한후제출
+    const missingOrLate = this.qBool(query, 'missing_or_late');
 
     const where = new Where();
     where.add((p) => `te.course_id = ${p}`, courseId);
     where.clauses.push(`te.status = 'CONFIRMED'`);
     if (traineeName) where.add((p) => `t.name ILIKE ${p} ESCAPE '\\'`, `%${escapeLike(traineeName)}%`);
     if (missingOnly) where.clauses.push(`s.submission_id IS NULL`);
+    else if (missingOrLate) where.clauses.push(`(s.submission_id IS NULL OR s.submit_status = 'LATE_SUBMITTED')`);
     else if (reviewStatus) where.add((p) => `s.review_status = ANY(${p}::submission_review_status[])`, reviewStatus);
 
     // 등록일시·등록자(system-design S19 "created_at·created_by"): submission 에는 감사 컬럼이 없어(ERD) 같은 트랜잭션에 남는
     // audit_log 의 CREATE 기록에서 가져온다. 연락처는 S20 표시용(마스킹, 훈련생 목록과 같은 기준)
+    // 경과일수(D-04): 미제출은 오늘(기관 시간대) - 기한, 기한후제출은 제출일 - 기한. 기한 전·기한 없음은 NULL
+    where.params.push(SUBMIT_TIMEZONE);
+    const tz = `$${where.params.length}::text`;
     const { rows } = await this.db.query(
       `SELECT te.trainee_id, t.name AS trainee_name, t.contact, s.submission_id, s.title, s.version, s.submitted_at, s.submit_status, s.review_status,
-              reg.action_at AS registered_at, reg.name AS registered_by_name
-         FROM trainee_enrollment te JOIN trainee t ON t.trainee_id = te.trainee_id
+              reg.action_at AS registered_at, reg.name AS registered_by_name,
+              CASE WHEN c.submission_due_date IS NULL THEN NULL
+                   WHEN s.submission_id IS NULL THEN NULLIF(GREATEST((now() AT TIME ZONE ${tz})::date - c.submission_due_date, 0), 0)
+                   WHEN s.submit_status = 'LATE_SUBMITTED' THEN GREATEST((s.submitted_at AT TIME ZONE ${tz})::date - c.submission_due_date, 1)
+              END AS overdue_days
+         FROM trainee_enrollment te JOIN trainee t ON t.trainee_id = te.trainee_id JOIN course c ON c.course_id = te.course_id
          LEFT JOIN submission s ON s.trainee_id = te.trainee_id AND s.course_id = te.course_id
          LEFT JOIN LATERAL (
            SELECT a.action_at, u.name FROM audit_log a LEFT JOIN user_account u ON u.user_id = a.actor_user_id
@@ -54,7 +63,9 @@ export class SubmissionService {
         WHERE ${where.sql} ORDER BY t.name, s.title`,
       where.params,
     );
+    const { rows: courseRows } = await this.db.query(`SELECT submission_due_date FROM course WHERE course_id = $1`, [courseId]);
     return {
+      submissionDueDate: courseRows[0].submission_due_date as string | null,
       items: rows.map((r) => ({ ...toApi({ ...r, contact: maskTail(r.contact) }), displayStatus: r.submission_id === null ? 'NOT_SUBMITTED' : (r.submit_status as string) })),
     };
   }
@@ -76,7 +87,7 @@ export class SubmissionService {
         title,
         version: 1,
         submitted_at: submittedAt,
-        submit_status: DEFAULT_SUBMIT_STATUS,
+        submit_status: await this.judge(tx, courseId, submittedAt),
         review_status: 'PENDING',
       });
       return toApi(created);
@@ -93,6 +104,7 @@ export class SubmissionService {
       const updated = await tx.update('submission', { submission_id: submissionId }, {
         version: Number(current.version) + 1,
         submitted_at: submittedAt,
+        submit_status: await this.judge(tx, Number(current.course_id), submittedAt), // 재제출 시각으로 다시 판정
         review_status: 'PENDING',
       });
       return toApi(updated);
@@ -158,6 +170,16 @@ export class SubmissionService {
   }
 
   // ── 내부 헬퍼 ───────────────────────────────────────────────────────────
+  /** D-04: 과정 제출기한 기준 제출상태(SUBMITTED / LATE_SUBMITTED) */
+  private async judge(tx: AuditedTx, courseId: number, submittedAt: string): Promise<string> {
+    const { rows } = await tx.query(`SELECT ${submitStatusSql('$2::timestamptz', 'c.submission_due_date', '$3::text')} AS s FROM course c WHERE c.course_id = $1`, [
+      courseId,
+      submittedAt,
+      SUBMIT_TIMEZONE,
+    ]);
+    return rows[0].s as string;
+  }
+
   private async findWithScope(request: RbacRequest, submissionId: number): Promise<Row> {
     const { rows } = await this.db.query(`SELECT * FROM submission WHERE submission_id = $1`, [submissionId]);
     if (rows.length === 0) throw new NotFoundException('대상을 찾을 수 없습니다.');

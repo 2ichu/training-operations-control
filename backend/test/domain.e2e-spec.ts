@@ -1581,6 +1581,67 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect(detail).toMatchObject({ traineeName: '확정1', courseName: '과정1' });
     });
 
+    it('D-04 제출기한(과정 공통): 그날 24:00(KST) 이후 제출은 기한후제출, 재등록은 재제출 시각으로 재판정', async () => {
+      const ops1 = await as('ops');
+      await ops1.patch(`/api/v1/courses/${c1}`).send({ submission_due_date: '2027-01-10' }).expect(200);
+      expect((await ops1.get(`/api/v1/courses/${c1}`).expect(200)).body.submissionDueDate).toBe('2027-01-10');
+      const onTime = (await ops1.post(`/api/v1/courses/${c1}/submissions`).send({ trainee_id: tConfirmed1, title: '마감 직전', submitted_at: '2027-01-10T23:59:59+09:00' }).expect(201)).body;
+      expect(onTime.submitStatus).toBe('SUBMITTED');
+      const late = (await ops1.post(`/api/v1/courses/${c1}/submissions`).send({ trainee_id: tConfirmed1, title: '자정 제출', submitted_at: '2027-01-11T00:00:00+09:00' }).expect(201)).body;
+      expect(late.submitStatus).toBe('LATE_SUBMITTED');
+      // 재등록: 기한 안의 시각으로 다시 내면 제출됨, 기한 뒤면 기한후제출
+      expect((await ops1.post(`/api/v1/submissions/${onTime.submissionId}/re-register`).send({ submitted_at: '2027-01-12T09:00:00+09:00' }).expect(200)).body.submitStatus).toBe('LATE_SUBMITTED');
+      expect((await ops1.post(`/api/v1/submissions/${late.submissionId}/re-register`).send({ submitted_at: '2027-01-09T09:00:00+09:00' }).expect(200)).body.submitStatus).toBe('SUBMITTED');
+      // 기한이 없는 과정은 판정하지 않는다
+      expect((await ops1.post(`/api/v1/courses/${c2}/submissions`).send({ trainee_id: tConfirmed2, title: 'x', submitted_at: '2030-01-01T00:00:00+09:00' }).expect(201)).body.submitStatus).toBe('SUBMITTED');
+      expect((await ops1.post('/api/v1/courses').send({ course_name: '기한 과정', start_date: '2027-01-01', end_date: '2027-01-31', total_hours: 10, training_site: 'x', manager_user_id: ops, submission_due_date: '2027-01-20' }).expect(201)).body.submissionDueDate).toBe('2027-01-20');
+      expect((await ops1.patch(`/api/v1/courses/${c1}`).send({ submission_due_date: '2027-13-01' })).status).toBe(400);
+    });
+
+    it('D-04 제출기한 변경 시 기존 결과물 재판정(바뀐 건만, 건별 감사로그), 기한 삭제 시 모두 제출됨', async () => {
+      const ops1 = await as('ops');
+      await ops1.patch(`/api/v1/courses/${c1}`).send({ submission_due_date: '2027-01-10' }).expect(200);
+      const a = (await ops1.post(`/api/v1/courses/${c1}/submissions`).send({ trainee_id: tConfirmed1, title: 'A', submitted_at: '2027-01-08T10:00:00+09:00' }).expect(201)).body;
+      const b = (await ops1.post(`/api/v1/courses/${c1}/submissions`).send({ trainee_id: tConfirmed1, title: 'B', submitted_at: '2027-01-12T10:00:00+09:00' }).expect(201)).body;
+      expect([a.submitStatus, b.submitStatus]).toEqual(['SUBMITTED', 'LATE_SUBMITTED']);
+
+      const since = await maxAudit();
+      const moved = (await ops1.patch(`/api/v1/courses/${c1}`).send({ submission_due_date: '2027-01-07', reason: '기한 앞당김' }).expect(200)).body;
+      expect(moved.rejudgedSubmissionCount).toBe(1); // A 만 바뀜(B 는 이미 기한후제출)
+      const status = async (id: number) => (await rows(`SELECT submit_status FROM submission WHERE submission_id = $1`, [id]))[0].submit_status;
+      expect([await status(a.submissionId), await status(b.submissionId)]).toEqual(['LATE_SUBMITTED', 'LATE_SUBMITTED']);
+      const logs = (await auditSince(since)).filter((r) => r.target_table === 'submission' && r.action === 'UPDATE');
+      expect(logs).toHaveLength(1);
+      expect(logs[0]).toMatchObject({ target_id: String(a.submissionId), reason: '결과물 제출기한 변경에 따른 재판정' });
+      expect(logs[0].before_value.submit_status).toBe('SUBMITTED');
+
+      const cleared = (await ops1.patch(`/api/v1/courses/${c1}`).send({ submission_due_date: null }).expect(200)).body;
+      expect(cleared).toMatchObject({ submissionDueDate: null, rejudgedSubmissionCount: 2 });
+      expect([await status(a.submissionId), await status(b.submissionId)]).toEqual(['SUBMITTED', 'SUBMITTED']);
+    });
+
+    it('S20: 미제출 + 기한후제출(missing_or_late), 제출기한·경과일수(미제출=오늘-기한, 기한후=제출일-기한)', async () => {
+      const ops1 = await as('ops');
+      const t3 = await one(`INSERT INTO trainee (name) VALUES ('확정3') RETURNING trainee_id id`);
+      await client.query(`INSERT INTO trainee_enrollment (trainee_id, course_id, status) VALUES ($1, $2, 'CONFIRMED')`, [t3, c1]);
+      await ops1.patch(`/api/v1/courses/${c1}`).send({ submission_due_date: '2020-01-10' }).expect(200);
+      await ops1.post(`/api/v1/courses/${c1}/submissions`).send({ trainee_id: t3, title: '늦음', submitted_at: '2020-01-13T09:00:00+09:00' }).expect(201);
+      const res = (await ops1.get(`/api/v1/courses/${c1}/submission-status?missing_or_late=true`).expect(200)).body;
+      expect(res.submissionDueDate).toBe('2020-01-10');
+      const byName = Object.fromEntries(res.items.map((r: { traineeName: string }) => [r.traineeName, r]));
+      expect(byName['확정3']).toMatchObject({ displayStatus: 'LATE_SUBMITTED', overdueDays: 3 });
+      expect(byName['확정1']).toMatchObject({ displayStatus: 'NOT_SUBMITTED' });
+      expect(byName['확정1'].overdueDays).toBeGreaterThan(365); // 2020-01-10 이후 오늘까지
+      // 제출됨은 S20 에 나오지 않는다
+      await ops1.post(`/api/v1/courses/${c1}/submissions`).send({ trainee_id: tConfirmed1, title: '제때', submitted_at: '2020-01-09T09:00:00+09:00' }).expect(201);
+      const after = (await ops1.get(`/api/v1/courses/${c1}/submission-status?missing_or_late=true`).expect(200)).body.items;
+      expect(after.map((r: { traineeName: string }) => r.traineeName)).toEqual(['확정3']);
+      // 기한이 아직 오지 않았으면 경과일수 없음
+      await ops1.patch(`/api/v1/courses/${c1}`).send({ submission_due_date: '2099-01-01' }).expect(200);
+      const future = (await ops1.get(`/api/v1/courses/${c1}/submission-status?missing_only=true`).expect(200)).body;
+      expect(future.items.every((r: { overdueDays: number | null }) => r.overdueDays === null)).toBe(true);
+    });
+
     it('S05 훈련생 상세: 본인 제출 결과물 목록, course_id 필터', async () => {
       const ops1 = await as('ops');
       await ops1.post(`/api/v1/courses/${c1}/submissions`).send({ trainee_id: tConfirmed1, title: '보고서', submitted_at: '2027-01-10T00:00:00Z' }).expect(201);

@@ -23,6 +23,7 @@ const missing = (overrides: Partial<SubmissionStatusRow> = {}): SubmissionStatus
   reviewStatus: null,
   registeredAt: null,
   registeredByName: null,
+  overdueDays: null,
   displayStatus: 'NOT_SUBMITTED',
   ...overrides,
 })
@@ -109,19 +110,39 @@ describe('S19 결과물 제출현황', () => {
 })
 
 describe('S20 결과물 미제출', () => {
-  it('미제출 대상자만(missing_only), 마스킹 연락처, 조회 전용', async () => {
+  it('미제출 + 기한후제출(missing_or_late), 제출기한·경과일수, 마스킹 연락처, 조회 전용', async () => {
     const { calls } = mockApi({
       'GET /auth/me': { status: 200, body: me() },
       'GET /courses': courses,
-      'GET /courses/3/submission-status': { status: 200, body: { items: [missing()] } },
+      'GET /courses/3/submission-status': {
+        status: 200,
+        body: { submissionDueDate: '2026-09-20', items: [missing({ overdueDays: 9 }), submitted({ submitStatus: 'LATE_SUBMITTED', displayStatus: 'LATE_SUBMITTED', overdueDays: 2 })] },
+      },
     })
     renderAt('/submissions/missing?course_id=3')
     const row = await screen.findByRole('row', { name: /김하나/ })
     expect(row).toHaveTextContent('***-****-1111')
+    expect(row).toHaveTextContent('2026-09-20')
+    expect(row).toHaveTextContent('9일')
+    expect(within(row).getByText('미제출')).toHaveClass('badge-computed')
+    const late = screen.getByRole('row', { name: /이두리/ })
+    expect(late).toHaveTextContent('기한후제출')
+    expect(late).toHaveTextContent('2일')
     await waitFor(() => expect(row).toHaveTextContent('웹개발 1기'))
-    expect(calls.find((c) => c.path === '/courses/3/submission-status')?.query.get('missing_only')).toBe('true')
+    expect(calls.find((c) => c.path === '/courses/3/submission-status')?.query.get('missing_or_late')).toBe('true')
     expect(within(screen.getByRole('table')).queryByRole('button')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: '제출현황에서 등록하기' })).toHaveAttribute('href', '/submissions?course_id=3')
+  })
+
+  it('제출기한이 없는 과정은 안내하고 경과일수는 비운다', async () => {
+    mockApi({
+      'GET /auth/me': { status: 200, body: me() },
+      'GET /courses': courses,
+      'GET /courses/3/submission-status': { status: 200, body: { submissionDueDate: null, items: [missing()] } },
+    })
+    renderAt('/submissions/missing?course_id=3')
+    expect(await screen.findByText(/이 과정에는 결과물 제출기한이 없습니다/)).toBeInTheDocument()
+    expect(screen.getByRole('row', { name: /김하나/ })).toHaveTextContent('-')
   })
 })
 

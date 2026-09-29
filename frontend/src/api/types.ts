@@ -154,6 +154,8 @@ export interface CourseListItem {
   trainingSite: string
   managerUserId: number
   managerName: string | null
+  /** 결과물 제출기한(D-04, 과정 공통) */
+  submissionDueDate: string | null
   status: string
   createdAt: string
   updatedAt: string
@@ -508,7 +510,14 @@ export interface SubmissionStatusRow {
   /** 등록일시·등록자(audit_log CREATE 기록) */
   registeredAt: string | null
   registeredByName: string | null
+  /** 미제출=오늘-기한, 기한후제출=제출일-기한(일). 기한 전·기한 없음은 null */
+  overdueDays: number | null
   displayStatus: string
+}
+
+export interface SubmissionStatusResponse {
+  submissionDueDate: string | null
+  items: SubmissionStatusRow[]
 }
 
 // GET /submissions/{id} (S21)

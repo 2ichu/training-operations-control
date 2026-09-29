@@ -6,12 +6,13 @@ import { escapeLike, pageOf, toApi, Where } from '../common/api.js';
 import { todayIn } from '../common/today.js';
 import { assertCourseOpen, conflict, lockRow } from '../common/tx.js';
 import {
-  asObject, isValidDate, type Obj, optStr, qDate, qEnumList, qInt, qStr, reqDate, reqInt, reqStr,
+  asObject, isValidDate, type Obj, optDate, optStr, qDate, qEnumList, qInt, qStr, reqDate, reqInt, reqStr,
 } from '../common/validation.js';
 import { PG_POOL } from '../database/database.module.js';
 import type { AccessContext, RbacRequest } from '../rbac/rbac.types.js';
 import { ScopeService } from '../rbac/scope.service.js';
 import { SCHEDULE_TIMEZONE, scheduleDisplayStatusSql } from '../schedule/schedule.service.js';
+import { SUBMIT_TIMEZONE, submitStatusSql } from '../common/submit-status.js';
 import { ACTIVE_STATUSES } from '../verification/verification.constants.js';
 
 export const COURSE_STATUSES = ['PREPARING', 'RECRUITING', 'IN_PROGRESS', 'CLOSED', 'SUSPENDED'] as const;
@@ -29,7 +30,7 @@ export interface ClosureItem {
 }
 
 // manager_name: 화면(S15 목록 "담당자" 열, S16 상세)에 이름으로 표시하기 위한 조인 값
-const COLUMNS = `c.course_id, c.course_name, c.start_date, c.end_date, c.total_hours, c.training_site, c.manager_user_id,
+const COLUMNS = `c.course_id, c.course_name, c.start_date, c.end_date, c.total_hours, c.training_site, c.manager_user_id, c.submission_due_date,
   (SELECT u.name FROM user_account u WHERE u.user_id = c.manager_user_id) AS manager_name, c.status, c.created_at, c.updated_at`;
 // 강사(OWN_ASSIGNED)에게는 확정 이전·취소 상태의 등록 건을 집계에 포함하지 않는다(ScopeService.canAccessTrainee 와 동일 기준)
 const HIDDEN_FOR_SCOPED = `('APPLIED', 'REVIEWING', 'CANCELLED')`;
@@ -135,6 +136,7 @@ export class CourseService {
       total_hours: reqInt(o, 'total_hours'),
       training_site: reqStr(o, 'training_site', 200),
       manager_user_id: reqInt(o, 'manager_user_id'),
+      submission_due_date: optDate(o, 'submission_due_date') ?? null, // D-04 결과물 제출기한(선택)
     };
     if (values.end_date < values.start_date) throw invalidRange();
     return this.transactions.run(async (tx) => {
@@ -154,6 +156,7 @@ export class CourseService {
     put('total_hours', o.total_hours === undefined ? undefined : reqInt(o, 'total_hours'));
     put('training_site', o.training_site === undefined ? undefined : reqStr(o, 'training_site', 200));
     put('manager_user_id', o.manager_user_id === undefined ? undefined : reqInt(o, 'manager_user_id'));
+    if ('submission_due_date' in o) set.submission_due_date = optDate(o, 'submission_due_date') ?? null; // null = 기한 없음
     if (Object.keys(set).length === 0) throw new BadRequestException({ code: 'VALIDATION', message: '변경할 필드가 없습니다' });
     const reason = optStr(o, 'reason', 500) ?? undefined;
 
@@ -164,8 +167,24 @@ export class CourseService {
       const end = (set.end_date ?? current.end_date) as string;
       if (isValidDate(start) && isValidDate(end) && end < start) throw invalidRange();
       if (set.manager_user_id !== undefined) await this.assertManager(tx, set.manager_user_id as number);
-      return toApi(await tx.update('course', { course_id: courseId }, set, { reason }));
+      const updated = await tx.update('course', { course_id: courseId }, set, { reason });
+      // 제출기한이 바뀌면 이미 등록된 결과물의 제출상태를 새 기한으로 다시 판정한다(바뀐 건만, 건별 audit_log)
+      const rejudged = 'submission_due_date' in set ? await this.rejudgeSubmissions(tx, courseId) : 0;
+      return rejudged > 0 ? { ...toApi(updated), rejudgedSubmissionCount: rejudged } : toApi(updated);
     });
+  }
+
+  private async rejudgeSubmissions(tx: AuditedTx, courseId: number): Promise<number> {
+    const { rows } = await tx.query(
+      `SELECT s.submission_id, s.submit_status, ${submitStatusSql('s.submitted_at', 'c.submission_due_date', '$2::text')} AS judged
+         FROM submission s JOIN course c ON c.course_id = s.course_id WHERE s.course_id = $1 ORDER BY s.submission_id FOR UPDATE OF s`,
+      [courseId, SUBMIT_TIMEZONE],
+    );
+    const changed = rows.filter((r) => r.submit_status !== r.judged);
+    for (const r of changed) {
+      await tx.update('submission', { submission_id: Number(r.submission_id) }, { submit_status: r.judged }, { reason: '결과물 제출기한 변경에 따른 재판정' });
+    }
+    return changed.length;
   }
 
   // ── 상태 전이 (baseline 3-1) ────────────────────────────────────────────

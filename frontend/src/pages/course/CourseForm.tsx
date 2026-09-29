@@ -13,6 +13,7 @@ const FIELD_MAP: Record<string, keyof CourseFormValues> = {
   end_date: 'endDate',
   total_hours: 'totalHours',
   training_site: 'trainingSite',
+  submission_due_date: 'submissionDueDate',
   manager_user_id: 'managerUserId',
 }
 
@@ -59,7 +60,9 @@ export function CourseForm({
       total_hours: Number(values.totalHours),
       training_site: values.trainingSite.trim(),
       manager_user_id: Number(values.managerUserId),
+      submission_due_date: values.submissionDueDate || null,
     }
+    if (mode === 'create' && payload.submission_due_date === null) delete payload.submission_due_date // 등록 때 기한을 비우면 보내지 않는다
     const body = mode === 'create' ? payload : changedOnly(payload, initial)
     if (mode === 'edit') {
       if (Object.keys(body).length === 0) return setErrors({ form: '변경한 내용이 없습니다.' })
@@ -128,6 +131,12 @@ export function CourseForm({
         </select>
         {error('managerUserId')}
       </div>
+      <div className="field">
+        <label htmlFor="course-submissionDueDate">결과물 제출기한(선택)</label>
+        <input type="date" {...field('submissionDueDate')} />
+        <span className="hint">이 날 24:00 이후 제출한 결과물은 "기한후제출"로 표시됩니다. 바꾸면 이미 등록된 결과물도 새 기한으로 다시 판정합니다.</span>
+        {error('submissionDueDate')}
+      </div>
       {mode === 'edit' && (
         <label>
           수정 사유(선택)
@@ -167,6 +176,7 @@ function changedOnly(payload: Record<string, unknown>, initial: CourseFormValues
     total_hours: Number(initial.totalHours),
     training_site: initial.trainingSite,
     manager_user_id: Number(initial.managerUserId),
+    submission_due_date: initial.submissionDueDate || null,
   }
   return Object.fromEntries(Object.entries(payload).filter(([k, v]) => before[k] !== v))
 }
