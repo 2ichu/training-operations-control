@@ -386,12 +386,12 @@
 
 | 처리 | 종류 | 실행 시점 | actor_type | 비고 |
 |---|---|---|---|---|
-| RULE_01·02 평가 | 이벤트 처리 | attendance INSERT 커밋 후 비동기(출결 저장을 지연시키지 않음) | SYSTEM_RULE | 6절 |
+| ~~RULE_01·02 평가~~ | — | **도입하지 않음(P7-01)** | — | — |
 | RULE_03~06 평가 | 배치 | 6절 시점표 | SYSTEM_RULE | 스케줄러가 호출하되 결과 기록의 행위자는 탐지 엔진 |
 | 공식 출결 수집·대사·RULE_07 | 파일 업로드(S29) | #1 확정(2026-09-29, CSV 업로드): 업로드 요청 안에서 즉시 대사 | SYSTEM_BATCH(업로더는 raw·audit 사유에 기록) | STEP 8.2, decisions.md 12절 |
 | 과정 자동 운영중 전환 | 배치 | 매일 자정 직후 | SYSTEM_BATCH | 조건: 첫 교육일 도래 + 확정 훈련생 ≥ 1. 조건 미충족이면 전환하지 않음 |
 
-구현(Phase 5, 2026-09-28): 위 표에서 공식 출결 연동(#1 대기)을 제외한 전부가 가동된다. 시간 기반 배치는 `BatchSchedulerService`(APP_TIMEZONE 벽시계 기준) — 과정 자동 전환 00:05, RULE_03 매시 정각, RULE_04 22:00 + 익일 09:00 재확인, RULE_05 01:00, RULE_06 01:10이며, 시점표가 시각을 정하지 않은 항목(00:05·09:00·01:00·01:10)은 기술적 기본값이다. RULE_01·02는 입실 확인 커밋 직후 해당 회차만 비동기 평가하고, 유실 대비로 01:20·01:30에 전체 회차를 한 번 더 평가한다(멱등). 배치·이벤트는 `BATCH_ENABLED`로 끄고 켠다(decisions.md 11절).
+구현(Phase 5, 2026-09-28): 위 표에서 공식 출결 연동(#1 대기)을 제외한 전부가 가동된다. 시간 기반 배치는 `BatchSchedulerService`(APP_TIMEZONE 벽시계 기준) — 과정 자동 전환 00:05, RULE_03 매시 정각, RULE_04 22:00 + 익일 09:00 재확인, RULE_05 01:00, RULE_06 01:10이며, 시점표가 시각을 정하지 않은 항목(00:05·09:00·01:00·01:10)은 기술적 기본값이다. (RULE_01·02 이벤트 평가·보정 배치는 2026-09-29 P7-01 로 삭제됨.) 배치·이벤트는 `BATCH_ENABLED`로 끄고 켠다(decisions.md 11절).
 
 ### 5-4. 명세 갭(정의 없이 임의 구현 금지)
 
@@ -409,8 +409,8 @@
 
 | Rule ID | 규칙명 | 탐지 시점 | 입력 데이터 | 조건 | 생성되는 확인 건 | 관련 대상 | 예외조건 | 자동처리 여부 |
 |---|---|---|---|---|---|---|---|---|
-| RULE_01 | 동일 환경 복수 출결 | attendance INSERT 커밋 후 즉시(비동기) | attendance(related_info의 device_id, check_in_time, schedule_id) | 같은 회차에서 같은 device_id로 서로 다른 훈련생 min_trainees명(기본 3) 이상이 window_minutes(기본 10)분 이내 출결 | 1건, evidence에 device_id·시각·훈련생 목록 사실 나열. dedupe: course·schedule·device_id | 연루 훈련생 전원 N명(각 attendance_id 연결) | related_info 또는 device_id가 없는 출결(내부수기 등)은 평가 제외, 휴강 회차 제외. 활성 건이 있으면 새 훈련생만 추가 | 자동: 건 생성·훈련생 추가·근거 append만 |
-| RULE_02 | 짧은 시간 내 복수 계정 출결 | attendance INSERT 커밋 후 즉시(비동기) | attendance(related_info의 출결 채널 식별자, check_in_time) | 같은 채널에서 min_events건(기본 5) 이상이 window_minutes(기본 5)분 이내 연속 발생 | 1건. dedupe: schedule·채널 | 연루 훈련생 전원 N명 | related_info 없는 출결 제외, 휴강 제외. "채널" 식별자의 정의는 출결 환경 확정(#2) 후 확정 | 자동: 건 생성만 |
+| ~~RULE_01~~ | ~~동일 환경 복수 출결~~ | **도입하지 않음(2026-09-29, decisions.md P7-01)** — 출결은 등록 단말에 종속되지 않고 여러 기기로 자유롭게 입력되어 신뢰할 수 있는 단말 식별자가 없다. device_id·channel 값이 있어도 판단 근거로 쓰지 않는다 | — | — | — | — | — | — |
+| ~~RULE_02~~ | ~~짧은 시간 내 복수 계정 출결~~ | **도입하지 않음(2026-09-29, decisions.md P7-01)** — 출결은 등록 단말에 종속되지 않고 여러 기기로 자유롭게 입력되어 신뢰할 수 있는 단말 식별자가 없다. device_id·channel 값이 있어도 판단 근거로 쓰지 않는다 | — | — | — | — | — | — |
 | RULE_03 | **회차 운영기록 지연** | 매시 정각 배치 | class_schedule(class_date, end_time, status), operation_log 존재 여부 | 회차 종료 시각 + delay_hours(기본 3) 경과 후에도 해당 회차의 operation_log 행이 없음 | 1건, evidence에 schedule_id·종료 시각·경과 시간. dedupe: schedule. 운영일지가 작성되면 자동 종결하지 않으며 담당자가 확인 | **0명**(훈련생 무관, 회차 단위 운영 이슈) | 휴강 회차 제외. 훈련생의 현장 존재 여부를 판단하지 않는다 — 기존의 "입실 후 현장정보 미확인" 의미와 `operation_log.written_at`을 대리 신호로 쓰는 방식은 폐기 | 자동: 건 생성만 |
 | RULE_04 | 퇴실정보 누락 | 매일 22:00 배치 + 익일 오전 재확인 | attendance(attendance_status, check_out_time), class_schedule.end_time | **attendance_status IN (PRESENT, LATE)** 이고 check_out_time IS NULL 이며 종료 시각 + delay_hours(기본 2) 경과 | 훈련생별 1건. dedupe: attendance_id | 해당 훈련생 1명(attendance_id 연결) | ABSENT·EXCUSED 행, EARLY_LEAVE 행, attendance 행이 없는 미출결, 휴강 회차 제외(미출결은 종료 체크리스트에서 별도 집계) | 자동: 건 생성만 |
 | RULE_05 | 반복적인 출결 수정 | 매일 1회 배치 | attendance_change_log(actor_type=USER 행만) | 동일 훈련생의 수정 건수가 window_days(기본 30)일 내 min_changes(기본 3)회 이상 | 훈련생별 1건. dedupe: trainee·집계 시작일 | 해당 훈련생 1명(대표 attendance_id = 최근 수정 건) | 시스템(공식 대사) 갱신 이력 제외, 종료·중단 과정 제외 | 자동: 건 생성만 |
@@ -528,7 +528,7 @@
 |---|---|---|
 | 훈련생 개인정보 | 성명(필수), 생년월일(선택, 동일인 판정용), 연락처(선택). 주민등록번호·주소·계좌·건강정보는 수집하지 않는다 | 필드 추가는 별도 승인. 연락처는 암호화 저장, 목록·이력에서는 마스킹 표시 |
 | 위치정보 | `attendance.related_info`에는 출결 이벤트 시점의 **구역 코드(zone_code)** 정도만 허용한다 | **정밀 GPS 좌표(위도·경도)를 기본 기능으로 저장하지 않는다.** 위치 상시 수집·이동 경로 추적 금지. 좌표가 꼭 필요하다는 결정이 나면 구역 단위로 변환한 값만 저장 |
-| 기기정보 | 교육장에 설치된 출결 단말의 `device_id`(설치 자산 식별자)만 저장 | 개인 휴대폰의 IMEI·MAC·광고 ID 등 개인 식별 가능한 기기 고유값 수집 금지. 개인 단말을 쓰게 되면 해시된 임의 식별자만(#2 확정 시 재검토) |
+| 기기정보 | 교육장에 설치된 출결 단말의 `device_id`(설치 자산 식별자)만 저장 | 개인 휴대폰의 IMEI·MAC·광고 ID 등 개인 식별 가능한 기기 고유값 수집 금지. (#2 확정: 등록 단말이 없어 기기정보는 판단에 쓰지 않는다 — `related_info` 는 받아서 저장만 함) |
 | 접속정보 | `audit_log.ip_address`(로그인·감사 대상 이벤트) | User-Agent·화면 위치 등 추가 수집 금지. 보존은 감사로그와 동일(#8), 열람은 S27(SYS_ADMIN·EXEC)만 |
 | 파일 | 운영일지·특이사항·결과물 첨부만 저장(`attachment`) | 저장소는 웹에 직접 노출되지 않는 비공개 위치. 형식·용량 제한과 악성 파일 검사는 #12 확정 시 적용 |
 | 개인정보 수정이력 | `trainee_change_log`·`audit_log`의 before/after에서 연락처·생년월일은 **마스킹한 값**으로 저장(예: 010-****-1234). 변경 사실·변경자·시각·사유는 원문 유지 | 원문 값을 로그에 남기지 않는다 |
@@ -562,7 +562,7 @@
 | H2 | STEP 4.1: 등록은 S04에서만 | STEP 4.1 | — | S02·S04 | 문서 |
 | H3 | STEP 4.1: 강사 배정 저장은 S13 | STEP 4.1 | — | S11·S13 | 문서 |
 | H4 | 결과물 검토는 운영담당자만 | STEP 4.5·7-A(S21) | — | S21 | 권한 |
-| H5 | RULE_01·02는 related_info 있는 출결에만 적용 | STEP 8.1 | attendance.related_info | S07 | 로직 |
+| ~~H5~~ | ~~RULE_01·02는 related_info 있는 출결에만 적용~~ → **RULE_01·02 미도입(P7-01)** | STEP 8.1 | attendance.related_info | S07 | 해소 |
 | H6 | 특이사항 전환 시 자동 확인중, 이후 독립 관리 | STEP 7-A(S18) | course_issue | S18·S23 | 로직 |
 | H7 | 서버/API 권한 재검증 원칙 명시 | STEP 2.6, baseline 4-3·10 | — | 전체 | 로직(필수) |
 | M1 | evidence를 items 배열 append 구조로 확정 | STEP 8.4 | verification_case.evidence | S23 | 로직 |
@@ -625,7 +625,7 @@
 | 23 | 수료·중도포기·제적 기준과 처리 화면 | 현재 명세에 전이 화면이 없어 수료 판정이 불가능 |
 | 24·5 | 결과물 제출기한 위치·제출 단위 | **#24 확정(과정 공통 기한, 2026-09-29)**. 제출 단위(#5)는 현행(과정당 여러 건, title 구분) |
 | 1 | 공식 출결 연동 방식 | attendance_source_raw 필요 여부, actor_type(SYSTEM_API/BATCH), RULE_07 가동 여부 |
-| 2 | 출결 확인 환경(기기·채널 식별자) | RULE_01·02의 related_info 스키마, 개인정보 최소화 기준 |
+| ~~2~~ | ~~출결 확인 환경(기기·채널 식별자)~~ **확정(D-12): 등록 단말 없음 → RULE_01·02 미도입** | RULE_01·02의 related_info 스키마, 개인정보 최소화 기준 |
 | 16 | 훈련생 개별 중간 현장확인 이벤트 도입 | 도입 시 별도 규칙·이벤트 테이블 설계가 필요, 미도입이면 RULE_03 현행 유지 |
 | 8 | 감사로그·변경이력 보존기간 | 법정 기간·파기 절차가 저장·아카이빙 설계와 DB 권한을 결정 |
 | 28 | 첨부·결과물 파일 보존기간 | 파일 저장소 수명주기와 파기 절차 |
@@ -725,7 +725,7 @@
 | S26 | GET /roles, GET /roles/permissions, PUT /roles/{id}/permissions |
 | S27 | GET /audit-logs, GET /audit-logs/{id} |
 | S28 | GET /detection-rules, PATCH /detection-rules/{id}, GET·PATCH /attendance-settings |
-| 내부 처리 | RULE_01·02 이벤트, RULE_03~06 배치, 공식 수집·대사·RULE_07(#1), 과정 자동 전환 |
+| 내부 처리 | RULE_03~06 배치, 공식 수집·대사·RULE_07(#1), 과정 자동 전환 |
 
 ### D. 최종 권한 매트릭스 (요약)
 
@@ -764,7 +764,7 @@ O=허용, R=조회만, —=불가, ◎=서버 스코프 재검증, △=결정 �
 - (확정 완료 2026-09-22: #17·#30·#13 종료·강행·종결 승인 구조 — decisions.md D-06. API 구현 시점은 Phase 2~4, P1-03 참고)
 
 **기능 착수 시점에 확정해도 되는 것**
-- ~~#1 공식 출결 연동~~ — **확정(D-12, CSV 업로드)**, #2 출결 환경(단말·채널) — RULE_01·02 정식 가동 전
+- ~~#1 공식 출결 연동~~ — **확정(D-12, 파일 업로드)**, ~~#2 출결 환경(단말·채널)~~ — **확정(RULE_01·02 미도입)**
 - #26 조치 기준·initial_status 시드 — 탐지 엔진 시드 데이터 작성 전
 - #25 출결 수정 허용 범위 — S09 정책 구현 전
 - #19·#21 예외 수정·중도 등록 — 해당 API 구현 전

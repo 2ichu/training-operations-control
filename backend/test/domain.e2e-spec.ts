@@ -1363,8 +1363,8 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
     });
   });
 
-  // ── Phase 3: 확인 필요 탐지 엔진 (RULE_01~06) ────────────────────────────
-  describe('탐지 엔진 (RULE_01~06)', () => {
+  // ── Phase 3: 확인 필요 탐지 엔진 (RULE_03~06, RULE_01·02 는 도입하지 않음) ────────────────────────────
+  describe('탐지 엔진 (RULE_03~06)', () => {
     const ruleId = (code: string) => one(`SELECT rule_id id FROM detection_rule WHERE rule_code = $1`, [code]);
 
     it('RULE_04: 퇴실정보 누락 — PRESENT/LATE·지연시간 경과만 매칭, ABSENT 는 제외, 재실행은 멱등', async () => {
@@ -1413,54 +1413,24 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect((await rows(`SELECT status FROM verification_case WHERE case_id = $1`, [caseRow.case_id]))[0].status).toBe('NEEDS_CHECK');
     });
 
-    it('RULE_01: 동일 환경 복수 출결 — 다중 훈련생 연결, 재실행 멱등, 새 훈련생은 기존 건에 추가(신규 건 아님)', async () => {
-      await client.query(`UPDATE detection_rule SET params = '{"min_trainees":2,"window_minutes":10}' WHERE rule_code = 'RULE_01'`);
-      const t2 = await one(`INSERT INTO trainee (name) VALUES ('R1-2') RETURNING trainee_id id`);
-      const t3 = await one(`INSERT INTO trainee (name) VALUES ('R1-3') RETURNING trainee_id id`);
-      await client.query(`INSERT INTO trainee_enrollment (trainee_id, course_id, status) VALUES ($1, $2, 'CONFIRMED'), ($3, $2, 'CONFIRMED')`, [t2, c1, t3]);
+    it('RULE_01·02(단말·채널 기반)는 도입하지 않는다: related_info 에 device_id·channel 이 있어도 저장만 하고 어떤 확인 건도 만들지 않는다(P7-01)', async () => {
       const ops1 = await as('ops');
+      const extra: number[] = [];
+      for (const name of ['단말A', '단말B', '단말C']) {
+        const t = await one(`INSERT INTO trainee (name) VALUES ($1) RETURNING trainee_id id`, [name]);
+        await client.query(`INSERT INTO trainee_enrollment (trainee_id, course_id, status) VALUES ($1, $2, 'CONFIRMED')`, [t, c1]);
+        extra.push(t);
+      }
       const now = new Date().toISOString();
-      await ops1.post(`/api/v1/schedules/${s1}/attendance/check-in`).send({ trainee_ids: [tConfirmed1, t2], check_in_time: now, related_info: { device_id: 'dev-1' } }).expect(201);
-
-      const since = await maxAudit();
-      const r1 = await detection.runRule01();
-      expect(r1).toMatchObject({ skipped: false, casesCreated: 1 });
-      const rid = await ruleId('RULE_01');
-      const caseId = (await one(`SELECT case_id id FROM verification_case WHERE detection_rule_id = $1`, [rid]));
-      expect(await num(`SELECT count(*) n FROM verification_case_trainee WHERE case_id = $1`, [caseId])).toBe(2);
-      // baseline 7-21행: 신규 건 생성 시점엔 verification_case 만 감사 대상(최초 훈련생 연결은 별도 감사 없음)
-      expect((await auditSince(since)).filter((r) => r.target_table === 'verification_case')).toHaveLength(1);
-      expect((await auditSince(since)).filter((r) => r.target_table === 'verification_case_trainee')).toHaveLength(0);
-
-      const r2 = await detection.runRule01();
-      expect(r2.casesCreated).toBe(0);
-      const evidenceAfterRerun = (await rows(`SELECT evidence FROM verification_case WHERE case_id = $1`, [caseId]))[0].evidence;
-      expect(evidenceAfterRerun.items).toHaveLength(1); // 근거 중복 추가 없음
-
-      const since2 = await maxAudit();
-      await ops1.post(`/api/v1/schedules/${s1}/attendance/check-in`).send({ trainee_ids: [t3], check_in_time: now, related_info: { device_id: 'dev-1' } }).expect(201);
-      const r3 = await detection.runRule01();
-      expect(r3.casesCreated).toBe(0); // 새 사건이 아니라 기존 건에 훈련생만 추가
-      expect(await num(`SELECT count(*) n FROM verification_case WHERE detection_rule_id = $1`, [rid])).toBe(1);
-      expect(await num(`SELECT count(*) n FROM verification_case_trainee WHERE case_id = $1`, [caseId])).toBe(3);
-      // baseline 7-22행("확인 건 근거 추가·훈련생 추가"): 기존 활성 건에 훈련생을 추가할 때는 verification_case_trainee 도 감사 대상
-      const linkAudit = (await auditSince(since2)).filter((r) => r.target_table === 'verification_case_trainee' && r.action === 'CREATE');
-      expect(linkAudit).toHaveLength(1);
-      expect(linkAudit[0]).toMatchObject({ actor_type: 'SYSTEM_RULE', target_id: String(caseId), reason: 'RULE_01' });
-    });
-
-    it('RULE_02: 짧은 시간 내 복수 채널 출결 — related_info.channel 로 매칭(baseline #2 확정 전 임시 필드)', async () => {
-      await client.query(`UPDATE detection_rule SET params = '{"min_events":2,"window_minutes":10}' WHERE rule_code = 'RULE_02'`);
-      const t2 = await one(`INSERT INTO trainee (name) VALUES ('R2-2') RETURNING trainee_id id`);
-      await client.query(`INSERT INTO trainee_enrollment (trainee_id, course_id, status) VALUES ($1, $2, 'CONFIRMED')`, [t2, c1]);
-      const ops1 = await as('ops');
-      const now = new Date().toISOString();
-      await ops1.post(`/api/v1/schedules/${s1}/attendance/check-in`).send({ trainee_ids: [tConfirmed1, t2], check_in_time: now, related_info: { channel: 'kiosk-1' } }).expect(201);
-
-      const r1 = await detection.runRule02();
-      expect(r1).toMatchObject({ skipped: false, casesCreated: 1 });
-      const rid = await ruleId('RULE_02');
-      expect(await num(`SELECT count(*) n FROM verification_case WHERE detection_rule_id = $1`, [rid])).toBe(1);
+      // 같은 device_id·channel 로 여러 명이 거의 동시에 입실해도(과거 RULE_01·02 조건) 건이 생기지 않는다
+      const res = (await ops1.post(`/api/v1/schedules/${s1}/attendance/check-in`).send({ trainee_ids: [tConfirmed1, ...extra], check_in_time: now, related_info: { device_id: 'dev-1', channel: 'kiosk-1' } }).expect(201)).body;
+      expect(res.created).toHaveLength(4);
+      expect(await num(`SELECT count(*) n FROM attendance WHERE related_info->>'device_id' = 'dev-1'`)).toBe(4); // 값 자체는 그대로 저장
+      await new Promise((resolve) => setTimeout(resolve, 200)); // 예전의 비동기 평가가 있었다면 그 사이에 건이 생겼을 것
+      expect(await num(`SELECT count(*) n FROM verification_case`)).toBe(0);
+      // 규칙 행이 남아 있는 옛 DB 를 흉내 내도(마이그레이션이 사용 안 함으로 바꿈) 실행 경로가 없다
+      expect((detection as unknown as Record<string, unknown>).runRule01).toBeUndefined();
+      expect((detection as unknown as Record<string, unknown>).runRule02).toBeUndefined();
     });
 
     it('RULE_05: 반복적인 출결 수정 — 사람(USER) 수정만 집계, 시스템 수정은 제외', async () => {
@@ -1501,28 +1471,14 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
     });
   });
 
-  // ── Phase 5: 탐지 규칙 회차 범위 평가 + S28 파라미터 관리 + P1-10 자동 운영중 전환 ─────────────
-  describe('탐지 엔진 회차 범위 평가 (RULE_01·02 출결 이벤트용)', () => {
-    it('scheduleId 를 지정하면 그 회차만 평가하고, 지정하지 않으면 전체를 평가한다', async () => {
-      await client.query(`UPDATE detection_rule SET params = '{"min_trainees":2,"window_minutes":10}' WHERE rule_code = 'RULE_01'`);
-      const t2 = await one(`INSERT INTO trainee (name) VALUES ('EV-2') RETURNING trainee_id id`);
-      await client.query(`INSERT INTO trainee_enrollment (trainee_id, course_id, status) VALUES ($1, $2, 'CONFIRMED')`, [t2, c1]);
-      const ops1 = await as('ops');
-      await ops1.post(`/api/v1/schedules/${s1}/attendance/check-in`).send({ trainee_ids: [tConfirmed1, t2], check_in_time: new Date().toISOString(), related_info: { device_id: 'dev-ev' } }).expect(201);
-
-      expect(await detection.runRule01({ scheduleId: s2 })).toMatchObject({ skipped: false, casesCreated: 0, casesUpdated: 0 });
-      expect(await detection.runRule01({ scheduleId: s1 })).toMatchObject({ skipped: false, casesCreated: 1 });
-      expect(await detection.runRule01()).toMatchObject({ casesCreated: 0, casesUpdated: 1 }); // 전체 평가: 같은 건(멱등)
-    });
-  });
-
+  // ── Phase 5: S28 파라미터 관리 + P1-10 자동 운영중 전환 ─────────────
   describe('탐지규칙 파라미터 관리 (S28)', () => {
     const rule = async (code: string) => (await rows(`SELECT rule_id, params, is_active FROM detection_rule WHERE rule_code = $1`, [code]))[0];
 
     it('조회·수정은 SYS_ADMIN 만 가능하다', async () => {
       const list = await (await as('sys')).get('/api/v1/detection-rules').expect(200);
       const codes = (list.body.items as { ruleCode: string; editable: boolean }[]).map((r) => `${r.ruleCode}:${r.editable}`);
-      expect(codes).toEqual(expect.arrayContaining(['RULE_01:true', 'RULE_06:true', 'MANUAL:false']));
+      expect(codes).toEqual(expect.arrayContaining(['RULE_03:true', 'RULE_06:true', 'RULE_07:true', 'MANUAL:false']));
       const r04 = await rule('RULE_04');
       for (const who of ['ops', 'exec', 'ins1'] as const) {
         expect((await (await as(who)).get('/api/v1/detection-rules')).status, who).toBe(403);
@@ -1556,6 +1512,21 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       const manual = await rule('MANUAL');
       expect((await sys1.patch(`/api/v1/detection-rules/${manual.rule_id}`).send({ reason: 'x', is_active: false })).body).toMatchObject({ code: 'RULE_NOT_EDITABLE' });
       expect((await sys1.patch(`/api/v1/detection-rules/999999999`).send({ reason: 'x', is_active: false })).status).toBe(404);
+    });
+
+    it('도입하지 않은 규칙(RULE_01·02, P7-01): 옛 DB 에 남은 행은 사용 안 함·수정 불가로 보이고 다시 켤 수 없다(409 RULE_RETIRED)', async () => {
+      // 이미 배포된 DB 를 흉내: 시드가 더는 만들지 않는 두 규칙 행이 있고, 마이그레이션(20260929000400)이 사용 안 함으로 바꿔 둔 상태
+      for (const code of ['RULE_01', 'RULE_02']) {
+        await client.query(`INSERT INTO detection_rule (rule_code, rule_name, initial_status, params, is_active) VALUES ($1, '옛 규칙', 'NEEDS_CHECK', '{"min_trainees": 3}', false) ON CONFLICT (rule_code) DO UPDATE SET is_active = false`, [code]);
+      }
+      const sys1 = await as('sys');
+      const list = (await sys1.get('/api/v1/detection-rules').expect(200)).body.items as { ruleCode: string; editable: boolean; retired: boolean; isActive: boolean }[];
+      for (const code of ['RULE_01', 'RULE_02']) expect(list.find((r) => r.ruleCode === code)).toMatchObject({ editable: false, retired: true, isActive: false });
+      expect(list.find((r) => r.ruleCode === 'RULE_04')).toMatchObject({ editable: true, retired: false });
+      const r1 = await rule('RULE_01');
+      expect((await sys1.patch(`/api/v1/detection-rules/${r1.rule_id}`).send({ reason: '다시 켜기', is_active: true })).body).toMatchObject({ code: 'RULE_RETIRED' });
+      expect((await sys1.patch(`/api/v1/detection-rules/${r1.rule_id}`).send({ reason: '값 수정', params: { min_trainees: 5 } })).body).toMatchObject({ code: 'RULE_RETIRED' });
+      expect((await rule('RULE_01')).is_active).toBe(false);
     });
   });
 

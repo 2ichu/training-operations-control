@@ -15,6 +15,7 @@ const GRACE_MAX = 240
 
 // S28 탐지규칙(Phase 5, P5-01·02): 규칙별 기준값(params — 기존 키의 값만)과 사용 여부를 조정한다. 사유 필수, 감사로그 before/after.
 // 초기 상태는 D-11 확정값이라 바꾸지 않고, MANUAL(특이사항 수동 전환용)은 수정할 수 없다. 바꾼 값은 다음 탐지 실행부터 적용된다.
+// RULE_01·02 는 도입하지 않기로 했다(신뢰할 수 있는 단말 식별자 없음). 옛 배포에 행이 남아 있으면 "미도입"으로만 보이고 수정·활성화할 수 없다.
 export function DetectionRulePage() {
   const { can } = useAuth()
   const rules = useApi((signal) => api.get<{ items: DetectionRule[] }>('/detection-rules', undefined, signal).then((r) => r.items), 'rules')
@@ -58,6 +59,12 @@ export function DetectionRulePage() {
                     {r.ruleCode}
                     <br />
                     {r.ruleName}
+                    {r.retired && (
+                      <>
+                        <br />
+                        <span className="hint">도입하지 않은 규칙</span>
+                      </>
+                    )}
                   </td>
                   <td className="wrap">{r.description ?? ''}</td>
                   <td>
@@ -83,7 +90,7 @@ export function DetectionRulePage() {
                         수정
                       </button>
                     ) : !r.editable ? (
-                      <span className="muted">수정 불가</span>
+                      <span className="muted">{r.retired ? '미도입' : '수정 불가'}</span>
                     ) : null}
                   </td>
                 </tr>

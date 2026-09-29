@@ -12,7 +12,8 @@ import { ACTIVE_CASE_STATUSES, CASE_STATUS_LABELS, CASE_STATUS_ORDER, label, RUL
 import { useUrlFilters } from '../../routing/useUrlFilters'
 
 const PAGE_SIZE = 20
-const RULE_CODES = ['RULE_01', 'RULE_02', 'RULE_03', 'RULE_04', 'RULE_05', 'RULE_06', 'MANUAL']
+// RULE_01·02 는 도입하지 않았지만 옛 배포에 과거 확인 건이 남아 있을 수 있어 필터에 둔다.
+const RULE_CODES = ['RULE_01', 'RULE_02', 'RULE_03', 'RULE_04', 'RULE_05', 'RULE_06', 'RULE_07', 'MANUAL']
 
 // S22 확인 필요 목록(system-design 7.2). 상태 필터 기본값은 진행중(미종결) 상태만이며, "전체"를 고르면 종결 건도 본다.
 // 담당자 일괄지정: 배정 가능한 사용자 목록을 볼 수 있는 API 가 시스템 관리자(S25) 전용이라, 선택 건을 "나에게 배정"하는 형태로 제공한다.

@@ -637,4 +637,6 @@ export interface DetectionRule {
   params: Record<string, number>
   description: string | null
   editable: boolean
+  /** 도입하지 않은 규칙(RULE_01·02) — 옛 배포에 남은 행. 사용 안 함이며 수정·활성화할 수 없다 */
+  retired: boolean
 }
