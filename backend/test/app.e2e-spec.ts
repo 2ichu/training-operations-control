@@ -19,11 +19,10 @@ describe('AppController (e2e)', () => {
     await app.init();
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
+  it('/health (GET) — 로그인 없이 호출, DB 에 닿지 않으면 503(업무 정보는 노출하지 않음)', async () => {
+    const res = await request(app.getHttpServer()).get('/health');
+    expect([200, 503]).toContain(res.status);
+    expect(JSON.stringify(res.body)).not.toMatch(/postgres|password|ECONN/i);
   });
 
   afterEach(async () => {

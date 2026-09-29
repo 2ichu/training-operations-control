@@ -1,5 +1,7 @@
 # Backend (NestJS + PostgreSQL)
 
+> 운영 배포(Docker Compose)·환경변수·백업은 [docs/DEPLOY.md](../docs/DEPLOY.md). 헬스체크: `GET /api/v1/health`(로그인 불필요, DB 연결 확인).
+
 ## DB 마이그레이션·시드 (Phase 1)
 
 1. `.env.example` 을 `.env` 로 복사해 `DATABASE_URL` 과 `SEED_ADMIN_*` 를 채운다.
