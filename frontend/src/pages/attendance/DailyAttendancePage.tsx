@@ -140,6 +140,9 @@ function Roster({ schedule, canCheckIn, canCheckOut, canAbsence }: { schedule: S
           </label>
         )}
       </div>
+      {(canCheckIn || canCheckOut) && (
+        <p className="hint">지각·조퇴는 처리 시각으로 자동 판정됩니다. 지난 회차를 나중에 입력할 때는 실제 입실·퇴실 시각을 넣어 주세요(비우면 현재 시각).</p>
+      )}
 
       {selectable && (
         <div className="toolbar">

@@ -90,7 +90,7 @@ describe('S07 일일 출결', () => {
     await waitFor(() => expect(calls.find((c) => c.path === '/attendance/check-out')?.body).toEqual({ attendance_ids: [501] }))
   })
 
-  it('강사: 결석 확정 버튼과 수정 버튼이 없고(상세만), 휴강 회차는 명단을 부르지 않는다', async () => {
+  it('강사: 결석 확정은 본인 회차에서 가능(D-07), 수정 버튼은 없고(상세만), 휴강 회차는 명단을 부르지 않는다', async () => {
     const { calls } = mockApi({
       'GET /auth/me': { status: 200, body: me({ roles: ['INSTRUCTOR'], linkedInstructorId: 2 }, INSTRUCTOR_PERMISSIONS) },
       'GET /courses': courses,
@@ -100,7 +100,7 @@ describe('S07 일일 출결', () => {
     const user = userEvent.setup()
     renderAt('/attendance/daily?date=2026-09-28')
     const row = await screen.findByRole('row', { name: /^다 선택/ })
-    expect(screen.queryByRole('button', { name: /결석 확정/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /결석 확정/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /입실 확인/ })).toBeInTheDocument()
     expect(within(row).getByRole('button', { name: '상세' })).toBeInTheDocument()
     await user.selectOptions(screen.getByLabelText('회차'), '12')

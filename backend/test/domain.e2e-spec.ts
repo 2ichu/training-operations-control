@@ -886,13 +886,65 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect(await num(`SELECT count(*) n FROM attendance`)).toBe(1); // C1: 중복 생성 없음
     });
 
-    it('강사는 본인 회차만 입실 확인 가능(타 회차 404), 결석 확정은 강사 기본 불가(403, D-07)', async () => {
+    it('강사는 본인 회차만 입실 확인 가능(타 회차 404)', async () => {
       const ins1 = await as('ins1');
       expect((await ins1.post(`/api/v1/schedules/${s1}/attendance/check-in`).send({ trainee_ids: [tConfirmed1] }).expect(201)).body.created).toHaveLength(1);
       const since = await maxAudit();
       expect((await ins1.post(`/api/v1/schedules/${s2}/attendance/check-in`).send({ trainee_ids: [tConfirmed2] })).status).toBe(404); // 타 강사 회차
       expect((await auditSince(since)).filter((r) => r.action === 'ACCESS_DENIED' && /SCOPE_VIOLATION:schedule/.test(r.reason))).toHaveLength(1);
-      expect((await ins1.post(`/api/v1/schedules/${s1}/attendance/confirm-absence`).send({ trainee_ids: [tConfirmed1] })).status).toBe(403);
+    });
+
+    it('결석 확정(D-07 확정): 강사도 본인 회차는 가능, 타 강사 회차는 404(스코프 은닉), 마감 없음', async () => {
+      const ins1 = await as('ins1');
+      const since = await maxAudit();
+      const res = (await ins1.post(`/api/v1/schedules/${s1}/attendance/confirm-absence`).send({ trainee_ids: [tConfirmed1] }).expect(201)).body;
+      expect(res.created).toEqual([expect.objectContaining({ traineeId: tConfirmed1, attendanceStatus: 'ABSENT', sourceType: 'MANUAL' })]);
+      expect((await auditSince(since)).filter((r) => r.target_table === 'attendance' && r.action === 'CREATE' && r.actor_user_id === String(insUser1))).toHaveLength(1);
+      expect((await ins1.post(`/api/v1/schedules/${s2}/attendance/confirm-absence`).send({ trainee_ids: [tConfirmed2] })).status).toBe(404);
+      expect(await num(`SELECT count(*) n FROM attendance WHERE schedule_id = $1`, [s2])).toBe(0);
+      // 마감 없음: 회차 날짜가 한참 지난 뒤에도 확정할 수 있다
+      await client.query(`UPDATE class_schedule SET class_date = '2020-01-06' WHERE schedule_id = $1`, [s1]);
+      await client.query(`DELETE FROM attendance WHERE schedule_id = $1`, [s1]);
+      expect((await ins1.post(`/api/v1/schedules/${s1}/attendance/confirm-absence`).send({ trainee_ids: [tConfirmed1] }).expect(201)).body.created).toHaveLength(1);
+    });
+
+    it('지각·조퇴 자동 판정(D-08 확정, 유예 10분): 경계 정각은 정상, 지각 후 조퇴는 지각 유지, 시각은 APP_TIMEZONE 기준', async () => {
+      const ops1 = await as('ops');
+      // s1: 2027-01-05 09:00~18:00 (Asia/Seoul = UTC+9) → 시작 00:00Z, 종료 09:00Z
+      const checkIn = async (time: string) => {
+        await client.query(`DELETE FROM attendance WHERE schedule_id = $1`, [s1]);
+        return (await ops1.post(`/api/v1/schedules/${s1}/attendance/check-in`).send({ trainee_ids: [tConfirmed1], check_in_time: time }).expect(201)).body.created[0];
+      };
+      expect((await checkIn('2027-01-05T00:10:00Z')).attendanceStatus).toBe('PRESENT'); // 09:10 정각 = 유예 안
+      expect((await checkIn('2027-01-05T00:10:01Z')).attendanceStatus).toBe('LATE'); // 09:10:01
+      expect((await checkIn('2027-01-04T23:50:00Z')).attendanceStatus).toBe('PRESENT'); // 08:50
+
+      const checkOut = async (inTime: string, outTime: string) => {
+        const created = await checkIn(inTime);
+        return (await ops1.post('/api/v1/attendance/check-out').send({ attendance_ids: [created.attendanceId], check_out_time: outTime }).expect(200)).body.updated[0];
+      };
+      expect((await checkOut('2027-01-05T00:00:00Z', '2027-01-05T08:50:00Z')).attendanceStatus).toBe('PRESENT'); // 17:50 정각 = 유예 안
+      expect((await checkOut('2027-01-05T00:00:00Z', '2027-01-05T08:49:59Z')).attendanceStatus).toBe('EARLY_LEAVE');
+      expect((await checkOut('2027-01-05T00:30:00Z', '2027-01-05T06:00:00Z')).attendanceStatus).toBe('LATE'); // 지각 + 조퇴 → 지각 유지
+
+      // 설정 변경(S28, SYS_ADMIN): 이후 입실부터 적용, 이미 저장된 상태는 그대로
+      const sys1 = await as('sys');
+      expect((await sys1.get('/api/v1/attendance-settings').expect(200)).body).toMatchObject({ lateGraceMinutes: 10, earlyLeaveGraceMinutes: 10 });
+      const stored = await checkIn('2027-01-05T00:15:00Z');
+      expect(stored.attendanceStatus).toBe('LATE');
+      expect((await sys1.patch('/api/v1/attendance-settings').send({ late_grace_minutes: 20 })).status).toBe(400); // 사유 필수
+      expect((await sys1.patch('/api/v1/attendance-settings').send({ late_grace_minutes: 241, reason: 'x' })).body.field).toBe('late_grace_minutes');
+      expect((await sys1.patch('/api/v1/attendance-settings').send({ reason: 'x' })).status).toBe(400);
+      const since = await maxAudit();
+      expect((await sys1.patch('/api/v1/attendance-settings').send({ late_grace_minutes: 20, reason: '기관 기준 변경' }).expect(200)).body).toMatchObject({ lateGraceMinutes: 20, earlyLeaveGraceMinutes: 10 });
+      const audit = (await auditSince(since)).filter((r) => r.target_table === 'attendance_setting');
+      expect(audit).toEqual([expect.objectContaining({ action: 'UPDATE', reason: '기관 기준 변경' })]);
+      expect(await num(`SELECT count(*) n FROM attendance WHERE attendance_id = $1 AND attendance_status = 'LATE'`, [stored.attendanceId])).toBe(1); // 재판정 없음
+      expect((await checkIn('2027-01-05T00:15:00Z')).attendanceStatus).toBe('PRESENT'); // 새 유예 20분
+
+      // 권한: S28 은 SYS_ADMIN 전용
+      expect((await ops1.get('/api/v1/attendance-settings')).status).toBe(403);
+      expect((await ops1.patch('/api/v1/attendance-settings').send({ late_grace_minutes: 0, reason: 'x' })).status).toBe(403);
     });
 
     it('휴강 회차는 출결 기록 불가, 결석 확정은 종료·중단 과정도 거부(V7) — 입실 확인은 V7 대상이 아니다(baseline 4-3)', async () => {
@@ -1981,10 +2033,11 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       // 4) 확정 훈련생이 있으므로 경고 없이 운영중 전환
       expect((await ops1.post(`/api/v1/courses/${course.courseId}/start`).send({})).body.status).toBe('IN_PROGRESS');
 
-      // 5) 출결 입력(입실+퇴실)
-      const checkedIn = (await ops1.post(`/api/v1/schedules/${schedule.scheduleId}/attendance/check-in`).send({ trainee_ids: [traineeId] }).expect(201)).body;
+      // 5) 출결 입력(입실+퇴실) — 수업 시간 안의 시각으로 입력해야 지각·조퇴 없이 출석으로 판정된다(D-08, 09:00~18:00 KST)
+      const checkedIn = (await ops1.post(`/api/v1/schedules/${schedule.scheduleId}/attendance/check-in`).send({ trainee_ids: [traineeId], check_in_time: '2020-01-02T00:00:00Z' }).expect(201)).body;
       const attendanceId = checkedIn.created[0].attendanceId;
-      await ops1.post('/api/v1/attendance/check-out').send({ attendance_ids: [attendanceId] }).expect(200);
+      expect(checkedIn.created[0].attendanceStatus).toBe('PRESENT');
+      await ops1.post('/api/v1/attendance/check-out').send({ attendance_ids: [attendanceId], check_out_time: '2020-01-02T09:00:00Z' }).expect(200);
 
       // 6) 운영일지 작성(강사)
       await flowIns.post(`/api/v1/schedules/${schedule.scheduleId}/operation-log`).send({ content: '정상 진행', participant_count: 1 }).expect(201);

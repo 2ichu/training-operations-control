@@ -9,6 +9,7 @@ import {
 import { PG_POOL } from '../database/database.module.js';
 import type { AccessContext, RbacRequest } from '../rbac/rbac.types.js';
 import { ScopeService } from '../rbac/scope.service.js';
+import { SCHEDULE_TIMEZONE } from '../schedule/schedule.service.js';
 import { DetectionEventService } from '../verification/detection-event.service.js';
 
 // baseline 3-3: 저장 상태 5종(계산값 NOT_CHECKED 는 저장하지 않음)
@@ -63,6 +64,7 @@ export class AttendanceService {
       const eligible = await this.eligibleTraineeIds(tx, Number(schedule.course_id), traineeIds);
       const notEligible = traineeIds.filter((id) => !eligible.has(id));
       const existing = await this.existingAttendance(tx, scheduleId, [...eligible]);
+      const status = (await this.isLate(tx, scheduleId, checkInTime)) ? 'LATE' : 'PRESENT';
 
       const created: Row[] = [];
       for (const traineeId of [...eligible].filter((id) => !existing.has(id))) {
@@ -71,7 +73,7 @@ export class AttendanceService {
             trainee_id: traineeId,
             schedule_id: scheduleId,
             check_in_time: checkInTime,
-            attendance_status: 'PRESENT', // D-08 임시 기본값: 자동 지각 판정 미가동(결정 대기)
+            attendance_status: status, // D-08: 입실 확인 저장 시 판정해 확정한다(이후 설정이 바뀌어도 다시 판정하지 않음)
             source_type: sourceType,
             ...(relatedInfo !== undefined ? { related_info: JSON.stringify(relatedInfo) } : {}),
           }),
@@ -129,21 +131,38 @@ export class AttendanceService {
 
     return this.transactions.run(async (tx) => {
       const sf = this.scope.scheduleScopeFilter(access, 's.instructor_id', 2);
+      // D-08: 퇴실 시각 < 수업 종료 − 조퇴 유예분 이면 조퇴. 출석(PRESENT)만 조퇴로 바꾸고, 지각(LATE)은 지각으로 둔다
+      // (지각·조퇴가 겹치면 먼저 확정된 지각 유지 — 출석률 가중치 0.5 가 이미 반영된 상태를 되돌리지 않음).
+      const p = 2 + sf.params.length;
       const { rows } = await tx.query(
-        `SELECT a.attendance_id, a.check_out_time FROM attendance a JOIN class_schedule s ON s.schedule_id = a.schedule_id
+        `SELECT a.attendance_id, a.check_out_time, a.attendance_status,
+                $${p}::timestamptz < ((s.class_date + s.end_time) AT TIME ZONE $${p + 1}) - make_interval(mins => g.early_leave_grace_minutes) AS early
+           FROM attendance a JOIN class_schedule s ON s.schedule_id = a.schedule_id LEFT JOIN attendance_setting g ON g.setting_id = 1
           WHERE a.attendance_id = ANY($1::bigint[]) AND ${sf.sql} FOR UPDATE OF a`,
-        [attendanceIds, ...sf.params],
+        [attendanceIds, ...sf.params, checkOutTime, SCHEDULE_TIMEZONE],
       );
+      const early = new Set(rows.filter((r) => r.early && r.attendance_status === 'PRESENT').map((r) => Number(r.attendance_id)));
       const visible = new Map(rows.map((r) => [Number(r.attendance_id), r.check_out_time !== null]));
       const notFound = attendanceIds.filter((id) => !visible.has(id)); // 존재하지 않거나 스코프 밖(V3: 은닉)
       const alreadySet = attendanceIds.filter((id) => visible.get(id) === true);
 
       const updated: Row[] = [];
       for (const id of attendanceIds.filter((i) => visible.get(i) === false)) {
-        updated.push(await tx.update('attendance', { attendance_id: id }, { check_out_time: checkOutTime }));
+        const set: Row = early.has(id) ? { check_out_time: checkOutTime, attendance_status: 'EARLY_LEAVE' } : { check_out_time: checkOutTime };
+        updated.push(await tx.update('attendance', { attendance_id: id }, set));
       }
       return { updated: updated.map((r) => toApi(r)), alreadyExists: alreadySet, notFound };
     });
+  }
+
+  // D-08: 입실 시각 > 수업 시작 + 지각 유예분 이면 지각(경계 시각 정각은 출석). 회차 날짜·시각은 APP_TIMEZONE 벽시계 기준.
+  private async isLate(tx: AuditedTx, scheduleId: number, checkInTime: string): Promise<boolean> {
+    const { rows } = await tx.query(
+      `SELECT $1::timestamptz > ((s.class_date + s.start_time) AT TIME ZONE $2) + make_interval(mins => g.late_grace_minutes) AS late
+         FROM class_schedule s LEFT JOIN attendance_setting g ON g.setting_id = 1 WHERE s.schedule_id = $3`,
+      [checkInTime, SCHEDULE_TIMEZONE, scheduleId],
+    );
+    return rows[0]?.late === true;
   }
 
   // ── S08 과정별 출결 ─────────────────────────────────────────────────────
