@@ -205,6 +205,27 @@ describe('S13 교육일정(과정 진입)', () => {
   })
 })
 
+describe('S13 캘린더 — 한 달 전체', () => {
+  it('회차가 100건을 넘어도 여러 페이지를 모아 달력에 모두 표시한다', async () => {
+    const all = Array.from({ length: 130 }, (_, i) => schedule({ scheduleId: 1000 + i, roundNo: i + 1, classDate: `2026-09-${String((i % 28) + 1).padStart(2, '0')}`, displayStatus: 'SCHEDULED' }))
+    const { calls } = mockApi({
+      'GET /auth/me': { status: 200, body: me() },
+      'GET /courses': courses,
+      'GET /instructors': instructors([]),
+      'GET /schedules': (call) => {
+        const page = Number(call.query.get('page'))
+        return { status: 200, body: { items: all.slice((page - 1) * 100, page * 100), page, size: 100, total: all.length } }
+      },
+    })
+    renderAt('/schedules?month=2026-09')
+    const calendar = await screen.findByRole('table', { name: '2026-09 일정' })
+    await waitFor(() => expect(within(calendar).getByText(/웹개발 1기 130회차/)).toBeInTheDocument()) // 2페이지의 마지막 회차
+    expect(within(calendar).getAllByRole('listitem')).toHaveLength(130)
+    expect(calls.filter((c) => c.path === '/schedules').map((c) => c.query.get('page'))).toEqual(['1', '2'])
+    expect(screen.queryByText(/만 표시합니다/)).not.toBeInTheDocument()
+  })
+})
+
 describe('S13 강의 일정(강사 진입)', () => {
   it('강사 계정: 캘린더 우선, 달 단위로 조회, 변경 버튼 없음', async () => {
     const { calls } = mockApi({

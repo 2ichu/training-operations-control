@@ -18,7 +18,7 @@ export function InstructorChangeLogPage() {
   const page = Number(get('page')) || 1
   const query = { instructor_id: get('instructor_id'), entity_type: get('entity_type'), from: get('from'), to: get('to'), page, size: PAGE_SIZE }
   const logs = useApi((signal) => api.get<Paged<InstructorChangeLog>>('/instructor-change-logs', query, signal), JSON.stringify(query))
-  const instructors = useApi((signal) => api.get<Paged<InstructorListItem>>('/instructors', { size: 100 }, signal).then((r) => r.items), 'all')
+  const instructors = useApi((signal) => api.getAll<InstructorListItem>('/instructors', {}, signal).then((r) => r.items), 'all')
   const items = logs.data?.items ?? []
 
   return (

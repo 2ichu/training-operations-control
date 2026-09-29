@@ -38,7 +38,7 @@ export function AuditLogPage() {
   const logs = useApi((signal) => api.get<Paged<AuditLogEntry>>('/audit-logs', query, signal), JSON.stringify(query))
   // 사용자 필터는 사용자 목록(S25) 권한이 있을 때만(시스템 관리자)
   const users = useApi(
-    (signal) => (can('S25', 'R') ? api.get<Paged<UserAccount>>('/users', { size: 100 }, signal).then((r) => r.items) : Promise.resolve([] as UserAccount[])),
+    (signal) => (can('S25', 'R') ? api.getAll<UserAccount>('/users', {}, signal).then((r) => r.items) : Promise.resolve([] as UserAccount[])),
     'users',
   )
   const [openId, setOpenId] = useState<number | null>(null)

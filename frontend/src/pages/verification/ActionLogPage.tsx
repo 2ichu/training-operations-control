@@ -27,7 +27,7 @@ export function ActionLogPage() {
     size: PAGE_SIZE,
   }
   const logs = useApi((signal) => api.get<Paged<ActionLogEntry>>('/verification-action-logs', query, signal), JSON.stringify(query))
-  const courses = useApi((signal) => api.get<Paged<CourseSummary>>('/courses', { size: 100 }, signal), 'courses')
+  const courses = useApi((signal) => api.getAll<CourseSummary>('/courses', {}, signal), 'courses')
   const items = logs.data?.items ?? []
 
   return (

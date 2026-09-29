@@ -7,7 +7,7 @@ import { PG_POOL } from '../database/database.module.js';
 import type { AccessContext, RbacRequest } from '../rbac/rbac.types.js';
 import { ScopeService } from '../rbac/scope.service.js';
 import { SCHEDULE_TIMEZONE, scheduleDisplayStatusSql } from '../schedule/schedule.service.js';
-import { CourseService, type ClosureItem } from '../course/course.service.js';
+import { CourseService } from '../course/course.service.js';
 import { VerificationCaseService } from '../verification/verification-case.service.js';
 
 const RECENT_CASES_LIMIT = 10; // "최근 N건"(system-design 7.1) — 표시 개수는 정책값이 아닌 기술적 기본값
@@ -63,18 +63,11 @@ export class DashboardService {
     return rows.map((r) => toApi(r));
   }
 
-  // baseline "미출결·퇴실미확인·운영일지 미작성·결과물 미제출·미검토 건수": 종료 체크리스트 항목 1·2·4·5·6 을 그대로 합산한다.
+  // baseline "미출결·퇴실미확인·운영일지 미작성·결과물 미제출·미검토 건수": 종료 체크리스트 항목 1·2·4·5·6 을 같은 SQL 로 한 번에 합산한다
+  // (과정별 반복 조회는 과정 수에 비례해 느려진다 — 과정 43개에서 약 1초).
   private async aggregateCounts(courseIds: number[]): Promise<Record<string, number>> {
-    const totals = { notCheckedIn: 0, checkoutMissing: 0, operationLogMissing: 0, submissionMissing: 0, reviewPending: 0 };
-    const byItem: Record<number, keyof typeof totals> = { 1: 'notCheckedIn', 2: 'checkoutMissing', 4: 'operationLogMissing', 5: 'submissionMissing', 6: 'reviewPending' };
-    for (const courseId of courseIds) {
-      const items: ClosureItem[] = await this.courses.computeClosureItems(this.db, courseId);
-      for (const item of items) {
-        const key = byItem[item.item];
-        if (key) totals[key] += item.count;
-      }
-    }
-    return totals;
+    const c = await this.courses.closureCounts(this.db, courseIds);
+    return { notCheckedIn: c[1], checkoutMissing: c[2], operationLogMissing: c[4], submissionMissing: c[5], reviewPending: c[6] };
   }
 
   private async verificationSummary(courseIds: number[], assigneeIdFilter: number | undefined) {

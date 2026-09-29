@@ -85,8 +85,23 @@ function defaultMessage(status: number): string {
   return '요청을 처리할 수 없습니다.'
 }
 
+// 목록 API 의 한 페이지 최대 크기(backend pageOf 상한)
+const MAX_PAGE_SIZE = 100
+/** 선택 목록·캘린더처럼 "전부"가 필요한 조회의 안전 상한(이보다 많으면 truncated=true) */
+export const FETCH_ALL_LIMIT = 2000
+
 export const api = {
   get: <T>(path: string, query?: Query, signal?: AbortSignal) => request<T>('GET', path, { query, signal }),
+  /** 페이지 목록 API 를 끝까지(최대 FETCH_ALL_LIMIT 건) 모아 온다. 첫 페이지로 전체 건수를 알고 나머지는 동시에 요청한다 */
+  getAll: async <T>(path: string, query: Query = {}, signal?: AbortSignal): Promise<{ items: T[]; total: number; truncated: boolean }> => {
+    const first = await request<{ items: T[]; total: number }>('GET', path, { query: { ...query, page: 1, size: MAX_PAGE_SIZE }, signal })
+    const pages = Math.min(Math.ceil(first.total / MAX_PAGE_SIZE), Math.ceil(FETCH_ALL_LIMIT / MAX_PAGE_SIZE))
+    const rest = await Promise.all(
+      Array.from({ length: Math.max(pages - 1, 0) }, (_, i) => request<{ items: T[] }>('GET', path, { query: { ...query, page: i + 2, size: MAX_PAGE_SIZE }, signal })),
+    )
+    const items = [first, ...rest].flatMap((r) => r.items)
+    return { items, total: first.total, truncated: items.length < first.total }
+  },
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, { body }),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, { body }),
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, { body }),

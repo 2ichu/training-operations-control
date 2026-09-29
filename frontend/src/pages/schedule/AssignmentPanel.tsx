@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from 'react'
 import { ApiError, api } from '../../api/client'
-import type { AssignmentCancelResult, CourseDetail, InstructorListItem, Paged } from '../../api/types'
+import type { AssignmentCancelResult, CourseDetail, InstructorListItem } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { useAuth } from '../../auth/auth-context'
 import { EmptyText } from '../../components/Feedback'
@@ -94,7 +94,7 @@ export function AssignmentPanel({ course, locked, onChanged }: { course: CourseD
 
 function AddAssignmentDialog({ course, onClose, onSaved }: { course: CourseDetail; onClose: () => void; onSaved: (message: string) => void }) {
   // 배정할 수 있는 강사 = 활동 강사(서버 INSTRUCTOR_INACTIVE 와 같은 기준)
-  const instructors = useApi((signal) => api.get<Paged<InstructorListItem>>('/instructors', { status: 'ACTIVE', size: 100 }, signal).then((r) => r.items), 'active')
+  const instructors = useApi((signal) => api.getAll<InstructorListItem>('/instructors', { status: 'ACTIVE' }, signal).then((r) => r.items), 'active')
   const [instructorId, setInstructorId] = useState('')
   const [scope, setScope] = useState<'course' | 'round'>('course')
   const [roundNo, setRoundNo] = useState('')
