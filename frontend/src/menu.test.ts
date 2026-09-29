@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDateTime, formatTime, formatTrainees } from './format'
+import { formatDateTime, formatTime, formatTimeOn, formatTrainees } from './format'
 import { visibleMenu } from './menu'
 import { INSTRUCTOR_PERMISSIONS, OPS_PERMISSIONS, SYS_PERMISSIONS, grants } from './test/mock-api'
 
@@ -34,6 +34,12 @@ describe('format', () => {
     expect(formatTrainees([])).toBe('-')
     expect(formatTrainees(['가', '나'])).toBe('가, 나')
     expect(formatTrainees(['가', '나', '다'])).toBe('가 외 2명')
+  })
+
+  it('기준 날짜와 같은 날이면 시각만, 다른 날이면 날짜까지(KST)', () => {
+    expect(formatTimeOn('2026-09-21T00:05:00.000Z', '2026-09-21')).toBe('09:05')
+    expect(formatTimeOn('2026-09-21T15:30:00.000Z', '2026-09-21')).toBe('2026-09-22 00:30') // KST 로 다음 날
+    expect(formatTimeOn(null, '2026-09-21')).toBe('-')
   })
 
   it('시각은 KST 로 표시한다', () => {
