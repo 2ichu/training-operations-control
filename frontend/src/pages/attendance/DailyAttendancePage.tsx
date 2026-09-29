@@ -7,7 +7,7 @@ import { useCourseOptions } from '../../api/useCourseOptions'
 import { useAuth } from '../../auth/auth-context'
 import { EmptyText, ErrorText } from '../../components/Feedback'
 import { AttendanceBadge } from '../../components/StatusBadge'
-import { formatDateTime, formatTime, kstIso, todayKst } from '../../format'
+import { formatTime, formatTimeOn, kstIso, todayKst } from '../../format'
 import { ATTENDANCE_STATUS_LABELS, label, SOURCE_TYPE_LABELS } from '../../labels'
 import { useUrlFilters } from '../../routing/useUrlFilters'
 import { AttendanceCorrectDialog } from './AttendanceCorrectDialog'
@@ -215,8 +215,8 @@ function Roster({ schedule, canCheckIn, canCheckOut, canAbsence }: { schedule: S
                     </td>
                   )}
                   <td>{can('S05', 'R') ? <Link to={`/trainees/${r.traineeId}?course_id=${schedule.courseId}`}>{r.name}</Link> : r.name}</td>
-                  <td>{formatDateTime(r.checkInTime)}</td>
-                  <td>{formatDateTime(r.checkOutTime)}</td>
+                  <td>{formatTimeOn(r.checkInTime, schedule.classDate)}</td>
+                  <td>{formatTimeOn(r.checkOutTime, schedule.classDate)}</td>
                   <td>
                     <AttendanceBadge status={r.displayStatus} />
                   </td>

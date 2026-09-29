@@ -82,7 +82,7 @@ export function CourseDetailPage() {
               <div>
                 <dt>기간</dt>
                 <dd>
-                  {course.startDate} ~ {course.endDate}
+                  <span className="nowrap">{course.startDate}</span> ~ <span className="nowrap">{course.endDate}</span>
                 </dd>
               </div>
               <div>

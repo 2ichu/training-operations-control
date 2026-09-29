@@ -18,6 +18,13 @@ export function formatDateTime(iso: string | null | undefined): string {
   return Number.isNaN(date.getTime()) ? '-' : dateTimeFormat.format(date)
 }
 
+/** ISO 시각을 기준 날짜(KST 'YYYY-MM-DD') 화면에 표시: 같은 날이면 'HH:mm', 다른 날이면 날짜까지(자정 넘긴 퇴실 등) */
+export function formatTimeOn(iso: string | null | undefined, date: string): string {
+  const full = formatDateTime(iso)
+  if (full === '-') return full
+  return full.startsWith(`${date} `) ? full.slice(11) : full
+}
+
 /** 'HH:mm:ss' → 'HH:mm' */
 export const formatTime = (time: string | null | undefined): string => (time ? time.slice(0, 5) : '-')
 
