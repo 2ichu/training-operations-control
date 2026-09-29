@@ -943,3 +943,34 @@ fieldset.checkbox-list {
 .calendar li.event a:hover {
   text-decoration: underline;
 }
+
+/* ── 결과물 ───────────────────────────────────────────────── */
+.version-block {
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+
+.version-block h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+
+.version-block ul {
+  margin: 0 0 6px;
+  padding-left: 18px;
+}
+
+ol.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 10px;
+  border-left: 2px solid var(--border);
+}
+
+ol.timeline li {
+  padding: 2px 0 6px 8px;
+}
+
+ol.timeline p {
+  margin: 2px 0 0;
+}

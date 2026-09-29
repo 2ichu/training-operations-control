@@ -1504,6 +1504,10 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
           expect.objectContaining({ traineeId: tConfirmed1, displayStatus: 'SUBMITTED', title: '보고서' }),
         ]),
       );
+      // 등록일시·등록자는 audit_log CREATE 기록에서(submission 에는 감사 컬럼이 없다), 연락처는 마스킹
+      expect(status.items[0]).toMatchObject({ registeredByName: 'e2e_ops', contact: '***-****-8888' });
+      expect(status.items[0].registeredAt).toBeTruthy();
+      expect(JSON.stringify(status)).not.toContain('010-9999-8888');
 
       const missing = (await ops1.get(`/api/v1/courses/${c1}/submission-status?missing_only=true`).expect(200)).body;
       expect(missing.items).toEqual([]); // 확정 훈련생은 tConfirmed1 뿐이고 이미 제출함
@@ -1550,6 +1554,7 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
 
       const detail = (await ops1.get(`/api/v1/submissions/${created.submissionId}`).expect(200)).body;
       expect(detail.reviews).toEqual([expect.objectContaining({ reviewResult: 'REVISION_REQUESTED' })]);
+      expect(detail).toMatchObject({ traineeName: '확정1', courseName: '과정1' });
     });
 
     it('S05 훈련생 상세: 본인 제출 결과물 목록, course_id 필터', async () => {

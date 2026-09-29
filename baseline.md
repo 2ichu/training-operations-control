@@ -348,11 +348,11 @@
 | | 수정 | PATCH | /course-issues/{id} | 변경 필드 | 갱신본 | OPS | UPDATE / course_issue / USER |
 | | 확인 필요로 전환 | POST | /course-issues/{id}/escalate | trainee_ids[](선택) | 생성된 verification_case(MANUAL), issue.status=IN_REVIEW, 이미 활성 건 있으면 409 | OPS, EXEC | CREATE / verification_case, verification_case_trainee / USER 동시 UPDATE / course_issue |
 | | 조치완료 처리 | POST | /course-issues/{id}/resolve | — | status=RESOLVED | OPS | UPDATE / course_issue / USER |
-| S19 결과물 제출현황 | 제출현황(미제출 계산) | GET | /courses/{id}/submission-status | trainee_name, review_status, missing_only | 확정 훈련생 × submission LEFT JOIN 결과 | OPS·SYS·EXEC, INSTRUCTOR ◎ | 없음 |
+| S19 결과물 제출현황 | 제출현황(미제출 계산) | GET | /courses/{id}/submission-status | trainee_name, review_status, missing_only | 확정 훈련생 × submission LEFT JOIN 결과(마스킹 연락처, 등록일시·등록자 — submission 에 감사 컬럼이 없어 audit_log CREATE 기록에서) | OPS·SYS·EXEC, INSTRUCTOR ◎ | 없음 |
 | | 결과물 등록 | POST | /courses/{id}/submissions | trainee_id, title, submitted_at(필수), 파일 | submission(version 1, PENDING), 이미 있으면 409 | OPS | CREATE / submission / USER |
 | | 결과물 재등록 | POST | /submissions/{id}/re-register | submitted_at, 파일 | version 증가, review_status=PENDING | OPS | UPDATE / submission / USER (before/after) |
 | S20 결과물 미제출 | 미제출 목록 | GET | /courses/{id}/submission-status | missing_only=true | 미제출 계산 대상자(제출기한 관련 열은 #24 확정 전 보류) | OPS·EXEC·SYS, INSTRUCTOR ◎ | 없음 (S19 API 재사용) |
-| S21 결과물 검토 | 결과물 상세·이력 | GET | /submissions/{id} | — | 제출 정보, 버전별 첨부, 검토 이력 | OPS·EXEC·SYS | 없음 |
+| S21 결과물 검토 | 결과물 상세·이력 | GET | /submissions/{id} | — | 제출 정보(훈련생·과정명), 버전별 첨부, 검토 이력 | OPS·EXEC·SYS | 없음 |
 | | 검토 저장 | POST | /submissions/{id}/reviews | review_result, review_comment | submission_review_log, review_status 갱신 | OPS | CREATE / submission_review_log 동시 UPDATE / submission / USER |
 | S22 확인 필요 목록 | 확인 건 목록 | GET | /verification-cases | period 또는 from·to(발생일 범위, APP_TIMEZONE 기준), course_id, trainee_name, assignee_id, rule_code, status[] | 사건 목록(관련 훈련생 0~N, 우선순위 계산) | OPS·SYS·EXEC | 없음 |
 | | 담당자 일괄 배정 | POST | /verification-cases/assign | case_ids[], assignee_id | 갱신 건수 | OPS, EXEC | UPDATE / verification_case / USER (건별) |
