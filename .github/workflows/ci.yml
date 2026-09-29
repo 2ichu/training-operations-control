@@ -78,3 +78,28 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+
+  # 배포 구성(compose.yaml·Dockerfile·nginx.conf) 스모크: 이미지 빌드 → 빈 볼륨에서 기동(마이그레이션·시드 포함) →
+  # 헬스체크·화면 라우팅·로그인까지 nginx 를 거쳐 확인. 절차는 docs/DEPLOY.md 와 같다.
+  deploy-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: 배포 설정(CI 일회성 값)
+        run: |
+          cp deploy.env.example deploy.env
+          sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci-only-password/; s/^SEED_ADMIN_LOGIN_ID=.*/SEED_ADMIN_LOGIN_ID=ci_admin/; s/^SEED_ADMIN_PASSWORD=.*/SEED_ADMIN_PASSWORD=Ci-only-passw0rd!/' deploy.env
+          # TLS 없는 CI 에서 로그인까지 확인하려고 Secure 쿠키만 끈다(운영 금지 — DEPLOY.md 2절)
+          echo 'SESSION_COOKIE_SECURE=false' >> deploy.env
+      - run: docker compose --env-file deploy.env up -d --build --wait
+      - name: 스모크 테스트
+        run: |
+          curl -fsS http://localhost:8080/api/v1/health
+          curl -fsS -o /dev/null http://localhost:8080/courses            # SPA 경로 → index.html
+          curl -fsS -c cookies -H 'Content-Type: application/json' -d '{"loginId":"ci_admin","password":"Ci-only-passw0rd!"}' http://localhost:8080/api/v1/auth/login -o /dev/null
+          curl -fsS -b cookies http://localhost:8080/api/v1/auth/me | grep -q '"loginId":"ci_admin"'
+      - if: failure()
+        run: docker compose --env-file deploy.env logs
+      - if: always()
+        run: docker compose --env-file deploy.env down -v

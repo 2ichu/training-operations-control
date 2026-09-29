@@ -1,5 +1,7 @@
 # Frontend (React + TypeScript + Vite)
 
+> 운영에서는 빌드 결과를 nginx 로 제공하고 `/api` 를 백엔드로 넘긴다(`Dockerfile`, `nginx.conf`, 배포 절차는 [docs/DEPLOY.md](../docs/DEPLOY.md)).
+
 훈련과정 통합관리 및 내부통제 시스템의 웹 화면. 화면 명세는 `system-design.md` STEP 3·7·7-A, 권한은 `baseline.md` 4-2 를 따른다.
 
 ## 실행

@@ -1,0 +1,64 @@
+# 단일 서버 배포 구성: PostgreSQL + 마이그레이션·시드(1회 실행) + API + 웹(nginx).
+# 사용법·운영 절차는 docs/DEPLOY.md. 설정값은 deploy.env(deploy.env.example 복사)에서 읽는다.
+name: training-ops
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-training_mgmt}
+      POSTGRES_USER: ${POSTGRES_USER:-training_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?deploy.env 에 POSTGRES_PASSWORD 를 설정하세요}
+      TZ: Asia/Seoul
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # 스키마 마이그레이션 + 기준 데이터 시드(역할·권한·탐지규칙·최초 관리자). 둘 다 멱등이라 배포마다 실행해도 된다.
+  migrate:
+    build:
+      context: ./backend
+      target: build
+    env_file: deploy.env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-training_owner}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-training_mgmt}
+    command: ['sh', '-c', 'npm run migrate:up && npm run db:seed']
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: 'no'
+
+  backend:
+    build:
+      context: ./backend
+      target: runtime
+    restart: unless-stopped
+    env_file: deploy.env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-training_owner}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-training_mgmt}
+      # 앞단 프록시(web) 1단만 믿는다 — 감사로그에 실제 접속 IP
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    stop_grace_period: 30s
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - '${WEB_PORT:-8080}:80'
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  uploads:
