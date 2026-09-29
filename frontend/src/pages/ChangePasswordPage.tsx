@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router'
 import { ApiError, api } from '../api/client'
 import { useAuth, useCurrentUser } from '../auth/auth-context'
 
-// backend auth.service MIN_PASSWORD_LENGTH 와 같은 값(서버가 최종 검증한다)
-const MIN_LENGTH = 8
+// backend password.ts passwordPolicyError 와 같은 규칙(D-15: 10자 이상, 영문·숫자·기호 포함). 서버가 최종 검증한다
+const MIN_LENGTH = 10
+const hasAllKinds = (v: string) => /[A-Za-z]/.test(v) && /\d/.test(v) && /[^A-Za-z0-9]/.test(v)
 
 // 본인 비밀번호 변경. 초기·초기화 비밀번호로 로그인하면(mustChangePassword) 변경 전까지 다른 화면으로 갈 수 없다(baseline 10-2 #5).
 export function ChangePasswordPage() {
@@ -22,6 +23,7 @@ export function ChangePasswordPage() {
     event.preventDefault()
     if (!currentPassword || !newPassword) return setError('모든 항목을 입력해 주세요.')
     if (newPassword.length < MIN_LENGTH) return setError(`새 비밀번호는 ${MIN_LENGTH}자 이상이어야 합니다.`)
+    if (!hasAllKinds(newPassword)) return setError('새 비밀번호는 영문, 숫자, 기호를 모두 포함해야 합니다.')
     if (newPassword !== confirm) return setError('새 비밀번호 확인이 일치하지 않습니다.')
     setSubmitting(true)
     setError(null)
@@ -45,7 +47,7 @@ export function ChangePasswordPage() {
         <input type="password" autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} maxLength={200} />
       </label>
       <label>
-        새 비밀번호 <span className="hint">({MIN_LENGTH}자 이상)</span>
+        새 비밀번호 <span className="hint">({MIN_LENGTH}자 이상, 영문·숫자·기호 포함)</span>
         <input type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} maxLength={200} />
       </label>
       <label>

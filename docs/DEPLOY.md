@@ -67,8 +67,8 @@ docker compose --env-file deploy.env up -d --build
 | `SEED_ADMIN_LOGIN_ID` / `SEED_ADMIN_PASSWORD` / `SEED_ADMIN_NAME` | O | — | 최초 시스템 관리자. `migrate` 가 배포마다 시드를 확인하므로 **계속 채워 둔다**(비우면 migrate 가 실패하고 backend 가 뜨지 않는다). 같은 로그인ID 가 이미 있으면 건너뛰고, 비밀번호를 나중에 바꿔도 덮어쓰지 않는다 |
 | `WEB_PORT` | | `8080` | 외부 공개 포트 |
 | `SESSION_COOKIE_SECURE` | | `true`(production) | 2절 참고 |
-| `SESSION_IDLE_MINUTES` / `SESSION_ABSOLUTE_HOURS` | | `30` / `12` | 세션 유휴·절대 만료(STEP 12 #29 확정 전 임시값) |
-| `LOGIN_MAX_FAILURES` / `LOGIN_LOCK_MINUTES` | | `5` / `15` | 로그인 실패 잠금(임시값) |
+| `SESSION_IDLE_MINUTES` / `SESSION_ABSOLUTE_HOURS` | | `30` / `8` | 세션 유휴·절대 만료(D-15/#29 확정값) |
+| `LOGIN_MAX_FAILURES` / `LOGIN_LOCK_MINUTES` | | `5` / `15` | 로그인 실패 잠금(D-15/#29 확정값) |
 | `SESSION_COOKIE_NAME` | | `sid` | 세션 쿠키 이름 |
 | `APP_TIMEZONE` | | `Asia/Seoul` | "진행완료"·배치·오늘 판단 기준 시간대 |
 | `BATCH_ENABLED` | | `true` | 시간 기반 배치(RULE_03~06, 과정 자동 운영중 전환)와 입실 후 RULE_01·02 평가. **backend 를 여러 대 띄우면 한 대만 `true`** (decisions P5-07) |

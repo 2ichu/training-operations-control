@@ -61,7 +61,7 @@ describe('인증 흐름', () => {
     await user.type(screen.getByLabelText(/^새 비밀번호 \(/), 'short')
     await user.type(screen.getByLabelText('새 비밀번호 확인'), 'short')
     await user.click(screen.getByRole('button', { name: '변경' }))
-    expect(screen.getByRole('alert')).toHaveTextContent('8자 이상')
+    expect(screen.getByRole('alert')).toHaveTextContent('10자 이상')
     expect(calls.some((c) => c.path === '/auth/change-password')).toBe(false)
 
     await user.clear(screen.getByLabelText(/^새 비밀번호 \(/))

@@ -7,13 +7,12 @@ import { PG_POOL } from '../database/database.module.js';
 import authConfig from './auth.config.js';
 import type { AuthUser, PermissionGrant } from './auth.types.js';
 import { LoginThrottle } from './login-throttle.js';
-import { hashPassword, verifyAgainstDummy, verifyPassword } from './password.js';
+import { hashPassword, passwordPolicyError, verifyAgainstDummy, verifyPassword } from './password.js';
 import { SessionService } from './session.service.js';
 import type { SessionData } from './session.store.js';
 
 const INVALID_CREDENTIALS = '아이디 또는 비밀번호가 올바르지 않습니다.';
 // 새 비밀번호 최소 길이: D-15(비밀번호 정책값) 확정 전 임시 기술적 하한(복잡도 규칙은 아님, 세션값과 같은 성격의 임시값)
-const MIN_PASSWORD_LENGTH = 8;
 
 interface UserRow {
   user_id: string;
@@ -137,9 +136,8 @@ export class AuthService {
   // 본인 비밀번호 변경(강제 변경 포함). 현재 비밀번호 확인 후 갱신하고 must_change_password 를 해제한다.
   // 새 비밀번호 값은 어떤 로그에도 남기지 않는다(user_account.password_hash 는 redact 대상으로 이미 등록됨).
   async changePassword(session: SessionData, currentPassword: string, newPassword: string): Promise<void> {
-    if (newPassword.length < MIN_PASSWORD_LENGTH || newPassword.length > 200) {
-      throw new BadRequestException({ code: 'VALIDATION', field: 'newPassword', message: `${MIN_PASSWORD_LENGTH}자 이상 200자 이하여야 합니다` });
-    }
+    const policyError = passwordPolicyError(newPassword);
+    if (policyError) throw new BadRequestException({ code: 'VALIDATION', field: 'newPassword', message: policyError });
     const found = await this.pool.query<UserRow>(`SELECT password_hash FROM user_account WHERE user_id = $1`, [session.userId]);
     const row = found.rows[0];
     if (!row || !(await verifyPassword(currentPassword, row.password_hash))) {

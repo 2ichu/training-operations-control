@@ -36,6 +36,20 @@ export async function verifyPassword(password: string, stored: string): Promise<
   }
 }
 
+// D-15(#29) 확정(2026-09-29): 새 비밀번호는 10자 이상 200자 이하, 영문·숫자·기호를 모두 포함해야 한다.
+// 프론트엔드(ChangePasswordPage)가 같은 규칙을 안내용으로 미리 검사하고, 서버가 최종 검증한다.
+export const PASSWORD_MIN_LENGTH = 10;
+export const PASSWORD_MAX_LENGTH = 200;
+export function passwordPolicyError(password: string): string | null {
+  if (password.length < PASSWORD_MIN_LENGTH || password.length > PASSWORD_MAX_LENGTH) {
+    return `${PASSWORD_MIN_LENGTH}자 이상 ${PASSWORD_MAX_LENGTH}자 이하여야 합니다`;
+  }
+  if (!/[A-Za-z]/.test(password) || !/\d/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+    return '영문, 숫자, 기호를 모두 포함해야 합니다';
+  }
+  return null;
+}
+
 // 계정 생성·비밀번호 초기화 시 발급하는 임시 비밀번호(응답에 1회 노출, 어떤 로그에도 남기지 않는다).
 // 최초 로그인 시 변경 강제(baseline 10-2 #5)는 user_account.must_change_password 로 표현한다.
 export function generateTempPassword(): string {
