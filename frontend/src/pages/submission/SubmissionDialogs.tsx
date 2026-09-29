@@ -4,6 +4,11 @@ import type { SubmissionStatusRow } from '../../api/types'
 import { Modal } from '../../components/Modal'
 import { formatDateTime, kstIso } from '../../format'
 
+// D-04: 과정 제출기한 안내 — 원본 제출 일시가 기한(그날 24:00) 이후면 서버가 기한후제출로 판정한다
+function DueHint({ dueDate }: { dueDate: string | null }) {
+  return <p className="hint">{dueDate ? `제출기한 ${dueDate} — 이 날 24:00 이후 제출이면 "기한후제출"로 표시됩니다.` : '이 과정에는 제출기한이 없습니다.'}</p>
+}
+
 function FormError({ error }: { error: string | null }) {
   return error ? (
     <p className="form-error" role="alert">
@@ -26,12 +31,14 @@ async function uploadFile(submissionId: number, file: File): Promise<string> {
 // S19 결과물 등록(D-01: 담당자 등록). 원본 제출 일시(submitted_at)는 훈련생이 실제 낸 시점을 수기로 입력한다.
 export function RegisterDialog({
   courseId,
+  dueDate,
   candidates,
   initialTraineeId,
   onClose,
   onSaved,
 }: {
   courseId: string
+  dueDate: string | null
   /** 확정 훈련생(한 사람이 제목을 달리해 여러 건을 낼 수 있어 제출 여부와 무관하게 전부) */
   candidates: { traineeId: number; traineeName: string }[]
   initialTraineeId?: number
@@ -54,8 +61,8 @@ export function RegisterDialog({
     setBusy(true)
     setError(null)
     try {
-      const created = await api.post<{ submissionId: number }>(`/courses/${courseId}/submissions`, { trainee_id: Number(traineeId), title: title.trim(), submitted_at: kstIso(submittedAt) })
-      onSaved(`결과물을 등록했습니다.${await uploadFile(created.submissionId, file)}`)
+      const created = await api.post<{ submissionId: number; submitStatus: string }>(`/courses/${courseId}/submissions`, { trainee_id: Number(traineeId), title: title.trim(), submitted_at: kstIso(submittedAt) })
+      onSaved(`결과물을 등록했습니다${created.submitStatus === 'LATE_SUBMITTED' ? '(기한후제출)' : ''}.${await uploadFile(created.submissionId, file)}`)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : '등록하지 못했습니다.')
       setBusy(false)
@@ -80,6 +87,7 @@ export function RegisterDialog({
           제목
           <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
         </label>
+        <DueHint dueDate={dueDate} />
         <label className="stacked">
           원본 제출 일시(훈련생이 실제 제출한 시각)
           <input type="datetime-local" value={submittedAt} onChange={(e) => setSubmittedAt(e.target.value)} />
@@ -104,7 +112,7 @@ export function RegisterDialog({
 }
 
 // S19 재등록: 같은 결과물의 버전을 올리고 검토 상태를 대기로 되돌린 뒤 새 파일을 그 버전으로 올린다(이전 버전 파일·검토이력은 보존).
-export function ReRegisterDialog({ row, onClose, onSaved }: { row: SubmissionStatusRow; onClose: () => void; onSaved: (message: string) => void }) {
+export function ReRegisterDialog({ row, dueDate, onClose, onSaved }: { row: SubmissionStatusRow; dueDate: string | null; onClose: () => void; onSaved: (message: string) => void }) {
   const [submittedAt, setSubmittedAt] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -117,8 +125,8 @@ export function ReRegisterDialog({ row, onClose, onSaved }: { row: SubmissionSta
     setBusy(true)
     setError(null)
     try {
-      const updated = await api.post<{ version: number }>(`/submissions/${row.submissionId}/re-register`, { submitted_at: kstIso(submittedAt) })
-      onSaved(`v${updated.version}로 재등록했습니다.${await uploadFile(row.submissionId!, file)}`)
+      const updated = await api.post<{ version: number; submitStatus: string }>(`/submissions/${row.submissionId}/re-register`, { submitted_at: kstIso(submittedAt) })
+      onSaved(`v${updated.version}로 재등록했습니다${updated.submitStatus === 'LATE_SUBMITTED' ? '(기한후제출)' : ''}.${await uploadFile(row.submissionId!, file)}`)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : '재등록하지 못했습니다.')
       setBusy(false)
@@ -132,6 +140,7 @@ export function ReRegisterDialog({ row, onClose, onSaved }: { row: SubmissionSta
           {row.traineeName} · {row.title} (현재 v{row.version}, 제출 {formatDateTime(row.submittedAt)})
         </p>
         <p className="hint">재등록하면 버전이 올라가고 검토 상태는 대기로 돌아갑니다. 이전 버전의 파일과 검토이력은 남습니다.</p>
+        <DueHint dueDate={dueDate} />
         <label className="stacked">
           원본 제출 일시(재제출 시각)
           <input type="datetime-local" value={submittedAt} onChange={(e) => setSubmittedAt(e.target.value)} />

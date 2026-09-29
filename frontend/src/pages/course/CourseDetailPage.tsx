@@ -60,9 +60,9 @@ export function CourseDetailPage() {
           initial={toFormValues(course)}
           currentManager={{ userId: course.managerUserId, name: course.managerName ?? `#${course.managerUserId}` }}
           onSubmit={async (body) => {
-            await api.patch(`/courses/${courseId}`, body)
+            const saved = await api.patch<{ rejudgedSubmissionCount?: number }>(`/courses/${courseId}`, body)
             setEditing(false)
-            setNotice('저장했습니다.')
+            setNotice(saved.rejudgedSubmissionCount ? `저장했습니다. 새 제출기한으로 결과물 ${saved.rejudgedSubmissionCount}건의 제출상태를 다시 판정했습니다.` : '저장했습니다.')
             detail.reload()
           }}
           onCancel={() => setEditing(false)}
@@ -96,6 +96,10 @@ export function CourseDetailPage() {
               <div>
                 <dt>담당자</dt>
                 <dd>{course.managerName ?? '-'}</dd>
+              </div>
+              <div>
+                <dt>결과물 제출기한</dt>
+                <dd>{course.submissionDueDate ?? '없음'}</dd>
               </div>
               <div>
                 <dt>최종 수정</dt>
@@ -148,6 +152,7 @@ function toFormValues(c: CourseDetail): CourseFormValues {
     totalHours: String(c.totalHours),
     trainingSite: c.trainingSite,
     managerUserId: String(c.managerUserId),
+    submissionDueDate: c.submissionDueDate ?? '',
   }
 }
 

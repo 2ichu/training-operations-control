@@ -38,6 +38,7 @@ const course = (overrides: Partial<CourseDetail> = {}): CourseDetail => ({
   trainingSite: '본원',
   managerUserId: 7,
   managerName: '김운영',
+  submissionDueDate: null,
   status: 'IN_PROGRESS',
   createdAt: '2026-08-01T00:00:00.000Z',
   updatedAt: '2026-08-02T00:00:00.000Z',

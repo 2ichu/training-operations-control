@@ -94,7 +94,7 @@
 
 - 결과물 제출 주체는 운영담당자 등록으로 **확정**(2026-09-21, D-01, STEP 12 #15)되어 **스키마에는 TRAINEE 계정·훈련생 로그인 관련 컬럼이 없다.** `user_account`는 STEP 2의 4개 역할만 대상으로 하며, 개발 단계에서 임의로 TRAINEE 역할·계정을 만들지 않는다.
 - 잠정 안 B(운영담당자 등록): `submission.trainee_id`=결과물의 주인, `submitted_at`=훈련생이 실제 제출한 시점(수기 입력), `created_at`=시스템 등록 시점, `created_by`=등록한 담당자. 안 A로 바뀌어도 `submission` 스키마는 그대로 쓸 수 있고 추가되는 것은 계정·역할·화면뿐이다.
-- 제출기한 저장 위치는 스키마에 없다(`[결정 필요]` #24). 기한후제출 자동 판정과 S20 경과일수는 이 결정 전까지 개발 보류.
+- 제출기한은 과정 공통 1개(`course.submission_due_date`, D-04 확정 2026-09-29). 그날 24:00(기관 시간대) 이후 제출은 기한후제출로 자동 판정하고, 기한을 바꾸면 기존 결과물을 재판정한다(decisions 7절).
 
 ---
 
@@ -165,7 +165,7 @@
 |---|---|---|---|---|---|---|
 | (NOT_SUBMITTED) | 미제출 | **계산** | 확정 훈련생인데 submission 행 없음 | 행 없음 | SUBMITTED, LATE_SUBMITTED(등록) | OPS_MANAGER(등록) |
 | SUBMITTED | 제출됨 | 저장 `submit_status` | 기한 내 등록 | 결과물 등록 | 재등록 시 version 증가(상태 유지) | OPS_MANAGER |
-| LATE_SUBMITTED | 기한후제출 | 저장 `submit_status` | 기한 이후 등록 | 결과물 등록(기한 기준 위치 `[결정 필요]` #24) | 재등록 시 version 증가 | OPS_MANAGER |
+| LATE_SUBMITTED | 기한후제출 | 저장 `submit_status` | 기한 이후 등록 | 결과물 등록·재등록 시 과정 제출기한(`course.submission_due_date`)과 비교해 자동 판정, 기한 변경 시 재판정(D-04) | 재등록 시 version 증가 | OPS_MANAGER |
 | PENDING | 대기 | 저장 `review_status` | 검토 전 | 등록 직후, 재등록 직후(검토 결과 초기화) | APPROVED, REVISION_REQUESTED, REJECTED | OPS_MANAGER |
 | APPROVED | 적합 | 저장 | 검토 통과 | 검토 저장 | (재등록 불가) | OPS_MANAGER |
 | REVISION_REQUESTED | 보완요청 | 저장 | 보완 후 재등록 필요 | 검토 저장 | PENDING(재등록 시) | OPS_MANAGER |
@@ -332,8 +332,8 @@
 | S15 과정 목록 | 과정 목록 | GET | /courses | name, status, from, to, manager_user_id | 과정 목록(담당자 이름 포함), 확정 훈련생 수 | 전 역할(◎) | 없음 |
 | S16 과정 등록/수정/상세 | 과정 상세 | GET | /courses/{id} | — | 과정(담당자 이름 포함), 훈련생·강사배정·일정 요약 | 전 역할(◎) | 없음 |
 | | 담당자 후보 | GET | /courses/manager-candidates | — | 활성 OPS_MANAGER 의 user_id·name 만 (P1-18 과 같은 기준). 사용자 관리(S25)가 SYS 전용이라 등록·수정 화면용으로 따로 연 조회 | OPS(S16:U) | 없음 |
-| | 과정 등록 | POST | /courses | 과정 기본정보, manager_user_id | course(PREPARING) | OPS | CREATE / course / USER |
-| | 과정 기본정보 수정 | PATCH | /courses/{id} | 변경 필드 | 갱신된 과정 | OPS | UPDATE / course / USER (before/after) |
+| | 과정 등록 | POST | /courses | 과정 기본정보, manager_user_id, submission_due_date(선택, D-04) | course(PREPARING) | OPS | CREATE / course / USER |
+| | 과정 기본정보 수정 | PATCH | /courses/{id} | 변경 필드(submission_due_date 포함, null=기한 없음) | 갱신된 과정(제출기한 변경 시 재판정 건수 rejudgedSubmissionCount) | OPS | UPDATE / course / USER (before/after) |
 | | 모집 시작 | POST | /courses/{id}/open-recruitment | — | status=RECRUITING | OPS | UPDATE / course / USER |
 | | 운영중 전환 | POST | /courses/{id}/start | 확정 훈련생 0명 경고 확인값 | status=IN_PROGRESS | OPS | UPDATE / course / USER (자동 전환은 SYSTEM_BATCH) |
 | | 종료 체크리스트 | GET | /courses/{id}/closure-checklist | — | 9절 항목별 건수·처리 구분(차단/경고/불필요) | OPS·SYS·EXEC | 없음 |
@@ -351,7 +351,7 @@
 | S19 결과물 제출현황 | 제출현황(미제출 계산) | GET | /courses/{id}/submission-status | trainee_name, review_status, missing_only | 확정 훈련생 × submission LEFT JOIN 결과(마스킹 연락처, 등록일시·등록자 — submission 에 감사 컬럼이 없어 audit_log CREATE 기록에서) | OPS·SYS·EXEC, INSTRUCTOR ◎ | 없음 |
 | | 결과물 등록 | POST | /courses/{id}/submissions | trainee_id, title, submitted_at(필수), 파일 | submission(version 1, PENDING), 이미 있으면 409 | OPS | CREATE / submission / USER |
 | | 결과물 재등록 | POST | /submissions/{id}/re-register | submitted_at, 파일 | version 증가, review_status=PENDING | OPS | UPDATE / submission / USER (before/after) |
-| S20 결과물 미제출 | 미제출 목록 | GET | /courses/{id}/submission-status | missing_only=true | 미제출 계산 대상자(제출기한 관련 열은 #24 확정 전 보류) | OPS·EXEC·SYS, INSTRUCTOR ◎ | 없음 (S19 API 재사용) |
+| S20 결과물 미제출 | 미제출 목록 | GET | /courses/{id}/submission-status | missing_or_late=true | 미제출 계산 대상자 + 기한후제출, 과정 제출기한·경과일수(D-04) | OPS·EXEC·SYS, INSTRUCTOR ◎ | 없음 (S19 API 재사용) |
 | S21 결과물 검토 | 결과물 상세·이력 | GET | /submissions/{id} | — | 제출 정보(훈련생·과정명), 버전별 첨부, 검토 이력 | OPS·EXEC·SYS | 없음 |
 | | 검토 저장 | POST | /submissions/{id}/reviews | review_result, review_comment | submission_review_log, review_status 갱신 | OPS | CREATE / submission_review_log 동시 UPDATE / submission / USER |
 | S22 확인 필요 목록 | 확인 건 목록 | GET | /verification-cases | period 또는 from·to(발생일 범위, APP_TIMEZONE 기준), course_id, trainee_name, assignee_id, rule_code, status[] | 사건 목록(관련 훈련생 0~N, 우선순위 계산) | OPS·SYS·EXEC | 없음 |
@@ -392,7 +392,7 @@
 - 휴강 해제(CANCELLED → SCHEDULED) — 도입하지 않기로 확정(P1-06 대신 새 회차 등록으로 대체, decisions.md P1-07 확정 2026-09-22)
 - 수강신청 명단 엑셀 일괄 등록(`POST /enrollments/import`) — 도입하지 않기로 확정(decisions.md P1-05 확정 2026-09-22)
 - 공식 출결 수신 API(`POST /integrations/attendance` 등) — `[결정 필요]` #1
-- 결과물 제출기한 관련 조회 조건 — `[결정 필요]` #24
+- 결과물 제출기한 — D-04 확정(과정 공통, 2026-09-29)
 
 ---
 
@@ -592,7 +592,7 @@
 | B17 | 상태값 영문 코드·한글 표시명 분리 표준 | baseline 3 | 전 enum | 전체 | 표준 |
 | B18 | 규칙별 중복 판정 키(dedupe_key) 정의 | STEP 8.1-C | verification_case.evidence | S22 | 로직 |
 | B19 | 수료·중도포기·제적 전이 화면·기준이 없음(명세 갭) | STEP 12 #23 | trainee_enrollment | — | 정책 |
-| B20 | 결과물 제출기한 저장 위치 없음(명세 갭) | STEP 12 #24 | — | S20 | 정책 |
+| B20 | 결과물 제출기한 저장 위치 없음(명세 갭) → **D-04 확정: course.submission_due_date(2026-09-29)** | STEP 12 #24 | course | S16·S19·S20 | 해소 |
 | B21 | 결석 확정 권한 기본값 OPS_MANAGER 전용 | STEP 7-A(S07) | — | S07 | 정책(#20) |
 | B22 | ERD v3 → v5 (옵션 테이블·enum·제약 주석) | ERD | 다수 | — | 문서 |
 
@@ -616,7 +616,7 @@
 | 19 | 시스템 관리자의 업무 데이터 예외 수정 권한 | 조회 전용으로 통일했으나 장애 대응 관행에 따라 달라질 수 있음 |
 | 21 | 운영중 과정의 중도 등록 허용 | 등록 API의 과정 상태 검증 규칙 |
 | 23 | 수료·중도포기·제적 기준과 처리 화면 | 현재 명세에 전이 화면이 없어 수료 판정이 불가능 |
-| 24·5 | 결과물 제출기한 위치·제출 단위 | 기한후제출 판정, 미제출 경과일수, UNIQUE 키(title) 확정에 필요 |
+| 24·5 | 결과물 제출기한 위치·제출 단위 | **#24 확정(과정 공통 기한, 2026-09-29)**. 제출 단위(#5)는 현행(과정당 여러 건, title 구분) |
 | 1 | 공식 출결 연동 방식 | attendance_source_raw 필요 여부, actor_type(SYSTEM_API/BATCH), RULE_07 가동 여부 |
 | 2 | 출결 확인 환경(기기·채널 식별자) | RULE_01·02의 related_info 스키마, 개인정보 최소화 기준 |
 | 16 | 훈련생 개별 중간 현장확인 이벤트 도입 | 도입 시 별도 규칙·이벤트 테이블 설계가 필요, 미도입이면 RULE_03 현행 유지 |
@@ -751,7 +751,7 @@ O=허용, R=조회만, —=불가, ◎=서버 스코프 재검증, △=결정 �
 **착수 전 확정해야 하는 것(해당 기능 개발의 전제)**
 - (확정 완료: #3 단일 기관, #15 담당자 등록, #18 전체 과정 접근)
 - #23 수료·중도포기·제적 기준·화면 — 과정 종료·enrollment 전이
-- #24·#5 제출기한 위치·제출 단위 — 결과물 제출·미제출 계산
+- #24·#5 제출기한 위치·제출 단위 — **#24 확정(과정 공통)**, #5 는 현행 유지
 - #20·#27 결석 확정 권한과 마감 — 출결 운영 규칙
 - #22 지각·조퇴 판정 기준 — 입실 확인 로직
 - (확정 완료 2026-09-22: #17·#30·#13 종료·강행·종결 승인 구조 — decisions.md D-06. API 구현 시점은 Phase 2~4, P1-03 참고)
@@ -771,6 +771,6 @@ O=허용, R=조회만, —=불가, ◎=서버 스코프 재검증, △=결정 �
 ## 14. 이 기준선의 준비 상태
 
 - **준비된 부분**: 데이터 모델(25개 테이블 제약·인덱스·삭제 정책), 상태값 사전, 권한 매트릭스와 서버 검증 항목, 27개 화면의 API 요구사항, 규칙 표, 감사 이벤트 정책, 종료 조건 기본 분류, 개인정보·보안 요구사항.
-- **남은 위험**: (1) 결과물 제출 주체 미확정, (2) 수료 전이 명세 갭, (3) 제출기한 저장 위치 없음, (4) 공식 출결 연동 미확정으로 RULE_07 가동 불가, (5) 결석 확정 운영 규칙(권한·마감)과 지각 판정 기준이 없어 출결 화면의 운영 정합성이 정책에 의존.
+- **남은 위험**: (1) 결과물 제출 주체 미확정, (2) 수료 전이 명세 갭, (3) ~~제출기한 저장 위치 없음~~(D-04 확정), (4) 공식 출결 연동 미확정으로 RULE_07 가동 불가, (5) 결석 확정 운영 규칙(권한·마감)과 지각 판정 기준이 없어 출결 화면의 운영 정합성이 정책에 의존.
 - **바로 개발 가능한 영역**: 인증·권한·감사 프레임워크, 과정·훈련생 등록·확정, 강사·교육일정, 출결 조회(미출결 계산)·입실·퇴실·출결 수정, 운영일지·특이사항, 확인 건 처리 워크플로우, RULE_01~06.
 - **정책 확정 후 개발할 영역**: 결과물 등록·검토·미제출, 수료 처리, 결석 확정·지각 판정, 공식 출결 대사·RULE_07, 과정 종료 정책 세부.

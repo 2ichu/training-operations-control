@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { api } from '../../api/client'
-import type { SubmissionStatusRow } from '../../api/types'
+import type { SubmissionStatusResponse, SubmissionStatusRow } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { useCourseOptions } from '../../api/useCourseOptions'
 import { useAuth } from '../../auth/auth-context'
@@ -23,13 +23,14 @@ export function SubmissionStatusPage() {
   const courses = useCourseOptions()
   const query = { trainee_name: get('trainee_name'), review_status: get('review_status') }
   const list = useApi(
-    (signal) => (courseId ? api.get<{ items: SubmissionStatusRow[] }>(`/courses/${courseId}/submission-status`, query, signal).then((r) => r.items) : Promise.resolve(null)),
+    (signal) => (courseId ? api.get<SubmissionStatusResponse>(`/courses/${courseId}/submission-status`, query, signal) : Promise.resolve(null)),
     `${courseId}:${JSON.stringify(query)}`,
   )
   const [name, setName] = useState(get('trainee_name'))
   const [dialog, setDialog] = useState<Dialog | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const rows = list.data ?? []
+  const rows = list.data?.items ?? []
+  const due = list.data?.submissionDueDate ?? null
   // 등록 대상 = 확정 훈련생 전체(검토 상태로 거른 목록이면 미제출자가 빠지므로 필터 없는 목록일 때만 제공)
   const candidates = [...new Map(rows.map((r) => [r.traineeId, { traineeId: r.traineeId, traineeName: r.traineeName }])).values()]
   const canRegister = can('S19', 'C') && !get('review_status')
@@ -91,6 +92,7 @@ export function SubmissionStatusPage() {
           {notice}
         </p>
       )}
+      {list.data && <p className="hint">결과물 제출기한: {due ?? '없음(기한후제출 판정 안 함)'}</p>}
       {!courseId && <EmptyText>과정을 선택해 주세요.</EmptyText>}
       {list.status === 'error' && <ErrorText error={list.error} onRetry={list.reload} />}
       {list.data && (
@@ -152,8 +154,8 @@ export function SubmissionStatusPage() {
         </div>
       )}
 
-      {dialog?.kind === 'register' && <RegisterDialog courseId={courseId} candidates={candidates} initialTraineeId={dialog.traineeId} onClose={() => setDialog(null)} onSaved={saved} />}
-      {dialog?.kind === 'reregister' && <ReRegisterDialog row={dialog.row} onClose={() => setDialog(null)} onSaved={saved} />}
+      {dialog?.kind === 'register' && <RegisterDialog courseId={courseId} dueDate={due} candidates={candidates} initialTraineeId={dialog.traineeId} onClose={() => setDialog(null)} onSaved={saved} />}
+      {dialog?.kind === 'reregister' && <ReRegisterDialog row={dialog.row} dueDate={due} onClose={() => setDialog(null)} onSaved={saved} />}
     </section>
   )
 }

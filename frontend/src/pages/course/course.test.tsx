@@ -21,6 +21,7 @@ const course = (overrides: Partial<CourseDetail> = {}): CourseDetail => ({
   trainingSite: '본원',
   managerUserId: 7,
   managerName: '김운영',
+  submissionDueDate: null,
   status: 'PREPARING',
   createdAt: '2026-08-01T00:00:00.000Z',
   updatedAt: '2026-08-02T00:00:00.000Z',
@@ -164,6 +165,31 @@ describe('S16 과정 상세', () => {
     expect(await screen.findByText('저장했습니다.')).toBeInTheDocument()
     expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ training_site: '별관 3층', reason: '강의실 변경' })
     expect(screen.getByText('별관 3층')).toBeInTheDocument()
+  })
+
+  it('결과물 제출기한(D-04): 상세에 표시, 바꾸면 바뀐 기한만 보내고 재판정 건수를 안내, 비우면 null(기한 없음)', async () => {
+    const { calls } = mockApi({
+      'GET /auth/me': { status: 200, body: me() },
+      'GET /courses/3': { status: 200, body: course({ submissionDueDate: '2026-10-15' }) },
+      'GET /courses/manager-candidates': managers,
+      'PATCH /courses/3': ({ body }) => ({ status: 200, body: (body as { submission_due_date: string | null }).submission_due_date ? { rejudgedSubmissionCount: 4 } : {} }),
+    })
+    const user = userEvent.setup()
+    renderAt('/courses/3')
+    expect(await screen.findByText('2026-10-15')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '수정' }))
+    const due = screen.getByLabelText('결과물 제출기한(선택)')
+    expect(due).toHaveValue('2026-10-15')
+    await user.clear(due)
+    await user.type(due, '2026-10-01')
+    await user.click(screen.getByRole('button', { name: '저장' }))
+    expect(await screen.findByText('저장했습니다. 새 제출기한으로 결과물 4건의 제출상태를 다시 판정했습니다.')).toBeInTheDocument()
+    expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ submission_due_date: '2026-10-01' })
+
+    await user.click(screen.getByRole('button', { name: '수정' }))
+    await user.clear(screen.getByLabelText('결과물 제출기한(선택)'))
+    await user.click(screen.getByRole('button', { name: '저장' }))
+    await waitFor(() => expect(calls.filter((c) => c.method === 'PATCH').at(-1)?.body).toEqual({ submission_due_date: null }))
   })
 
   it('운영중 전환: 확정 훈련생이 없으면(409) 경고 후 확인하면 acknowledge 로 다시 보낸다', async () => {
