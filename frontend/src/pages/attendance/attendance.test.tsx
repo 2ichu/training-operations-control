@@ -22,6 +22,7 @@ const schedule = (overrides: Partial<ScheduleListItem> = {}): ScheduleListItem =
   endTime: '18:00:00',
   instructorId: 2,
   instructorName: '박강사',
+  content: null,
   status: 'SCHEDULED',
   displayStatus: 'SCHEDULED',
   ...overrides,

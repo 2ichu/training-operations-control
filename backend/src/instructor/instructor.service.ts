@@ -113,10 +113,14 @@ export class InstructorService {
     const page = pageOf(query);
     const { rows } = await this.db.query(
       `SELECT l.log_id, l.entity_type, l.entity_id, l.changed_by, u.name AS changed_by_name, l.changed_at, l.before_value, l.after_value, l.reason,
+              i.instructor_id, i.name AS instructor_name, ia.course_id, c.course_name, ia.round_no,
               count(*) OVER() AS total
          FROM instructor_change_log l
          JOIN user_account u ON u.user_id = l.changed_by
          LEFT JOIN instructor_assignment ia ON l.entity_type = 'ASSIGNMENT' AND ia.assignment_id = l.entity_id
+         LEFT JOIN course c ON c.course_id = ia.course_id
+         -- S14 "대상" 표시: 강사 이력은 entity_id, 배정 이력은 배정의 강사(과정·회차 범위 포함)
+         LEFT JOIN instructor i ON i.instructor_id = CASE WHEN l.entity_type = 'INSTRUCTOR' THEN l.entity_id ELSE ia.instructor_id END
         WHERE ${where.sql} ORDER BY l.changed_at DESC, l.log_id DESC LIMIT ${page.size} OFFSET ${page.offset}`,
       where.params,
     );

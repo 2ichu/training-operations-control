@@ -79,6 +79,18 @@ export const ENROLLMENT_STATUS_LABELS: Record<string, string> = {
 }
 export const ENROLLMENT_STATUS_ORDER = Object.keys(ENROLLMENT_STATUS_LABELS)
 
+// instructor.status (baseline 3절)
+export const INSTRUCTOR_STATUS_LABELS: Record<string, string> = {
+  ACTIVE: '활동',
+  INACTIVE: '비활동',
+}
+
+// user_account.status
+export const USER_STATUS_LABELS: Record<string, string> = {
+  ACTIVE: '활성',
+  INACTIVE: '비활성',
+}
+
 export const ASSIGNMENT_STATUS_LABELS: Record<string, string> = {
   ASSIGNED: '배정',
   CANCELLED: '배정 취소',

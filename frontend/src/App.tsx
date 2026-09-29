@@ -13,6 +13,11 @@ import { DailyAttendancePage } from './pages/attendance/DailyAttendancePage'
 import { CourseCreatePage } from './pages/course/CourseCreatePage'
 import { CourseDetailPage } from './pages/course/CourseDetailPage'
 import { CourseListPage } from './pages/course/CourseListPage'
+import { InstructorChangeLogPage } from './pages/instructor/InstructorChangeLogPage'
+import { InstructorCreatePage } from './pages/instructor/InstructorCreatePage'
+import { InstructorDetailPage } from './pages/instructor/InstructorDetailPage'
+import { InstructorListPage } from './pages/instructor/InstructorListPage'
+import { SchedulePage } from './pages/schedule/SchedulePage'
 import { EnrollmentReviewPage } from './pages/trainee/EnrollmentReviewPage'
 import { TraineeChangeLogPage } from './pages/trainee/TraineeChangeLogPage'
 import { TraineeCreatePage } from './pages/trainee/TraineeCreatePage'
@@ -116,6 +121,38 @@ export function AppRoutes() {
           }
         />
         <Route
+          path="/instructors"
+          element={
+            <RequirePermission screenId="S11">
+              <InstructorListPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/instructors/new"
+          element={
+            <RequirePermission screenId="S12" action="C">
+              <InstructorCreatePage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/schedules"
+          element={
+            <RequirePermission screenId="S13">
+              <SchedulePage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/instructor-change-logs"
+          element={
+            <RequirePermission screenId="S14">
+              <InstructorChangeLogPage />
+            </RequirePermission>
+          }
+        />
+        <Route
           path="/courses"
           element={
             <RequirePermission screenId="S15">
@@ -150,7 +187,15 @@ export function AppRoutes() {
             }
           />
         ))}
-        {/* 상세 화면: S16 과정·S23 확인 필요·S05 훈련생 */}
+        {/* 상세 화면: S16 과정·S23 확인 필요·S05 훈련생·S12 강사 */}
+        <Route
+          path="/instructors/:id"
+          element={
+            <RequirePermission screenId="S12">
+              <InstructorDetailPage />
+            </RequirePermission>
+          }
+        />
         <Route
           path="/courses/:id"
           element={

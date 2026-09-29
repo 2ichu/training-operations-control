@@ -16,6 +16,8 @@ const FIELD_LABELS: Record<string, string> = {
   attendance_status: '출결상태',
   check_in_time: '입실',
   check_out_time: '퇴실',
+  round_no: '회차',
+  instructor_id: '강사',
 }
 const IGNORED = new Set(['created_at', 'created_by', 'updated_at', 'updated_by', 'last_modified_at'])
 

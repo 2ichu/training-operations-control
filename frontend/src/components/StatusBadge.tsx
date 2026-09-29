@@ -1,4 +1,4 @@
-import { ATTENDANCE_SHORT_LABELS, ATTENDANCE_STATUS_LABELS, CASE_STATUS_LABELS, COURSE_STATUS_LABELS, label } from '../labels'
+import { ATTENDANCE_SHORT_LABELS, ATTENDANCE_STATUS_LABELS, CASE_STATUS_LABELS, COURSE_STATUS_LABELS, INSTRUCTOR_STATUS_LABELS, label, SCHEDULE_STATUS_LABELS } from '../labels'
 
 // system-design 7.1·7.2: 확인필요 계열만 강조색 1개, 종결은 연녹색, 확인중은 회색, 나머지는 무채색.
 const TONE: Record<string, 'attention' | 'done' | 'muted' | 'neutral'> = {
@@ -31,3 +31,13 @@ export function AttendanceBadge({ status, short = false }: { status: string | nu
   )
 }
 
+
+// 강사 상태: 비활동만 흐리게 구분한다
+export function InstructorStatusBadge({ status }: { status: string }) {
+  return <span className={status === 'ACTIVE' ? 'badge badge-neutral' : 'badge badge-muted'}>{label(INSTRUCTOR_STATUS_LABELS, status)}</span>
+}
+
+// 회차 상태(baseline 3-6): 저장값 예정·휴강 + 계산값 진행완료. 휴강·진행완료는 흐리게, 예정은 기본
+export function ScheduleStatusBadge({ status }: { status: string }) {
+  return <span className={status === 'SCHEDULED' ? 'badge badge-neutral' : 'badge badge-muted'}>{label(SCHEDULE_STATUS_LABELS, status)}</span>
+}

@@ -302,6 +302,7 @@ export interface ScheduleListItem {
   endTime: string
   instructorId: number
   instructorName: string
+  content: string | null
   status: string
   displayStatus: string
 }
@@ -368,4 +369,67 @@ export interface AttendanceChangeLog {
   classDate: string
   courseId: number
   courseName: string
+}
+
+// ── 강사·일정(S11~S14) ──────────────────────────────────────────────────
+// GET /instructors (S11)
+export interface InstructorListItem {
+  instructorId: number
+  name: string
+  /** 마스킹된 값(뒤 4자리만) */
+  contact: string | null
+  status: 'ACTIVE' | 'INACTIVE'
+  assignedCourseCount: number
+  createdAt: string
+  updatedAt: string | null
+}
+
+// GET /instructors/{id} (S12)
+export interface InstructorDetail extends Omit<InstructorListItem, 'assignedCourseCount'> {
+  linkedAccount: { userId: number; loginId: string; name: string; status: string } | null
+}
+
+// PATCH /instructors/{id} — 비활동 전환 시에만 warnings
+export interface InstructorUpdateResult extends Omit<InstructorListItem, 'assignedCourseCount'> {
+  warnings?: { inProgressAssignmentCount: number }
+}
+
+// POST /courses/{id}/schedules, PATCH /schedules/{id}, POST /schedules/{id}/reassign-instructor — 같은 강사·같은 시간대 회차가 있으면 경고
+export interface OverlappingSchedule {
+  scheduleId: number
+  courseId: number
+  courseName: string
+  roundNo: number
+  classDate: string
+  startTime: string
+  endTime: string
+}
+export interface ScheduleWriteResult {
+  scheduleId: number
+  warnings?: { overlappingSchedules: OverlappingSchedule[] }
+}
+
+// POST /instructor-assignments/{id}/cancel — 남은 예정 회차가 있으면 경고(P1-16)
+export interface AssignmentCancelResult {
+  assignmentId: number
+  warnings?: { remainingScheduledCount: number }
+}
+
+// GET /instructor-change-logs (S14)
+export interface InstructorChangeLog {
+  logId: number
+  entityType: 'INSTRUCTOR' | 'ASSIGNMENT'
+  entityId: number
+  changedBy: number
+  changedByName: string
+  changedAt: string
+  beforeValue: Record<string, unknown> | null
+  afterValue: Record<string, unknown> | null
+  reason: string
+  instructorId: number | null
+  instructorName: string | null
+  /** 배정 이력만 */
+  courseId: number | null
+  courseName: string | null
+  roundNo: number | null
 }

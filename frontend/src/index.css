@@ -755,3 +755,162 @@ ul.diff ins {
   color: var(--text-muted);
 }
 
+
+/* ── 강사·일정 ─────────────────────────────────────────────── */
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.toolbar label.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.view-toggle {
+  display: inline-flex;
+  align-self: flex-end;
+}
+
+.view-toggle button {
+  border-radius: 0;
+}
+
+.view-toggle button:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.view-toggle button:last-child {
+  border-radius: 0 4px 4px 0;
+  margin-left: -1px;
+}
+
+.view-toggle button[aria-pressed='true'] {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-text);
+}
+
+fieldset.radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+fieldset.radio-group legend {
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+fieldset.radio-group input[type='number'] {
+  width: 80px;
+}
+
+tr.muted td {
+  color: var(--text-muted);
+}
+
+table.calendar {
+  table-layout: fixed;
+}
+
+table.calendar th {
+  text-align: center;
+}
+
+table.calendar td {
+  height: 84px;
+  vertical-align: top;
+  white-space: normal;
+  border: 1px solid var(--border);
+  padding: 4px;
+}
+
+table.calendar td.outside {
+  background: var(--bg);
+}
+
+table.calendar td.outside .day-number {
+  color: var(--text-muted);
+}
+
+table.calendar td.today .day-number {
+  font-weight: 700;
+  color: var(--link);
+}
+
+.calendar .day-full {
+  display: none;
+}
+
+.calendar ul {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.calendar li.event {
+  margin-bottom: 2px;
+  padding: 1px 4px;
+  border-left: 2px solid var(--primary);
+  background: var(--muted-bg);
+  border-radius: 2px;
+  overflow-wrap: anywhere;
+}
+
+.calendar li.event.muted {
+  border-left-color: var(--border-strong);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-muted);
+}
+
+/* 좁은 화면: 달력 격자 대신 일정이 있는 날만 세로로 나열한다 */
+@media (max-width: 760px) {
+  table.calendar,
+  table.calendar tbody,
+  table.calendar tr,
+  table.calendar td {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  table.calendar thead,
+  table.calendar td.no-events,
+  table.calendar td.outside {
+    display: none;
+  }
+
+  table.calendar td {
+    border-width: 0 0 1px;
+    padding: 6px 0;
+  }
+
+  .calendar .day-full {
+    display: inline;
+    font-weight: 600;
+  }
+
+  .calendar .day-short {
+    display: none;
+  }
+}
