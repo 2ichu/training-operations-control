@@ -10,6 +10,7 @@ import { CourseService } from '../src/course/course.service.js';
 import { PG_POOL } from '../src/database/database.module.js';
 import { DetectionRuleService } from '../src/verification/detection-rule.service.js';
 import { RollbackPool } from './support/rollback-pool.js';
+import { makeAttendanceSheet } from './support/xlsx-fixture.js';
 
 // 과정·훈련생·강사·일정 API 의 실제 DB HTTP 통합 테스트 (DATABASE_URL 필요, 없으면 건너뜀).
 // 하나의 바깥 트랜잭션 위에서 실행되고 항상 ROLLBACK 되므로 DB 에 데이터·감사로그가 남지 않는다(RollbackPool).
@@ -1059,9 +1060,9 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
   // ── 공식 출결 대사 (S29, D-12 확정: CSV 업로드) ───────────────────────────
   describe('공식 출결 대사 (S29)', () => {
     const HEADER = 'round_no,trainee_name,birth_date,status,check_in,check_out\n';
-    const upload = async (who: 'ops' | 'exec' | 'sys' | 'ins1', csv: string, course = c1, name = '공식출결.csv') =>
-      (await as(who)).post(`/api/v1/courses/${course}/official-attendance`).attach('file', Buffer.from(csv, 'utf8'), { filename: name, contentType: 'text/csv' });
-    const uploadOk = async (who: 'ops' | 'exec' | 'sys' | 'ins1', csv: string) => {
+    const upload = async (who: 'ops' | 'exec' | 'sys' | 'ins1', csv: string | Buffer, course = c1, name = '공식출결.csv') =>
+      (await as(who)).post(`/api/v1/courses/${course}/official-attendance`).attach('file', typeof csv === 'string' ? Buffer.from(csv, 'utf8') : csv, { filename: name, contentType: 'text/csv' });
+    const uploadOk = async (who: 'ops' | 'exec' | 'sys' | 'ins1', csv: string | Buffer) => {
       const res = await upload(who, csv);
       expect(res.status, JSON.stringify(res.body)).toBe(201);
       return res;
@@ -1146,6 +1147,47 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect(time.counts).toEqual({ CASE: 1 });
       expect((await rows(`SELECT evidence FROM verification_case`))[0].evidence.items).toHaveLength(2);
       expect(await num(`SELECT count(*) n FROM attendance_change_log`)).toBe(0);
+    });
+
+    it('공식 출석부(엑셀): 날짜로 회차를 찾고, 못 찾는 날짜·훈련생은 한 번만 보고하며, 주민등록번호는 저장하지 않고 생년월일로만 쓴다', async () => {
+      // 2027-01-05 만 수업이 있다(s1). 1/4 는 회차 없음, '없는사람'은 훈련생 없음.
+      const sheet = makeAttendanceSheet(2027, 1, [4, 5, 6], [
+        { name: '확정1', rrn: '900305-1234567', marks: ['○', '◎', ''] },
+        { name: '없는사람', rrn: '950101-2234567', marks: ['○', '○', ''] },
+      ]);
+      const res = (await uploadOk('ops', sheet)).body;
+      expect(res.counts).toEqual({ CREATED: 1, ERROR: 2 });
+      expect(res.total).toBe(3); // 같은 원인의 반복 오류(1/4 의 없는사람 칸)는 뺀다
+      expect(res.rows.map((r: { result: string }) => r.result)).toEqual(['ERROR', 'CREATED', 'ERROR']);
+      expect(res.rows[0]).toMatchObject({ classDate: '2027-01-04', traineeName: '확정1' });
+      expect(res.rows[0].message).toContain('수업 회차가 없습니다');
+      expect(res.rows[2].message).toContain('일치하는 사람이 없습니다');
+      expect(await attRow()).toMatchObject({ attendance_status: 'LATE', source_type: 'OFFICIAL', check_in_time: null });
+      // 생년월일(1990-03-05)로 확정1 을 찾았고, 주민등록번호는 원본 어디에도 없다
+      const raw = await rows(`SELECT raw_payload::text AS p FROM attendance_source_raw WHERE batch_id = $1`, [res.batchId]);
+      expect(raw.map((r) => r.p).join('')).not.toMatch(/900305|1234567|950101|2234567/);
+      expect(raw[1].p).toContain('1990-03-05');
+      // 생년월일이 다른 동명 행은 다른 사람이라 오류
+      const other = makeAttendanceSheet(2027, 1, [5], [{ name: '확정1', rrn: '991231-1234567', marks: ['○'] }]);
+      expect((await uploadOk('ops', other)).body.counts).toEqual({ ERROR: 1 });
+      // 다시 올리면 변경 없음
+      expect((await uploadOk('ops', sheet)).body.counts).toEqual({ UNCHANGED: 1, ERROR: 2 });
+    });
+
+    it('공식 출석부(엑셀)는 상태만 있어 내부 입·퇴실 시각을 지우지 않고, 상태가 다르면 확인 필요 건을 만든다', async () => {
+      const ops1 = await as('ops');
+      await ops1.post(`/api/v1/schedules/${s1}/attendance/check-in`).send({ trainee_ids: [tConfirmed1], check_in_time: '2027-01-05T00:00:00Z' }).expect(201); // 09:00 PRESENT MANUAL
+      const present = makeAttendanceSheet(2027, 1, [5], [{ name: '확정1', marks: ['○'] }]);
+      expect((await uploadOk('ops', present)).body.counts).toEqual({ CONVERTED: 1 });
+      const att = await attRow();
+      expect(att.source_type).toBe('OFFICIAL');
+      expect(new Date(att.check_in_time).toISOString()).toBe('2027-01-05T00:00:00.000Z'); // 시각 유지
+      expect((await uploadOk('ops', present)).body.counts).toEqual({ UNCHANGED: 1 }); // 이미 공식·같은 값 — 시각을 지우는 '정정'이 아님
+      expect(new Date((await attRow()).check_in_time).toISOString()).toBe('2027-01-05T00:00:00.000Z');
+      // 공식 결석으로 바뀌면(이미 공식이므로) 정정
+      expect((await uploadOk('ops', makeAttendanceSheet(2027, 1, [5], [{ name: '확정1', marks: ['×'] }]))).body.counts).toEqual({ UPDATED: 1 });
+      expect((await attRow()).attendance_status).toBe('ABSENT');
+      expect((await upload('ops', Buffer.from('PK\x03\x04not-a-real-xlsx-file-content'))).body.code).toBe('INVALID_FILE');
     });
 
     it('RULE_07 이 꺼져 있으면 불일치는 건 없이 MISMATCH 로만 알린다', async () => {

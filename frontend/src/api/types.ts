@@ -591,6 +591,8 @@ export type OfficialImportResultCode = 'CREATED' | 'UPDATED' | 'CONVERTED' | 'UN
 export interface OfficialImportRow {
   rowNo: number
   roundNo: string | null
+  /** 공식 출석부(엑셀)는 회차 대신 날짜 */
+  classDate: string | null
   traineeName: string | null
   result: OfficialImportResultCode
   message: string

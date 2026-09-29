@@ -33,7 +33,7 @@ describe('parseOfficialFile', () => {
     expect(parseOfficialFile('round_no,trainee_name,status\n1,김하나,출석\n')[0]).toMatchObject({ traineeName: '김하나', status: 'PRESENT' }); // 생년월일 열은 선택
     expect(() => parseOfficialFile('')).toThrow(OfficialFileError);
     const many = header + '1,a,1990-01-01,PRESENT,,\n'.repeat(MAX_OFFICIAL_ROWS + 1);
-    expect(() => parseOfficialFile(many)).toThrow(/1000/);
+    expect(() => parseOfficialFile(many)).toThrow(/3000/);
   });
 });
 

@@ -372,7 +372,7 @@
 | S26 권한 | 역할 목록 | GET | /roles | — | 역할(role_id·role_code·role_name, 4개 고정 — D-18) | SYS | 없음 |
 | | 권한 조회 | GET | /roles/permissions | role_id | 화면×기능 매트릭스 | SYS | 없음 |
 | | 권한 저장 | PUT | /roles/{id}/permissions | 매트릭스 | 저장 결과. SYS_ADMIN 역할에서 S26 R·U 를 빼면 409 SELF_LOCKOUT(잠금 방지) | SYS | UPDATE / role_permission / USER (before/after) |
-| S29 공식 출결 대사 | 파일 업로드·반영 | POST | /courses/{id}/official-attendance | file(CSV, multipart) | batchId, 행별 결과(CREATED·UPDATED·CONVERTED·UNCHANGED·CASE·MISMATCH·ERROR), 결과별 건수 | OPS | CREATE / attendance_source_raw / SYSTEM_BATCH + 반영된 attendance CREATE·UPDATE + attendance_change_log(SYSTEM_BATCH). 종료·중단 과정 409 COURSE_LOCKED |
+| S29 공식 출결 대사 | 파일 업로드·반영 | POST | /courses/{id}/official-attendance | file(공식 출석부 xlsx 또는 CSV, multipart) | batchId, 행별 결과(CREATED·UPDATED·CONVERTED·UNCHANGED·CASE·MISMATCH·ERROR), 결과별 건수 | OPS | CREATE / attendance_source_raw / SYSTEM_BATCH + 반영된 attendance CREATE·UPDATE + attendance_change_log(SYSTEM_BATCH). 종료·중단 과정 409 COURSE_LOCKED |
 | | 업로드 이력 | GET | /official-attendance-imports | course_id, page, size | 배치별 건수 요약 | OPS·SYS·EXEC | 없음 |
 | | 업로드 상세 | GET | /official-attendance-imports/{batchId} | — | 행별 원본·결과·attendance_id·case_id | OPS·SYS·EXEC | 없음 |
 | S28 탐지규칙 (Phase 5) | 규칙 목록 | GET | /detection-rules | — | 규칙 목록(params·is_active·editable) | SYS | 없음 |

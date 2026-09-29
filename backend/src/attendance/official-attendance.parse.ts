@@ -4,7 +4,8 @@
 export const OFFICIAL_STATUSES = ['PRESENT', 'LATE', 'EARLY_LEAVE', 'ABSENT', 'EXCUSED'] as const;
 export type OfficialStatus = (typeof OFFICIAL_STATUSES)[number];
 
-export const MAX_OFFICIAL_ROWS = 1000;
+// 출석부(엑셀)는 훈련생 × 날짜 칸마다 한 행이 되므로 CSV 보다 넉넉히 둔다(30명 × 2개월 ≈ 1,800칸).
+export const MAX_OFFICIAL_ROWS = 3000;
 
 const COLUMN_ALIASES: Record<string, string> = {
   round_no: 'round_no', 회차: 'round_no',
@@ -26,9 +27,10 @@ const STATUS_ALIASES: Record<string, OfficialStatus> = {
 };
 
 export interface OfficialRow {
-  rowNo: number; // 파일 안 줄 번호(머리글이 1, 첫 데이터가 2)
+  rowNo: number; // CSV: 파일 안 줄 번호(머리글이 1, 첫 데이터가 2). 출석부(엑셀): 칸 순번
   raw: Record<string, string>;
   roundNo?: number;
+  classDate?: string; // 출석부(엑셀)는 회차가 아니라 날짜로 회차를 찾는다(하루 한 회차)
   traineeName?: string;
   birthDate?: string;
   status?: OfficialStatus;
