@@ -79,6 +79,18 @@ export const ENROLLMENT_STATUS_LABELS: Record<string, string> = {
 }
 export const ENROLLMENT_STATUS_ORDER = Object.keys(ENROLLMENT_STATUS_LABELS)
 
+// instructor.status (baseline 3절)
+export const INSTRUCTOR_STATUS_LABELS: Record<string, string> = {
+  ACTIVE: '활동',
+  INACTIVE: '비활동',
+}
+
+// user_account.status
+export const USER_STATUS_LABELS: Record<string, string> = {
+  ACTIVE: '활성',
+  INACTIVE: '비활성',
+}
+
 export const ASSIGNMENT_STATUS_LABELS: Record<string, string> = {
   ASSIGNED: '배정',
   CANCELLED: '배정 취소',
@@ -123,3 +135,16 @@ export const ATTENDANCE_SHORT_LABELS: Record<string, string> = {
   EXCUSED: '인',
 }
 
+
+// operation_log 작성 여부(S17). 미작성은 저장하지 않는 계산값
+export const OPERATION_LOG_STATUS_LABELS: Record<string, string> = {
+  WRITTEN: '작성',
+  NOT_WRITTEN: '미작성',
+}
+
+// course_issue.status (baseline 3-8)
+export const ISSUE_STATUS_LABELS: Record<string, string> = {
+  REGISTERED: '등록',
+  IN_REVIEW: '확인중',
+  RESOLVED: '조치완료',
+}

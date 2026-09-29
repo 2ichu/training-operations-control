@@ -373,6 +373,10 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       await ops1.post(`/api/v1/instructor-assignments/${assignmentId}/cancel`).send({ reason: '일정 충돌' }).expect(200);
       const res = (await (await as('exec')).get(`/api/v1/instructor-change-logs?instructor_id=${i1}`).expect(200)).body;
       expect(res.items.map((l: { entityType: string }) => l.entityType).sort()).toEqual(['ASSIGNMENT', 'INSTRUCTOR']);
+      // S14 "대상" 표시용: 강사 이력·배정 이력 모두 강사명, 배정 이력은 과정·회차 범위까지
+      const byType = Object.fromEntries(res.items.map((l: { entityType: string }) => [l.entityType, l]));
+      expect(byType.INSTRUCTOR).toMatchObject({ instructorId: i1, instructorName: '강사1b', courseId: null, courseName: null, roundNo: null });
+      expect(byType.ASSIGNMENT).toMatchObject({ instructorId: i1, instructorName: '강사1b', courseId: c2, courseName: '과정2', roundNo: 5 });
       expect((await (await as('exec')).get(`/api/v1/instructor-change-logs?instructor_id=${i1}&entity_type=ASSIGNMENT`)).body.total).toBe(1);
       expect((await (await as('ins1')).get('/api/v1/instructor-change-logs')).status).toBe(403);
     });
@@ -737,6 +741,14 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect((await ops1.get('/api/v1/schedules?from=nope')).status).toBe(400);
     });
 
+    it('목록 정렬: 과정 지정 시 회차 순, 아니면 날짜 순(system-design 3.4 진입점별 기본 정렬)', async () => {
+      // 2회차를 1회차보다 이른 날짜에 둔다
+      const early = await one(`INSERT INTO class_schedule (course_id, round_no, class_date, start_time, end_time, instructor_id) VALUES ($1, 2, '2027-01-04', '09:00', '18:00', $2) RETURNING schedule_id id`, [c1, i1]);
+      const ops1 = await as('ops');
+      expect((await ops1.get(`/api/v1/schedules?course_id=${c1}`)).body.items.map((s: { scheduleId: number }) => s.scheduleId)).toEqual([s1, early]);
+      expect((await ops1.get(`/api/v1/schedules?instructor_id=${i1}`)).body.items.map((s: { scheduleId: number }) => s.scheduleId)).toEqual([early, s1]);
+    });
+
     it('배정: 중복 과정 전체 담당 409, 배정·취소 시 change_log(ASSIGNMENT)+audit, 취소 후 재취소 409', async () => {
       const ops1 = await as('ops');
       expect((await ops1.post(`/api/v1/courses/${c1}/instructor-assignments`).send({ instructor_id: i2 })).body.code).toBe('ASSIGNMENT_CONFLICT'); // c1 은 이미 과정 전체 담당자 있음
@@ -794,6 +806,23 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect((await ops1.post(`/api/v1/schedules/${s1}/reassign-instructor`).send({ instructor_id: i1, reason: '복귀' })).body.code).toBe('INSTRUCTOR_INACTIVE');
       await ops1.post(`/api/v1/schedules/${s2}/cancel-class`).send({ reason: '휴강' }).expect(200);
       expect((await ops1.post(`/api/v1/schedules/${s2}/reassign-instructor`).send({ instructor_id: i2, reason: 'x' })).body.code).toBe('SCHEDULE_CANCELLED');
+    });
+
+    it('동일 강사·동일 시간대 회차는 경고만 반환한다(등록·재배정·수정, 휴강 회차 제외)', async () => {
+      const ops1 = await as('ops');
+      for (const round of [1, 2, 3]) await ops1.post(`/api/v1/courses/${c2}/instructor-assignments`).send({ instructor_id: i1, round_no: round }).expect(201);
+      // s1: c1 1회차 2027-01-05 09:00~18:00 (i1)
+      const overlapped = (await ops1.post(`/api/v1/courses/${c2}/schedules`).send({ round_no: 2, class_date: '2027-01-05', start_time: '13:00', end_time: '15:00', instructor_id: i1 }).expect(201)).body;
+      expect(overlapped.warnings.overlappingSchedules).toEqual([expect.objectContaining({ scheduleId: s1, courseName: '과정1', roundNo: 1, startTime: '09:00:00', endTime: '18:00:00' })]);
+      const adjacent = (await ops1.post(`/api/v1/courses/${c2}/schedules`).send({ round_no: 3, class_date: '2027-01-05', start_time: '18:00', end_time: '19:00', instructor_id: i1 }).expect(201)).body;
+      expect(adjacent.warnings).toBeUndefined(); // 끝과 시작이 맞닿는 것은 겹침이 아니다
+      const reassigned = (await ops1.post(`/api/v1/schedules/${s2}/reassign-instructor`).send({ instructor_id: i1, reason: '대강' }).expect(200)).body;
+      expect(reassigned.warnings.overlappingSchedules.map((r: { scheduleId: number }) => r.scheduleId)).toEqual([s1, overlapped.scheduleId]);
+      const moved = (await ops1.patch(`/api/v1/schedules/${overlapped.scheduleId}`).send({ class_date: '2027-01-06' }).expect(200)).body;
+      expect(moved.warnings).toBeUndefined();
+      await ops1.post(`/api/v1/schedules/${s1}/cancel-class`).send({ reason: '휴강' }).expect(200);
+      const edited = (await ops1.patch(`/api/v1/schedules/${s2}`).send({ content: '실습' }).expect(200)).body;
+      expect(edited.warnings).toBeUndefined(); // 휴강 회차(s1)는 겹침 대상이 아니다
     });
 
     it('P1-16: 배정 취소 시 예정된 회차가 남아있으면 경고를 반환한다(차단하지 않음)', async () => {
@@ -967,13 +996,19 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
     it('조회: 회차 목록의 미작성 계산(NOT_WRITTEN), 단일 조회 404→200, round_no 필터', async () => {
       const ops1 = await as('ops');
       const before = (await ops1.get(`/api/v1/courses/${c1}/operation-logs`).expect(200)).body;
-      expect(before.items).toEqual([expect.objectContaining({ scheduleId: s1, displayStatus: 'NOT_WRITTEN', operationLogId: null })]);
+      expect(before.items).toEqual([expect.objectContaining({ scheduleId: s1, displayStatus: 'NOT_WRITTEN', operationLogId: null, instructorName: '강사1', startTime: '09:00:00', endTime: '18:00:00' })]);
       expect((await ops1.get(`/api/v1/schedules/${s1}/operation-log`)).status).toBe(404); // 미작성
 
       await (await as('ins1')).post(`/api/v1/schedules/${s1}/operation-log`).send({ content: '진행', participant_count: 2 }).expect(201);
       const after = (await ops1.get(`/api/v1/courses/${c1}/operation-logs`).expect(200)).body;
       expect(after.items[0]).toMatchObject({ displayStatus: 'WRITTEN', participantCount: 2 });
-      expect((await ops1.get(`/api/v1/schedules/${s1}/operation-log`).expect(200)).body.content).toBe('진행');
+      const detail = (await ops1.get(`/api/v1/schedules/${s1}/operation-log`).expect(200)).body;
+      expect(detail).toMatchObject({ content: '진행', authorName: 'e2e_ins1', instructorName: '강사1', attachments: [] });
+      // 첨부 목록: 저장 경로(file_path)는 내부 값이라 응답에 없다
+      await client.query(`INSERT INTO attachment (entity_type, entity_id, file_name, file_path, file_size, uploaded_by) VALUES ('OPERATION_LOG', $1, '출석부.pdf', 'x-출석부.pdf', 1024, $2)`, [detail.operationLogId, insUser1]);
+      const withFile = (await ops1.get(`/api/v1/schedules/${s1}/operation-log`).expect(200)).body;
+      expect(withFile.attachments).toEqual([expect.objectContaining({ fileName: '출석부.pdf', fileSize: '1024' })]);
+      expect(JSON.stringify(withFile.attachments)).not.toContain('x-출석부');
       expect((await ops1.get(`/api/v1/courses/${c1}/operation-logs?round_no=99`)).body.items).toHaveLength(0);
     });
 
@@ -1058,6 +1093,9 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect(await num(`SELECT count(*) n FROM verification_case_trainee WHERE case_id = $1`, [escalated.caseId])).toBe(1);
       expect((await auditSince(since)).filter((r) => r.target_table === 'verification_case' && r.action === 'CREATE')).toHaveLength(1);
 
+      // 목록은 연결된 확인 건의 현재 상태를 참고 열로 준다(system-design S18)
+      const listed = (await ops1.get(`/api/v1/course-issues?course_id=${c1}`).expect(200)).body.items[0];
+      expect(listed).toMatchObject({ issueId: issue.issueId, courseName: '과정1', status: 'IN_REVIEW', verificationCaseId: escalated.caseId, verificationCaseStatus: 'NEEDS_CHECK' });
       expect((await ops1.post(`/api/v1/course-issues/${issue.issueId}/escalate`).send({})).body.code).toBe('VERIFICATION_CASE_EXISTS');
       const exec1 = await as('exec');
       expect((await exec1.post(`/api/v1/course-issues/${issue.issueId}/escalate`).send({})).body.code).toBe('VERIFICATION_CASE_EXISTS'); // EXEC 도 권한은 있음(baseline 4-2)
@@ -1559,6 +1597,17 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect(viewLogs).toHaveLength(1);
 
       expect((await ops1.get('/api/v1/attachments/999999/download')).status).toBe(404);
+    });
+
+    it('한글 파일명이 깨지지 않는다(multipart filename 을 UTF-8 로 해석)', async () => {
+      const ins1 = await as('ins1');
+      const log = (await ins1.post(`/api/v1/schedules/${s1}/operation-log`).send({ content: '진행', participant_count: 1 }).expect(201)).body;
+      const uploaded = (
+        await ins1.post('/api/v1/attachments').field('entity_type', 'OPERATION_LOG').field('entity_id', String(log.operationLogId)).attach('file', Buffer.from('x'), '출석부 사진.png').expect(201)
+      ).body;
+      expect(uploaded.fileName).toBe('출석부 사진.png');
+      const dl = await ins1.get(`/api/v1/attachments/${uploaded.attachmentId}/download`).expect(200);
+      expect(decodeURIComponent(dl.headers['content-disposition'])).toContain('출석부 사진.png');
     });
 
     it('업로드: 허용되지 않는 entity_type 값은 400', async () => {

@@ -35,9 +35,13 @@ export class CourseIssueService {
 
     const page = pageOf(query);
     const { rows } = await this.db.query(
-      `SELECT ci.issue_id, ci.course_id, ci.schedule_id, s.round_no, ci.category, ci.content, ci.status, ci.reported_by, u.name AS reported_by_name, ci.reported_at,
+      `SELECT ci.issue_id, ci.course_id, c.course_name, ci.schedule_id, s.round_no, s.class_date, ci.category, ci.content, ci.status, ci.reported_by, u.name AS reported_by_name, ci.reported_at,
+              vc.case_id AS verification_case_id, vc.status AS verification_case_status,
               count(*) OVER() AS total
-         FROM course_issue ci LEFT JOIN class_schedule s ON s.schedule_id = ci.schedule_id JOIN user_account u ON u.user_id = ci.reported_by
+         FROM course_issue ci JOIN course c ON c.course_id = ci.course_id
+         LEFT JOIN class_schedule s ON s.schedule_id = ci.schedule_id JOIN user_account u ON u.user_id = ci.reported_by
+         -- system-design S18: 연결된 확인 건의 현재 상태를 참고 열로(H6 — 두 상태는 독립). 재전환(종결 후)이 있으면 가장 최근 건
+         LEFT JOIN LATERAL (SELECT v.case_id, v.status FROM verification_case v WHERE v.related_course_issue_id = ci.issue_id ORDER BY v.case_id DESC LIMIT 1) vc ON TRUE
         WHERE ${where.sql} ORDER BY ci.reported_at DESC, ci.issue_id DESC LIMIT ${page.size} OFFSET ${page.offset}`,
       where.params,
     );

@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type pg from 'pg';
-import { AuditedTransactionService, type Row } from '../audit/audited-transaction.js';
+import { type AuditedTx, AuditedTransactionService, type Row } from '../audit/audited-transaction.js';
 import { pageOf, toApi, Where } from '../common/api.js';
 import { assertCourseOpen, conflict, lockRow } from '../common/tx.js';
 import { asObject, type Obj, optStr, optTime, qDate, qInt, reqDate, reqInt, reqStr, reqTime } from '../common/validation.js';
@@ -14,6 +14,20 @@ export const SCHEDULE_TIMEZONE = process.env.APP_TIMEZONE ?? 'Asia/Seoul';
 /** 회차 표시 상태(baseline 3-6): 저장값(예정/휴강) + 계산값 "진행완료". tz 는 SCHEDULE_TIMEZONE 을 받는 SQL 플레이스홀더 */
 export const scheduleDisplayStatusSql = (tz: string): string =>
   `CASE WHEN s.status = 'CANCELLED' THEN 'CANCELLED' WHEN now() > ((s.class_date + s.end_time) AT TIME ZONE ${tz}) THEN 'COMPLETED' ELSE 'SCHEDULED' END`;
+
+/** S13 예외 상황 "동일 강사·동일 시간대 중복 배정 시 경고": 차단하지 않고 저장 결과에 겹치는 회차를 덧붙인다(P1-16 경고 방식과 같음) */
+async function withOverlapWarning(tx: AuditedTx, saved: Row): Promise<Row> {
+  const { rows } = await tx.query(
+    `SELECT s.schedule_id, s.course_id, c.course_name, s.round_no, s.class_date, s.start_time, s.end_time
+       FROM class_schedule s JOIN course c ON c.course_id = s.course_id
+      WHERE s.instructor_id = $1 AND s.class_date = $2::date AND s.status = 'SCHEDULED' AND s.schedule_id <> $3
+        AND s.start_time < $5::time AND s.end_time > $4::time
+      ORDER BY s.start_time, s.schedule_id`,
+    [saved.instructor_id, saved.class_date, saved.schedule_id, saved.start_time, saved.end_time],
+  );
+  const result = toApi(saved);
+  return rows.length > 0 ? { ...result, warnings: { overlappingSchedules: rows.map((r) => toApi(r)) } } : result;
+}
 
 const invalidTimes = () => new BadRequestException({ code: 'INVALID_TIME_RANGE', message: '종료 시각은 시작 시각보다 늦어야 합니다' });
 
@@ -40,6 +54,9 @@ export class ScheduleService {
     where.params.push(SCHEDULE_TIMEZONE);
     const tz = `$${where.params.length}::text`;
 
+    // system-design 3.4: 과정 진입(course_id)은 회차 순, 강사 진입·기간 조회는 날짜 순
+    const order = courseId ? 's.round_no, s.schedule_id' : 's.class_date, s.start_time, s.schedule_id';
+
     const page = pageOf(query);
     const { rows } = await this.db.query(
       `SELECT s.schedule_id, s.course_id, c.course_name, s.round_no, s.class_date, s.start_time, s.end_time, s.instructor_id, i.name AS instructor_name,
@@ -47,7 +64,7 @@ export class ScheduleService {
               ${scheduleDisplayStatusSql(tz)} AS display_status,
               count(*) OVER() AS total
          FROM class_schedule s JOIN course c ON c.course_id = s.course_id JOIN instructor i ON i.instructor_id = s.instructor_id
-        WHERE ${where.sql} ORDER BY s.class_date, s.start_time, s.schedule_id LIMIT ${page.size} OFFSET ${page.offset}`,
+        WHERE ${where.sql} ORDER BY ${order} LIMIT ${page.size} OFFSET ${page.offset}`,
       where.params,
     );
     const total = rows.length ? Number(rows[0].total) : 0;
@@ -80,7 +97,7 @@ export class ScheduleService {
         [values.instructor_id, courseId, values.round_no],
       );
       if (assignment.rows.length === 0) throw conflict('ASSIGNMENT_REQUIRED', '해당 과정(또는 회차)에 유효하게 배정된 강사만 지정할 수 있습니다.');
-      return toApi(await tx.create('class_schedule', { ...values, status: 'SCHEDULED' }));
+      return withOverlapWarning(tx, await tx.create('class_schedule', { ...values, status: 'SCHEDULED' }));
     });
   }
 
@@ -103,7 +120,7 @@ export class ScheduleService {
       const start = (set.start_time ?? current.start_time) as string;
       const end = (set.end_time ?? current.end_time) as string;
       if (end <= start) throw invalidTimes();
-      return toApi(await tx.update('class_schedule', { schedule_id: scheduleId }, set, { reason }));
+      return withOverlapWarning(tx, await tx.update('class_schedule', { schedule_id: scheduleId }, set, { reason }));
     });
   }
 
@@ -138,7 +155,7 @@ export class ScheduleService {
         [instructorId, current.course_id, current.round_no],
       );
       if (assignment.rows.length === 0) throw conflict('ASSIGNMENT_REQUIRED', '해당 과정(또는 회차)에 유효하게 배정된 강사만 지정할 수 있습니다.');
-      return toApi(await tx.update('class_schedule', { schedule_id: scheduleId }, { instructor_id: instructorId }, { reason }));
+      return withOverlapWarning(tx, await tx.update('class_schedule', { schedule_id: scheduleId }, { instructor_id: instructorId }, { reason }));
     });
   }
 

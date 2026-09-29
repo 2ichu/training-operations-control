@@ -302,6 +302,7 @@ export interface ScheduleListItem {
   endTime: string
   instructorId: number
   instructorName: string
+  content: string | null
   status: string
   displayStatus: string
 }
@@ -368,4 +369,125 @@ export interface AttendanceChangeLog {
   classDate: string
   courseId: number
   courseName: string
+}
+
+// ── 강사·일정(S11~S14) ──────────────────────────────────────────────────
+// GET /instructors (S11)
+export interface InstructorListItem {
+  instructorId: number
+  name: string
+  /** 마스킹된 값(뒤 4자리만) */
+  contact: string | null
+  status: 'ACTIVE' | 'INACTIVE'
+  assignedCourseCount: number
+  createdAt: string
+  updatedAt: string | null
+}
+
+// GET /instructors/{id} (S12)
+export interface InstructorDetail extends Omit<InstructorListItem, 'assignedCourseCount'> {
+  linkedAccount: { userId: number; loginId: string; name: string; status: string } | null
+}
+
+// PATCH /instructors/{id} — 비활동 전환 시에만 warnings
+export interface InstructorUpdateResult extends Omit<InstructorListItem, 'assignedCourseCount'> {
+  warnings?: { inProgressAssignmentCount: number }
+}
+
+// POST /courses/{id}/schedules, PATCH /schedules/{id}, POST /schedules/{id}/reassign-instructor — 같은 강사·같은 시간대 회차가 있으면 경고
+export interface OverlappingSchedule {
+  scheduleId: number
+  courseId: number
+  courseName: string
+  roundNo: number
+  classDate: string
+  startTime: string
+  endTime: string
+}
+export interface ScheduleWriteResult {
+  scheduleId: number
+  warnings?: { overlappingSchedules: OverlappingSchedule[] }
+}
+
+// POST /instructor-assignments/{id}/cancel — 남은 예정 회차가 있으면 경고(P1-16)
+export interface AssignmentCancelResult {
+  assignmentId: number
+  warnings?: { remainingScheduledCount: number }
+}
+
+// GET /instructor-change-logs (S14)
+export interface InstructorChangeLog {
+  logId: number
+  entityType: 'INSTRUCTOR' | 'ASSIGNMENT'
+  entityId: number
+  changedBy: number
+  changedByName: string
+  changedAt: string
+  beforeValue: Record<string, unknown> | null
+  afterValue: Record<string, unknown> | null
+  reason: string
+  instructorId: number | null
+  instructorName: string | null
+  /** 배정 이력만 */
+  courseId: number | null
+  courseName: string | null
+  roundNo: number | null
+}
+
+// ── 운영일지·특이사항(S17·S18) ──────────────────────────────────────────
+// GET /courses/{id}/operation-logs (S17): 회차별 작성 현황. 미작성은 계산값(행 없음), 휴강 회차는 displayStatus=null
+export interface OperationLogRow {
+  scheduleId: number
+  roundNo: number
+  classDate: string
+  startTime: string
+  endTime: string
+  scheduleStatus: string
+  instructorId: number
+  instructorName: string
+  operationLogId: number | null
+  participantCount: number | null
+  writtenAt: string | null
+  displayStatus: 'WRITTEN' | 'NOT_WRITTEN' | null
+}
+
+export interface AttachmentInfo {
+  attachmentId: number
+  fileName: string
+  /** BIGINT 라 문자열로 온다 */
+  fileSize: string | number
+  uploadedAt: string
+}
+
+// GET /schedules/{id}/operation-log (S17)
+export interface OperationLogDetail {
+  operationLogId: number
+  scheduleId: number
+  instructorId: number
+  instructorName: string
+  content: string
+  participantCount: number
+  issueNote: string | null
+  authorId: number
+  authorName: string
+  writtenAt: string
+  attachments: AttachmentInfo[]
+}
+
+// GET /course-issues (S18)
+export interface CourseIssue {
+  issueId: number
+  courseId: number
+  courseName: string
+  scheduleId: number | null
+  roundNo: number | null
+  classDate: string | null
+  category: string
+  content: string
+  status: 'REGISTERED' | 'IN_REVIEW' | 'RESOLVED'
+  reportedBy: number
+  reportedByName: string
+  reportedAt: string
+  verificationCaseId: number | null
+  verificationCaseStatus: string | null
 }

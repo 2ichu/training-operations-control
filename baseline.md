@@ -321,14 +321,14 @@
 | S12 강사 등록/수정 | 강사 상세 | GET | /instructors/{id} | — | 강사, 연결 계정 정보(읽기전용) | 〃 | 없음 |
 | | 강사 등록 | POST | /instructors | name, contact, status | 강사 | OPS | CREATE / instructor / USER |
 | | 강사 수정(비활동 전환 포함) | PATCH | /instructors/{id} | 변경 필드, reason | 갱신된 강사, 진행 중 배정 경고 | OPS | UPDATE / instructor / USER + instructor_change_log(INSTRUCTOR) |
-| S13 강의 일정/교육일정 | 일정 목록 | GET | /schedules | course_id 또는 instructor_id, from, to | 회차 목록(계산 진행완료 포함) | OPS·SYS·EXEC, INSTRUCTOR ◎ | 없음 |
-| | 회차 등록 | POST | /courses/{id}/schedules | round_no, class_date, start_time, end_time, instructor_id, content | class_schedule | OPS | CREATE / class_schedule / USER (필요 시 instructor_assignment도 CREATE) |
-| | 회차 수정 | PATCH | /schedules/{id} | class_date, 시간, content | 갱신된 회차 | OPS | UPDATE / class_schedule / USER |
+| S13 강의 일정/교육일정 | 일정 목록 | GET | /schedules | course_id 또는 instructor_id, from, to | 회차 목록(계산 진행완료 포함, 내용 포함. course_id 지정 시 회차 순, 아니면 날짜 순 — system-design 3.4) | OPS·SYS·EXEC, INSTRUCTOR ◎ | 없음 |
+| | 회차 등록 | POST | /courses/{id}/schedules | round_no, class_date, start_time, end_time, instructor_id, content | class_schedule(같은 강사·같은 날 시간이 겹치는 예정 회차가 있으면 warnings.overlappingSchedules — 경고만, S13 예외 상황) | OPS | CREATE / class_schedule / USER (필요 시 instructor_assignment도 CREATE) |
+| | 회차 수정 | PATCH | /schedules/{id} | class_date, 시간, content | 갱신된 회차(시간 겹침 경고 동일) | OPS | UPDATE / class_schedule / USER |
 | | 휴강 처리 | POST | /schedules/{id}/cancel-class | reason(필수) | status=CANCELLED | OPS | UPDATE / class_schedule / USER |
-| | 강사 재배정(P1-06 확정 2026-09-22) | POST | /schedules/{id}/reassign-instructor | instructor_id, reason(필수) | 갱신된 회차(class_schedule.instructor_id만 변경, instructor_assignment는 자동 생성·취소하지 않음 — 새 강사에게 유효한 배정이 이미 있어야 함) | OPS | UPDATE / class_schedule / USER (instructor_change_log 없음) |
+| | 강사 재배정(P1-06 확정 2026-09-22) | POST | /schedules/{id}/reassign-instructor | instructor_id, reason(필수) | 갱신된 회차(class_schedule.instructor_id만 변경, instructor_assignment는 자동 생성·취소하지 않음 — 새 강사에게 유효한 배정이 이미 있어야 함, 시간 겹침 경고 동일) | OPS | UPDATE / class_schedule / USER (instructor_change_log 없음) |
 | | 과정 단위 강사 배정 | POST | /courses/{id}/instructor-assignments | instructor_id, round_no(선택) | 배정 | OPS | CREATE / instructor_assignment / USER |
 | | 배정 취소 | POST | /instructor-assignments/{id}/cancel | reason | status=CANCELLED | OPS | UPDATE / instructor_assignment / USER + instructor_change_log |
-| S14 강사 변경이력 | 이력 조회 | GET | /instructor-change-logs | instructor_id, entity_type, from, to | 이력 목록 | OPS·SYS·EXEC | 없음 |
+| S14 강사 변경이력 | 이력 조회 | GET | /instructor-change-logs | instructor_id, entity_type, from, to | 이력 목록(대상 강사명, 배정 이력은 과정·회차 범위 포함) | OPS·SYS·EXEC | 없음 |
 | S15 과정 목록 | 과정 목록 | GET | /courses | name, status, from, to, manager_user_id | 과정 목록(담당자 이름 포함), 확정 훈련생 수 | 전 역할(◎) | 없음 |
 | S16 과정 등록/수정/상세 | 과정 상세 | GET | /courses/{id} | — | 과정(담당자 이름 포함), 훈련생·강사배정·일정 요약 | 전 역할(◎) | 없음 |
 | | 담당자 후보 | GET | /courses/manager-candidates | — | 활성 OPS_MANAGER 의 user_id·name 만 (P1-18 과 같은 기준). 사용자 관리(S25)가 SYS 전용이라 등록·수정 화면용으로 따로 연 조회 | OPS(S16:U) | 없음 |
@@ -339,11 +339,11 @@
 | | 종료 체크리스트 | GET | /courses/{id}/closure-checklist | — | 9절 항목별 건수·처리 구분(차단/경고/불필요) | OPS·SYS·EXEC | 없음 |
 | | 과정 종료 | POST | /courses/{id}/close | override_reason(경고 항목 강행 시 필수) | status=CLOSED | OPS 단독(D-06 확정, EXECUTIVE 승인 없음). 구현은 Phase 2~4 이후(P1-03) | UPDATE / course / USER, after에 미해결 항목 스냅샷, reason |
 | | 과정 중단 | POST | /courses/{id}/suspend | reason(필수) | status=SUSPENDED | OPS | UPDATE / course / USER |
-| S17 회차별 운영일지 | 회차별 작성 현황 | GET | /courses/{id}/operation-logs | round_no, from, to | 회차 목록(미작성 계산 포함), 참여인원 | OPS·SYS·EXEC, INSTRUCTOR ◎ | 없음 |
-| | 운영일지 조회 | GET | /schedules/{id}/operation-log | — | 운영일지, 첨부 | 〃 | 없음 |
+| S17 회차별 운영일지 | 회차별 작성 현황 | GET | /courses/{id}/operation-logs | round_no, from, to | 회차 목록(미작성 계산 포함, 교육 시간·강사명), 참여인원 | OPS·SYS·EXEC, INSTRUCTOR ◎ | 없음 |
+| | 운영일지 조회 | GET | /schedules/{id}/operation-log | — | 운영일지(작성자·강사명), 첨부 목록(파일명·크기·업로드 시각, 저장 경로 제외) | 〃 | 없음 |
 | | 운영일지 작성 | POST | /schedules/{id}/operation-log | content, participant_count, issue_note | operation_log(휴강 회차 거부, 이미 있으면 409) | INSTRUCTOR ◎ | CREATE / operation_log / USER |
 | | 운영일지 수정 | PATCH | /operation-logs/{id} | 변경 필드 | 갱신본 | 작성 강사 ◎, OPS(검수) | UPDATE / operation_log / USER (before/after) |
-| S18 특이사항 | 목록 | GET | /course-issues | course_id, round_no, status | 특이사항(연결된 확인 건 상태 포함) | OPS·SYS·EXEC, INSTRUCTOR 본인 등록분 ◎ | 없음 |
+| S18 특이사항 | 목록 | GET | /course-issues | course_id, round_no, status | 특이사항(과정명·교육일, 연결된 확인 건 ID·현재 상태 — 가장 최근 건) | OPS·SYS·EXEC, INSTRUCTOR 본인 등록분 ◎ | 없음 |
 | | 등록 | POST | /course-issues | course_id, schedule_id(선택), category, content | course_issue(REGISTERED) | INSTRUCTOR ◎, OPS | CREATE / course_issue / USER |
 | | 수정 | PATCH | /course-issues/{id} | 변경 필드 | 갱신본 | OPS | UPDATE / course_issue / USER |
 | | 확인 필요로 전환 | POST | /course-issues/{id}/escalate | trainee_ids[](선택) | 생성된 verification_case(MANUAL), issue.status=IN_REVIEW, 이미 활성 건 있으면 409 | OPS, EXEC | CREATE / verification_case, verification_case_trainee / USER 동시 UPDATE / course_issue |

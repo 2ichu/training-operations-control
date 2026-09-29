@@ -66,7 +66,8 @@ describe('S15 과정 목록', () => {
 
     const last = () => calls.filter((c) => c.path === '/courses').at(-1)!.query
     await user.selectOptions(screen.getByLabelText('상태'), 'IN_PROGRESS')
-    await user.selectOptions(await screen.findByLabelText('담당자'), '8')
+    await screen.findByRole('option', { name: '이담당' }) // 담당자 후보가 온 뒤에 고른다
+    await user.selectOptions(screen.getByLabelText('담당자'), '8')
     await user.type(screen.getByLabelText('과정명'), '웹')
     await user.click(screen.getByRole('button', { name: '검색' }))
     await waitFor(() => {

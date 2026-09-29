@@ -191,9 +191,28 @@ function TraineeTab({ course }: { course: CourseDetail }) {
   )
 }
 
-function AssignmentTab({ course }: { course: CourseDetail }) {
-  if (course.instructorAssignments.length === 0) return <EmptyText>배정된 강사가 없습니다.</EmptyText>
+// 배정 추가·취소와 회차 편성은 교육일정 화면(S13)에서 한다(system-design 3.3 — 별도 배정 메뉴 없음)
+function ScheduleLink({ courseId }: { courseId: number }) {
+  const { can } = useAuth()
+  if (!can('S13', 'R')) return null
   return (
+    <p className="toolbar">
+      <Link to={`/schedules?course_id=${courseId}`}>교육일정·강사 배정 관리</Link>
+    </p>
+  )
+}
+
+function AssignmentTab({ course }: { course: CourseDetail }) {
+  if (course.instructorAssignments.length === 0)
+    return (
+      <>
+        <ScheduleLink courseId={course.courseId} />
+        <EmptyText>배정된 강사가 없습니다.</EmptyText>
+      </>
+    )
+  return (
+    <>
+    <ScheduleLink courseId={course.courseId} />
     <table>
       <thead>
         <tr>
@@ -214,13 +233,22 @@ function AssignmentTab({ course }: { course: CourseDetail }) {
         ))}
       </tbody>
     </table>
+    </>
   )
 }
 
 function ScheduleTab({ course }: { course: CourseDetail }) {
-  if (course.schedules.length === 0) return <EmptyText>등록된 교육일정이 없습니다.</EmptyText>
+  if (course.schedules.length === 0)
+    return (
+      <>
+        <ScheduleLink courseId={course.courseId} />
+        <EmptyText>등록된 교육일정이 없습니다.</EmptyText>
+      </>
+    )
   const names = new Map(course.instructorAssignments.map((a) => [a.instructorId, a.instructorName]))
   return (
+    <>
+    <ScheduleLink courseId={course.courseId} />
     <table>
       <thead>
         <tr>
@@ -245,6 +273,7 @@ function ScheduleTab({ course }: { course: CourseDetail }) {
         ))}
       </tbody>
     </table>
+    </>
   )
 }
 

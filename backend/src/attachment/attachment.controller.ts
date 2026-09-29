@@ -16,7 +16,8 @@ export class AttachmentController {
 
   @Post('attachments')
   @Authorize('S19', 'R')
-  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  // defParamCharset: 브라우저는 filename 을 UTF-8 로 보내는데 multer 기본값(latin1)으로 읽으면 한글 파일명이 깨진다
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), defParamCharset: 'utf8' }))
   upload(@Req() req: RbacRequest, @Body() body: unknown, @UploadedFile() file?: Express.Multer.File) {
     return this.attachments.upload(req, body, file);
   }
