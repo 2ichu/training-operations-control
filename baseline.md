@@ -133,11 +133,11 @@
 
 | 코드 | 표시명 | 저장/계산 | 의미 | 생성 조건 | 다음 상태 | 변경 가능 역할 |
 |---|---|---|---|---|---|---|
-| (NOT_CHECKED) | 미출결 | **계산** | 확정 훈련생인데 해당 회차의 attendance 행이 없음 | 계산 조건: enrollment=CONFIRMED, 회차≠CANCELLED, 행 없음 | PRESENT, LATE, ABSENT(행 생성) | 입실 확인: OPS_MANAGER·INSTRUCTOR(본인 회차), 결석 확정: OPS_MANAGER(`[결정 필요]` #20) |
-| PRESENT | 출석 | 저장 | 정상 입실 | 입실 확인 또는 공식 데이터 반영 | EARLY_LEAVE, 수정으로 임의 상태 | 최초 확인은 위와 동일, 수정은 OPS_MANAGER(S09) |
-| LATE | 지각 | 저장 | 지각 입실 | 입실 확인 시 지각 판정(`[결정 필요]` #22) | EARLY_LEAVE, 수정으로 임의 상태 | 동일 |
-| EARLY_LEAVE | 조퇴 | 저장 | 조기 퇴실 | 조기 퇴실 확인(자동 판정 여부 #22) 또는 수정 | 수정으로 임의 상태 | OPS_MANAGER |
-| ABSENT | 결석 | 저장 | 결석 확정 | 결석 확정 액션 | EXCUSED, 수정으로 임의 상태 | OPS_MANAGER |
+| (NOT_CHECKED) | 미출결 | **계산** | 확정 훈련생인데 해당 회차의 attendance 행이 없음 | 계산 조건: enrollment=CONFIRMED, 회차≠CANCELLED, 행 없음 | PRESENT, LATE, ABSENT(행 생성) | 입실 확인·결석 확정: OPS_MANAGER·INSTRUCTOR(본인 회차) — #20 확정(D-07, 마감 없음) |
+| PRESENT | 출석 | 저장 | 정상 입실 | 입실 확인(입실 시각 ≤ 시작 + 지각 유예분) 또는 공식 데이터 반영 | EARLY_LEAVE, 수정으로 임의 상태 | 최초 확인은 위와 동일, 수정은 OPS_MANAGER(S09) |
+| LATE | 지각 | 저장 | 지각 입실 | 입실 확인 시 자동 판정(입실 시각 > 시작 + 지각 유예분, 기본 10분 — #22 확정 D-08) | EARLY_LEAVE, 수정으로 임의 상태 | 동일 |
+| EARLY_LEAVE | 조퇴 | 저장 | 조기 퇴실 | 퇴실 확인 시 자동 판정(PRESENT 이고 퇴실 시각 < 종료 − 조퇴 유예분, 기본 10분. LATE 는 지각 유지 — D-08) 또는 수정 | 수정으로 임의 상태 | 퇴실 확인: OPS_MANAGER·INSTRUCTOR(본인 회차), 수정: OPS_MANAGER |
+| ABSENT | 결석 | 저장 | 결석 확정 | 결석 확정 액션 | EXCUSED, 수정으로 임의 상태 | 결석 확정: OPS_MANAGER·INSTRUCTOR(본인 회차, D-07), 수정: OPS_MANAGER |
 | EXCUSED | 인정결석 | 저장 | 사유서 확인된 결석 | 결석에서 수정 | 수정으로 임의 상태 | OPS_MANAGER(S09, 사유 필수) |
 
 `source_type`: OFFICIAL 공식 / MANUAL 내부수기 / LINKED 연계자동. 생성 시점에 확정되며 NOT NULL.
@@ -213,7 +213,7 @@
 
 - **시스템 관리자**: STEP 2.2(이전 초안)는 업무 데이터 CRUD를 주었으나 STEP 7-A의 화면 명세(S02·S04·S12·S13·S16 등)는 모두 OPS_MANAGER 전용이었다. 화면 명세와 "시스템 관리자는 업무 데이터를 만지지 않는다"는 원칙을 따라 **업무 데이터는 조회 전용**으로 통일했다(STEP 2.2 수정 완료). 예외 수정 필요 여부는 `[결정 필요]` #19.
 - **운영담당자 과정 범위**: 전체 과정 접근으로 **확정**(2026-09-21, D-02, STEP 12 #18). `manager_user_id`는 표시용이다. 정책 변경 시 재검토하고 스코프·API·권한을 함께 변경한다.
-- **결석 확정**: S07에서 강사에게도 허용된 것처럼 적혀 있었으나 판단성 기록이므로 기본값을 OPS_MANAGER 전용으로 정정(`[결정 필요]` #20).
+- **결석 확정**: 판단성 기록이라 기본값을 OPS_MANAGER 전용으로 두었다가, #20 확정(2026-09-29, D-07)으로 **강사도 본인 회차에 한해 허용**, 마감 없음.
 
 ### 4-2. 역할 × 기능 상세
 
@@ -232,7 +232,7 @@
 | | 수료·중도포기·제적 | — | `[결정 필요]` #23 | — | — |
 | 출결(S07~S10) | 조회 | R | O | R ◎본인 회차(S10 이력 제외) | R |
 | | 입실·퇴실 확인(최초 생성) | — | O | O ◎본인 회차 | — |
-| | 결석 확정 | — | O | `[결정 필요]` #20 (기본 —) | — |
+| | 결석 확정 | — | O | O ◎본인 회차(#20 확정, D-07) | — |
 | | 출결 수정(S09) | — | O(사유 필수) | — | — |
 | 강사·일정(S11~S14) | 조회 | R | O | R ◎본인(강사 정보)·본인 배정 회차(일정) | R |
 | | 강사 등록·수정, 배정, 일정 등록·수정, 휴강(취소) | — | O | — | — |
@@ -310,9 +310,9 @@
 | | 관련 확인 건 | GET | /trainees/{id}/verification-cases | — | verification_case_trainee 기준 사건 목록 | OPS·EXEC·SYS | 없음 |
 | S06 훈련생 변경이력 | 이력 조회 | GET | /trainee-change-logs | trainee_id, trainee_name, entity_type, from, to | 이력 목록(훈련생 이름, 등록 건이면 과정명 포함) | OPS·SYS·EXEC | 없음 |
 | S07 일일 출결 | 출결 명단(미출결 계산) | GET | /schedules/{scheduleId}/attendance-roster | status(미출결 포함) | 확정 훈련생 × attendance LEFT JOIN 결과, 표시상태, 출처(source_type) | OPS·SYS·EXEC, INSTRUCTOR ◎ | 없음 |
-| | 입실 확인(출결 확정) | POST | /schedules/{scheduleId}/attendance/check-in | trainee_ids[], check_in_time(선택), source_type(기본 MANUAL) | 생성된 attendance 목록, 이미 존재한 대상 목록(409 분리) | OPS, INSTRUCTOR ◎ | CREATE / attendance / USER |
-| | 퇴실 확인 | POST | /attendance/check-out | attendance_ids[], check_out_time(선택) | 갱신 결과(이미 값이 있는 건은 409 → 수정 명령 안내) | OPS, INSTRUCTOR ◎ | UPDATE / attendance / USER (최초 기록, change_log 없음) |
-| | 결석 확정 | POST | /schedules/{scheduleId}/attendance/confirm-absence | trainee_ids[] | 생성된 attendance(ABSENT) | OPS (강사 허용은 #20) | CREATE / attendance / USER |
+| | 입실 확인(출결 확정) | POST | /schedules/{scheduleId}/attendance/check-in | trainee_ids[], check_in_time(선택), source_type(기본 MANUAL) | 생성된 attendance 목록(상태는 입실 시각으로 PRESENT/LATE 자동 판정, D-08), 이미 존재한 대상 목록(409 분리) | OPS, INSTRUCTOR ◎ | CREATE / attendance / USER |
+| | 퇴실 확인 | POST | /attendance/check-out | attendance_ids[], check_out_time(선택) | 갱신 결과(PRESENT 이고 조기 퇴실이면 EARLY_LEAVE 로 함께 갱신, D-08. 이미 값이 있는 건은 409 → 수정 명령 안내) | OPS, INSTRUCTOR ◎ | UPDATE / attendance / USER (최초 기록, change_log 없음) |
+| | 결석 확정 | POST | /schedules/{scheduleId}/attendance/confirm-absence | trainee_ids[] | 생성된 attendance(ABSENT) | OPS, INSTRUCTOR ◎(D-07) | CREATE / attendance / USER |
 | S08 과정별 출결 | 출결 매트릭스 | GET | /courses/{id}/attendance-matrix | trainee_name, status | 훈련생 × 회차 셀(미출결 계산 포함, 기록 있는 셀은 attendance_id — S09 진입), 출석률 | OPS·SYS·EXEC, INSTRUCTOR ◎ | 없음 |
 | S09 출결 수정 | 수정 대상 조회 | GET | /attendance/{id} | — | 현재 값, last_modified_at | OPS | 없음 |
 | | 출결 수정 | POST | /attendance/{id}/correct | check_in_time, check_out_time, attendance_status(변경 항목), reason(필수), 기대 last_modified_at | 갱신된 attendance, 임계치 초과 안내 여부 | OPS | UPDATE / attendance / USER 동시 attendance_change_log(actor USER) |
@@ -372,6 +372,8 @@
 | | 권한 저장 | PUT | /roles/{id}/permissions | 매트릭스 | 저장 결과. SYS_ADMIN 역할에서 S26 R·U 를 빼면 409 SELF_LOCKOUT(잠금 방지) | SYS | UPDATE / role_permission / USER (before/after) |
 | S28 탐지규칙 (Phase 5) | 규칙 목록 | GET | /detection-rules | — | 규칙 목록(params·is_active·editable) | SYS | 없음 |
 | | 파라미터·활성 수정 | PATCH | /detection-rules/{id} | reason(필수), params(기존 키의 값만, 1~100000 정수), is_active | 갱신본. MANUAL 은 409 RULE_NOT_EDITABLE, initial_status 는 수정 불가(D-11) | SYS | UPDATE / detection_rule / USER (before/after, reason) |
+| | 지각·조퇴 판정 기준 조회 | GET | /attendance-settings | — | lateGraceMinutes·earlyLeaveGraceMinutes | SYS | 없음 |
+| | 지각·조퇴 판정 기준 수정 | PATCH | /attendance-settings | reason(필수), late_grace_minutes·early_leave_grace_minutes(0~240 정수, 하나 이상) | 갱신본. 이후 입실·퇴실 확인부터 적용(기존 상태 재판정 없음) | SYS | UPDATE / attendance_setting / USER (before/after, reason) |
 | S27 감사로그 | 로그 조회 | GET | /audit-logs | from·to(필수, 최대 범위 제한), actor_type, actor_user_id, target_table, action | 로그 목록(행위자 이름·로그인ID 포함) | SYS, EXEC | VIEW_SENSITIVE / audit_log / USER |
 | | 로그 상세(diff) | GET | /audit-logs/{id} | — | before/after | SYS, EXEC | VIEW_SENSITIVE / audit_log / USER |
 
@@ -593,7 +595,7 @@
 | B18 | 규칙별 중복 판정 키(dedupe_key) 정의 | STEP 8.1-C | verification_case.evidence | S22 | 로직 |
 | B19 | 수료·중도포기·제적 전이 화면·기준이 없음(명세 갭) | STEP 12 #23 | trainee_enrollment | — | 정책 |
 | B20 | 결과물 제출기한 저장 위치 없음(명세 갭) → **D-04 확정: course.submission_due_date(2026-09-29)** | STEP 12 #24 | course | S16·S19·S20 | 해소 |
-| B21 | 결석 확정 권한 기본값 OPS_MANAGER 전용 | STEP 7-A(S07) | — | S07 | 정책(#20) |
+| B21 | 결석 확정 권한 기본값 OPS_MANAGER 전용 → **D-07 확정: 강사도 본인 회차 허용, 마감 없음(2026-09-29)** | STEP 7-A(S07) | — | S07 | 해소 |
 | B22 | ERD v3 → v5 (옵션 테이블·enum·제약 주석) | ERD | 다수 | — | 문서 |
 
 ---
@@ -605,9 +607,9 @@
 | # | 항목 | 왜 결정이 필요한가 |
 |---|---|---|
 | ~~15~~ | ~~결과물 제출 주체~~ **확정(D-01): 운영담당자 등록** | 훈련생 직접 제출로 정책이 바뀔 때만 재검토(역할·계정·화면·API·권한 동시 변경). TRAINEE 계정·역할은 만들지 않는다 |
-| 20 | 결석 확정 권한(강사 허용 여부) | 결석은 수료·훈련비와 직결되는 판단성 기록이라 주체를 정하는 것은 운영 책임 문제 |
-| 27 | 결석 확정 마감 시각 | 시스템이 자동 결석 처리하지 않으므로 마감 규칙이 없으면 미출결이 무기한 쌓임 |
-| 22 | 지각·조퇴 판정 기준 | attendance_status가 생성 시점에 확정되므로 자동 판정 여부와 유예시간을 정해야 함 |
+| ~~20~~ | ~~결석 확정 권한(강사 허용 여부)~~ **확정(D-07): 강사도 본인 회차 허용** | 결석은 수료·훈련비와 직결되는 판단성 기록이라 주체를 정하는 것은 운영 책임 문제 |
+| ~~27~~ | ~~결석 확정 마감 시각~~ **확정(D-07): 마감 없음** | 시스템이 자동 결석 처리하지 않으므로 마감 규칙이 없으면 미출결이 무기한 쌓임 |
+| ~~22~~ | ~~지각·조퇴 판정 기준~~ **확정(D-08): 자동 판정, 유예 각 10분(S28 설정값)** | attendance_status가 생성 시점에 확정되므로 자동 판정 여부와 유예시간을 정해야 함 |
 | 25 | 출결 수정 허용 범위·기간, 종료 후 정정 절차 | 내부통제에서 가장 민감한 수정이라 허용 기간과 승인 필요 여부는 운영 정책 |
 | 17·30 | 과정 종료 차단·경고 정책과 종료·강행 승인 권한 | 9절 기본 분류는 잠정. 어떤 미해결 항목이 종료를 막는지, 누가 강행할 수 있는지는 기관 책임 체계 |
 | 13 | 확인 건 종결의 2단계 승인 여부 | 현재는 OPS_MANAGER·EXECUTIVE 단독 종결. 승인 구조는 워크플로우·권한 구조가 바뀜 |
@@ -654,7 +656,7 @@
 16. **개인정보는 최소 수집·마스킹 저장한다.** 정밀 GPS 미저장, 연락처 암호화·마스킹, 로그에는 마스킹 값만.
 17. **상태값은 DB 코드(영문)와 UI 표시명(한글)을 분리한다.** 죽은 enum 값은 두지 않는다.
 18. **다형성 참조는 앱에서 검증한다.** attachment·change_log의 entity_type·entity_id는 DB FK가 없으므로 허용 목록과 존재 여부를 서버가 확인한다.
-19. **결정 전 기능은 구현하지 않는다.** 12절 목록(특히 #20, #23, #24)은 결정 후에 착수한다(#3·#15·#18은 확정됨).
+19. **결정 전 기능은 구현하지 않는다.** 12절 목록(특히 #20, #23, #24)은 결정 후에 착수한다(#3·#15·#18은 확정됨, #20·#22·#24·#27은 2026-09-29 확정·구현).
 
 ### B. 최종 DB 테이블 목록 (25개)
 
@@ -717,7 +719,7 @@
 | S25 | GET /users, GET /users/{id}, POST /users, PATCH /users/{id}, POST /users/{id}/reset-password |
 | S26 | GET /roles, GET /roles/permissions, PUT /roles/{id}/permissions |
 | S27 | GET /audit-logs, GET /audit-logs/{id} |
-| S28 | GET /detection-rules, PATCH /detection-rules/{id} |
+| S28 | GET /detection-rules, PATCH /detection-rules/{id}, GET·PATCH /attendance-settings |
 | 내부 처리 | RULE_01·02 이벤트, RULE_03~06 배치, 공식 수집·대사·RULE_07(#1), 과정 자동 전환 |
 
 ### D. 최종 권한 매트릭스 (요약)
@@ -733,7 +735,7 @@ O=허용, R=조회만, —=불가, ◎=서버 스코프 재검증, △=결정 �
 | 수료·중도포기·제적 | — | △(#23) | — | — |
 | 강사·배정·일정·휴강·재배정 | — | O | — | — |
 | 입실·퇴실 확인 | — | O | O ◎ | — |
-| 결석 확정 | — | O | △(#20, 기본 —) | — |
+| 결석 확정 | — | O | O ◎(D-07) | — |
 | 출결 수정 | — | O(사유 필수) | — | — |
 | 운영일지 작성·수정 | — | 수정 O | O ◎ | — |
 | 특이사항 등록 | — | O | O ◎ | — |
@@ -752,8 +754,8 @@ O=허용, R=조회만, —=불가, ◎=서버 스코프 재검증, △=결정 �
 - (확정 완료: #3 단일 기관, #15 담당자 등록, #18 전체 과정 접근)
 - #23 수료·중도포기·제적 기준·화면 — 과정 종료·enrollment 전이
 - #24·#5 제출기한 위치·제출 단위 — **#24 확정(과정 공통)**, #5 는 현행 유지
-- #20·#27 결석 확정 권한과 마감 — 출결 운영 규칙
-- #22 지각·조퇴 판정 기준 — 입실 확인 로직
+- ~~#20·#27 결석 확정 권한과 마감~~ — **확정(D-07, 강사 본인 회차 허용·마감 없음)**
+- ~~#22 지각·조퇴 판정 기준~~ — **확정(D-08, 자동 판정·유예 10분)**. 남은 질문: 조퇴의 출석률 가중치(decisions.md 8-1)
 - (확정 완료 2026-09-22: #17·#30·#13 종료·강행·종결 승인 구조 — decisions.md D-06. API 구현 시점은 Phase 2~4, P1-03 참고)
 
 **기능 착수 시점에 확정해도 되는 것**
@@ -771,6 +773,6 @@ O=허용, R=조회만, —=불가, ◎=서버 스코프 재검증, △=결정 �
 ## 14. 이 기준선의 준비 상태
 
 - **준비된 부분**: 데이터 모델(25개 테이블 제약·인덱스·삭제 정책), 상태값 사전, 권한 매트릭스와 서버 검증 항목, 27개 화면의 API 요구사항, 규칙 표, 감사 이벤트 정책, 종료 조건 기본 분류, 개인정보·보안 요구사항.
-- **남은 위험**: (1) 결과물 제출 주체 미확정, (2) 수료 전이 명세 갭, (3) ~~제출기한 저장 위치 없음~~(D-04 확정), (4) 공식 출결 연동 미확정으로 RULE_07 가동 불가, (5) 결석 확정 운영 규칙(권한·마감)과 지각 판정 기준이 없어 출결 화면의 운영 정합성이 정책에 의존.
+- **남은 위험**: (1) 결과물 제출 주체 미확정, (2) 수료 전이 명세 갭, (3) ~~제출기한 저장 위치 없음~~(D-04 확정), (4) 공식 출결 연동 미확정으로 RULE_07 가동 불가, (5) ~~결석 확정 운영 규칙(권한·마감)과 지각 판정 기준 없음~~(D-07·D-08 확정) — 남은 것은 조퇴의 출석률 가중치.
 - **바로 개발 가능한 영역**: 인증·권한·감사 프레임워크, 과정·훈련생 등록·확정, 강사·교육일정, 출결 조회(미출결 계산)·입실·퇴실·출결 수정, 운영일지·특이사항, 확인 건 처리 워크플로우, RULE_01~06.
-- **정책 확정 후 개발할 영역**: 결과물 등록·검토·미제출, 수료 처리, 결석 확정·지각 판정, 공식 출결 대사·RULE_07, 과정 종료 정책 세부.
+- **정책 확정 후 개발할 영역**: 결과물 등록·검토·미제출, 수료 처리, ~~결석 확정·지각 판정~~(D-07·D-08 구현), 공식 출결 대사·RULE_07, 과정 종료 정책 세부.

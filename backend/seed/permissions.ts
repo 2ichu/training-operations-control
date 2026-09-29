@@ -61,9 +61,9 @@ export const PHASE1_PERMISSIONS: PermissionSeed[] = [
   ...grant('OPS_MANAGER', ['S19'], ['C', 'R', 'U']),
   ...grant('OPS_MANAGER', ['S21'], ['C', 'R']),
 
-  // INSTRUCTOR: 본인 배정 범위 조회만(S07 은 입실·퇴실 확인까지, 결석 확정은 D-07 기본값상 불허)
+  // INSTRUCTOR: 본인 배정 범위 조회만. S07 은 입실·퇴실 확인과 결석 확정까지(D-07 확정: 강사 허용, 본인 회차, 마감 없음)
   ...grant('INSTRUCTOR', ['S01', 'S03', 'S05', 'S08', 'S09', 'S11', 'S12', 'S13', 'S15', 'S16', 'S19'], ['R'], 'OWN_ASSIGNED'),
-  ...grant('INSTRUCTOR', ['S07'], ['C', 'R', 'U'], 'OWN_ASSIGNED'),
+  ...grant('INSTRUCTOR', ['S07'], ['C', 'R', 'U', 'A'], 'OWN_ASSIGNED'),
   ...grant('INSTRUCTOR', ['S17'], ['C', 'R', 'U'], 'OWN_ASSIGNED'), // 본인 회차 작성·수정
   ...grant('INSTRUCTOR', ['S18'], ['C', 'R'], 'OWN_ASSIGNED'), // 등록은 본인 배정 과정, 조회는 본인 등록 건만(서비스에서 처리)
 

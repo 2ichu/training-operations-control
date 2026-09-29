@@ -206,6 +206,7 @@ describe('S28 탐지규칙', () => {
       'GET /auth/me': { status: 200, body: sysMe() },
       'GET /detection-rules': { status: 200, body: { items: rules } },
       'PATCH /detection-rules/2': { status: 200, body: rules[1] },
+      'GET /attendance-settings': { status: 200, body: { settingId: 1, lateGraceMinutes: 10, earlyLeaveGraceMinutes: 10 } },
     })
     const u = userEvent.setup()
     renderAt('/admin/detection-rules')
@@ -226,5 +227,39 @@ describe('S28 탐지규칙', () => {
     await u.click(within(dialog).getByRole('button', { name: '저장' }))
     expect(await screen.findByText('RULE_05 설정을 저장했습니다. 다음 탐지 실행부터 적용됩니다.')).toBeInTheDocument()
     expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ params: { min_changes: 5 }, reason: '오탐 감소' })
+  })
+})
+
+describe('S28 지각·조퇴 판정 기준(D-08)', () => {
+  it('현재 유예분을 보여 주고, 바꾼 값만·사유 필수로 저장한다(0~240 범위)', async () => {
+    let current = { settingId: 1, lateGraceMinutes: 10, earlyLeaveGraceMinutes: 10 }
+    const { calls } = mockApi({
+      'GET /auth/me': { status: 200, body: sysMe() },
+      'GET /detection-rules': { status: 200, body: { items: [] } },
+      'GET /attendance-settings': () => ({ status: 200, body: current }),
+      'PATCH /attendance-settings': () => {
+        current = { ...current, lateGraceMinutes: 15 }
+        return { status: 200, body: current }
+      },
+    })
+    const u = userEvent.setup()
+    renderAt('/admin/detection-rules')
+    expect(await screen.findByText('10분 (시작 10분 초과 입실 → 지각)')).toBeInTheDocument()
+
+    await u.click(screen.getByRole('button', { name: '판정 기준 수정' }))
+    const dialog = screen.getByRole('dialog', { name: '지각·조퇴 판정 기준 수정' })
+    await u.clear(within(dialog).getByLabelText('지각 유예(분)'))
+    await u.type(within(dialog).getByLabelText('지각 유예(분)'), '241')
+    await u.click(within(dialog).getByRole('button', { name: '저장' }))
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('0~240 사이의 정수')
+    await u.clear(within(dialog).getByLabelText('지각 유예(분)'))
+    await u.type(within(dialog).getByLabelText('지각 유예(분)'), '15')
+    await u.click(within(dialog).getByRole('button', { name: '저장' }))
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('변경 사유를 입력해 주세요.')
+    await u.type(within(dialog).getByLabelText('변경 사유(필수)'), '기관 기준')
+    await u.click(within(dialog).getByRole('button', { name: '저장' }))
+    expect(await screen.findByText('판정 기준을 저장했습니다. 이후 입실·퇴실 확인부터 적용됩니다.')).toBeInTheDocument()
+    expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ late_grace_minutes: 15, reason: '기관 기준' })
+    expect(await screen.findByText('15분 (시작 15분 초과 입실 → 지각)')).toBeInTheDocument()
   })
 })

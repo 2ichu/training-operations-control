@@ -14,7 +14,7 @@ const EXPECTED_TABLES = [
   'instructor', 'instructor_assignment', 'instructor_change_log', 'class_schedule',
   'attendance', 'attendance_change_log', 'operation_log', 'course_issue',
   'detection_rule', 'verification_case', 'verification_case_trainee', 'verification_action_log',
-  'submission', 'submission_review_log', 'attachment',
+  'submission', 'submission_review_log', 'attachment', 'attendance_setting',
 ];
 const APPEND_ONLY = [
   'audit_log', 'trainee_change_log', 'instructor_change_log', 'attendance_change_log',

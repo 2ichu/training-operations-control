@@ -23,10 +23,10 @@ const TABLES = [
   'trainee_change_log', 'instructor', 'instructor_assignment', 'instructor_change_log', 'class_schedule',
   'attendance', 'attendance_change_log', 'operation_log', 'course_issue',
   'detection_rule', 'verification_case', 'verification_case_trainee', 'verification_action_log',
-  'submission', 'submission_review_log', 'attachment',
+  'submission', 'submission_review_log', 'attachment', 'attendance_setting',
 ];
 const tables = (await q<{ relname: string }>(`SELECT relname FROM pg_class WHERE relkind = 'r' AND relnamespace = 'public'::regnamespace AND relname <> 'pgmigrations'`)).map((r) => r.relname);
-check('테이블 24개', sameSet(tables, TABLES), tables.join(','));
+check('테이블 25개', sameSet(tables, TABLES), tables.join(','));
 
 const fkCount = Number((await q(`SELECT count(*)::int n FROM pg_constraint WHERE contype = 'f' AND connamespace = 'public'::regnamespace`))[0].n);
 check('FK 61개 (정적 검증과 동일)', fkCount === 61, `실제 ${fkCount}`);
@@ -246,6 +246,10 @@ try {
   await expectFail('CHECK: participant_count 음수 차단', `UPDATE operation_log SET participant_count = -1 WHERE schedule_id = $1`, '23514', [seedScheduleId]);
   await expectFail('enum: 잘못된 course_issue.category 차단', `INSERT INTO course_issue (course_id, category, content, reported_by, reported_at) VALUES ($1, 'BOGUS', 'x', $2, now())`, '22P02', [courseId, adminId]);
   await expectOk('course_issue: schedule_id 없이(과정 전체 이슈) 등록 허용', `INSERT INTO course_issue (course_id, category, content, reported_by, reported_at) VALUES ($1, 'FACILITY', 'x', $2, now())`, [courseId, adminId]);
+
+  // attendance_setting(D-08): 단일 행·유예분 범위
+  await expectFail('CHECK: attendance_setting 은 단일 행(setting_id = 1)만 허용', `INSERT INTO attendance_setting (setting_id) VALUES (2)`, '23514');
+  await expectFail('CHECK: attendance_setting.late_grace_minutes 범위(0~240) 밖 차단', `UPDATE attendance_setting SET late_grace_minutes = 241`, '23514');
 
   // detection_rule / verification_case / verification_case_trainee: UNIQUE, CHECK, enum, PK
   await expectFail('UNIQUE(rule_code) 중복 탐지규칙 차단', `INSERT INTO detection_rule (rule_code, rule_name, initial_status, params) VALUES ('MANUAL', 'dup', 'NEEDS_CHECK', '{}')`, '23505');

@@ -585,6 +585,12 @@ export interface AuditLogDetail extends AuditLogEntry {
 }
 
 // GET /detection-rules (S28)
+// D-08 지각·조퇴 판정 유예분(S28)
+export interface AttendanceSetting {
+  lateGraceMinutes: number
+  earlyLeaveGraceMinutes: number
+}
+
 export interface DetectionRule {
   ruleId: number
   ruleCode: string
