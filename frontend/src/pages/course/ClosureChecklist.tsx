@@ -21,7 +21,7 @@ function itemLink(item: number, courseId: number): string | null {
     case 5:
       return `/submissions/missing?${q}`
     case 6:
-      return `/submissions?${q}`
+      return `/submission-reviews?${q}` // 결과물 미검토 → 검토 대기 목록
     case 7:
       return `/enrollments?${q}`
     default:

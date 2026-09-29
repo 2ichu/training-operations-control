@@ -195,6 +195,7 @@ function AttendanceTab({ traineeId, courseId }: { traineeId: number; courseId: n
 }
 
 function SubmissionTab({ traineeId, courseId }: { traineeId: number; courseId: number }) {
+  const { can } = useAuth()
   const result = useApi((signal) => api.get<{ items: TraineeSubmission[] }>(`/trainees/${traineeId}/submissions`, { course_id: courseId }, signal), `${traineeId}:${courseId}`)
   if (result.status === 'error') return <ErrorText error={result.error} onRetry={result.reload} />
   if (!result.data) return <p className="muted">불러오는 중…</p>
@@ -213,7 +214,7 @@ function SubmissionTab({ traineeId, courseId }: { traineeId: number; courseId: n
       <tbody>
         {result.data.items.map((s) => (
           <tr key={s.submissionId}>
-            <td>{s.title}</td>
+            <td>{can('S21', 'R') ? <Link to={`/submissions/${s.submissionId}`}>{s.title}</Link> : s.title}</td>
             <td className="num">v{s.version}</td>
             <td>{formatDateTime(s.submittedAt)}</td>
             <td>{label(SUBMIT_STATUS_LABELS, s.submitStatus)}</td>

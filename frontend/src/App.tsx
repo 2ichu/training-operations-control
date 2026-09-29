@@ -20,6 +20,10 @@ import { InstructorListPage } from './pages/instructor/InstructorListPage'
 import { CourseIssuePage } from './pages/operation/CourseIssuePage'
 import { OperationLogPage } from './pages/operation/OperationLogPage'
 import { SchedulePage } from './pages/schedule/SchedulePage'
+import { MissingSubmissionPage } from './pages/submission/MissingSubmissionPage'
+import { SubmissionDetailPage } from './pages/submission/SubmissionDetailPage'
+import { SubmissionReviewListPage } from './pages/submission/SubmissionReviewListPage'
+import { SubmissionStatusPage } from './pages/submission/SubmissionStatusPage'
 import { EnrollmentReviewPage } from './pages/trainee/EnrollmentReviewPage'
 import { TraineeChangeLogPage } from './pages/trainee/TraineeChangeLogPage'
 import { TraineeCreatePage } from './pages/trainee/TraineeCreatePage'
@@ -171,6 +175,30 @@ export function AppRoutes() {
           }
         />
         <Route
+          path="/submissions"
+          element={
+            <RequirePermission screenId="S19">
+              <SubmissionStatusPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/submissions/missing"
+          element={
+            <RequirePermission screenId="S19">
+              <MissingSubmissionPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/submission-reviews"
+          element={
+            <RequirePermission screenId="S21">
+              <SubmissionReviewListPage />
+            </RequirePermission>
+          }
+        />
+        <Route
           path="/courses"
           element={
             <RequirePermission screenId="S15">
@@ -205,7 +233,15 @@ export function AppRoutes() {
             }
           />
         ))}
-        {/* 상세 화면: S16 과정·S23 확인 필요·S05 훈련생·S12 강사 */}
+        {/* 상세 화면: S16 과정·S23 확인 필요·S05 훈련생·S12 강사·S21 결과물 */}
+        <Route
+          path="/submissions/:id"
+          element={
+            <RequirePermission screenId="S21">
+              <SubmissionDetailPage />
+            </RequirePermission>
+          }
+        />
         <Route
           path="/instructors/:id"
           element={

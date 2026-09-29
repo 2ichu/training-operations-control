@@ -491,3 +491,38 @@ export interface CourseIssue {
   verificationCaseId: number | null
   verificationCaseStatus: string | null
 }
+
+// ── 결과물(S19~S21) ────────────────────────────────────────────────────
+// GET /courses/{id}/submission-status (S19·S20): 확정 훈련생 × submission LEFT JOIN. 미제출은 계산값(NOT_SUBMITTED, 결과물 필드 null)
+export interface SubmissionStatusRow {
+  traineeId: number
+  traineeName: string
+  /** 마스킹된 값 */
+  contact: string | null
+  submissionId: number | null
+  title: string | null
+  version: number | null
+  submittedAt: string | null
+  submitStatus: string | null
+  reviewStatus: string | null
+  /** 등록일시·등록자(audit_log CREATE 기록) */
+  registeredAt: string | null
+  registeredByName: string | null
+  displayStatus: string
+}
+
+// GET /submissions/{id} (S21)
+export interface SubmissionDetail {
+  submissionId: number
+  traineeId: number
+  traineeName: string
+  courseId: number
+  courseName: string
+  title: string
+  version: number
+  submittedAt: string
+  submitStatus: string
+  reviewStatus: string
+  attachments: (AttachmentInfo & { entityVersion: number })[]
+  reviews: { logId: number; version: number; reviewerId: number; reviewerName: string; reviewedAt: string; reviewResult: string; reviewComment: string | null }[]
+}

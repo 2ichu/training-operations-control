@@ -42,7 +42,7 @@ export function me(overrides: Partial<AuthUser> = {}, permissions: PermissionGra
 }
 
 // backend/seed/permissions.ts 와 같은 형태의 축약본
-export const OPS_PERMISSIONS = grants({ S01: 'R', S02: 'RU', S03: 'R', S04: 'CRU', S05: 'RA', S06: 'R', S07: 'CRUA', S08: 'R', S09: 'RU', S10: 'R', S11: 'R', S12: 'CRU', S13: 'CRU', S14: 'R', S15: 'CR', S16: 'CRUA', S17: 'RU', S18: 'CRUA', S19: 'CRU', S22: 'RA', S23: 'RA', S24: 'R' })
+export const OPS_PERMISSIONS = grants({ S01: 'R', S02: 'RU', S03: 'R', S04: 'CRU', S05: 'RA', S06: 'R', S07: 'CRUA', S08: 'R', S09: 'RU', S10: 'R', S11: 'R', S12: 'CRU', S13: 'CRU', S14: 'R', S15: 'CR', S16: 'CRUA', S17: 'RU', S18: 'CRUA', S19: 'CRU', S21: 'CR', S22: 'RA', S23: 'RA', S24: 'R' })
 export const INSTRUCTOR_PERMISSIONS = grants({ S01: 'R', S03: 'R', S05: 'R', S07: 'CRU', S08: 'R', S09: 'R', S11: 'R', S12: 'R', S13: 'R', S15: 'R', S16: 'R', S17: 'CRU', S18: 'CR', S19: 'R' })
 export const SYS_PERMISSIONS = grants({ S01: 'R', S02: 'R', S03: 'R', S05: 'RA', S06: 'R', S15: 'R', S16: 'RA', S22: 'R', S23: 'R', S25: 'CRU', S26: 'RU', S27: 'R', S28: 'RU' })
 

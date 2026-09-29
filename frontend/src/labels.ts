@@ -108,6 +108,7 @@ export const ATTENDANCE_STATUS_LABELS: Record<string, string> = {
 
 // submission(baseline 3-5)
 export const SUBMIT_STATUS_LABELS: Record<string, string> = {
+  NOT_SUBMITTED: '미제출',
   SUBMITTED: '제출됨',
   LATE_SUBMITTED: '기한후제출',
 }

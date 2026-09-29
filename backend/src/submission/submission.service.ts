@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type pg from 'pg';
+import { maskTail } from '../audit/audit-registry.js';
 import { AuditedTransactionService, type Row } from '../audit/audited-transaction.js';
 import { lockRow } from '../common/tx.js';
 import { escapeLike, toApi, Where } from '../common/api.js';
@@ -39,14 +40,23 @@ export class SubmissionService {
     if (missingOnly) where.clauses.push(`s.submission_id IS NULL`);
     else if (reviewStatus) where.add((p) => `s.review_status = ANY(${p}::submission_review_status[])`, reviewStatus);
 
+    // 등록일시·등록자(system-design S19 "created_at·created_by"): submission 에는 감사 컬럼이 없어(ERD) 같은 트랜잭션에 남는
+    // audit_log 의 CREATE 기록에서 가져온다. 연락처는 S20 표시용(마스킹, 훈련생 목록과 같은 기준)
     const { rows } = await this.db.query(
-      `SELECT te.trainee_id, t.name AS trainee_name, s.submission_id, s.title, s.version, s.submitted_at, s.submit_status, s.review_status
+      `SELECT te.trainee_id, t.name AS trainee_name, t.contact, s.submission_id, s.title, s.version, s.submitted_at, s.submit_status, s.review_status,
+              reg.action_at AS registered_at, reg.name AS registered_by_name
          FROM trainee_enrollment te JOIN trainee t ON t.trainee_id = te.trainee_id
          LEFT JOIN submission s ON s.trainee_id = te.trainee_id AND s.course_id = te.course_id
+         LEFT JOIN LATERAL (
+           SELECT a.action_at, u.name FROM audit_log a LEFT JOIN user_account u ON u.user_id = a.actor_user_id
+            WHERE a.target_table = 'submission' AND a.target_id = s.submission_id AND a.action = 'CREATE' ORDER BY a.log_id LIMIT 1
+         ) reg ON TRUE
         WHERE ${where.sql} ORDER BY t.name, s.title`,
       where.params,
     );
-    return { items: rows.map((r) => ({ ...toApi(r), displayStatus: r.submission_id === null ? 'NOT_SUBMITTED' : (r.submit_status as string) })) };
+    return {
+      items: rows.map((r) => ({ ...toApi({ ...r, contact: maskTail(r.contact) }), displayStatus: r.submission_id === null ? 'NOT_SUBMITTED' : (r.submit_status as string) })),
+    };
   }
 
   // ── S19: 결과물 등록·재등록 ─────────────────────────────────────────────
@@ -103,7 +113,11 @@ export class SubmissionService {
         WHERE l.submission_id = $1 ORDER BY l.version, l.log_id`,
       [submissionId],
     );
-    return { ...toApi(submission), attachments: attachments.map((r) => toApi(r)), reviews: reviews.map((r) => toApi(r)) };
+    const { rows: names } = await this.db.query(
+      `SELECT t.name AS trainee_name, c.course_name FROM trainee t, course c WHERE t.trainee_id = $1 AND c.course_id = $2`,
+      [submission.trainee_id, submission.course_id],
+    );
+    return { ...toApi(submission), ...toApi(names[0] ?? {}), attachments: attachments.map((r) => toApi(r)), reviews: reviews.map((r) => toApi(r)) };
   }
 
   async review(request: RbacRequest, submissionId: number, body: unknown) {

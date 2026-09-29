@@ -1,4 +1,4 @@
-import { ATTENDANCE_SHORT_LABELS, ATTENDANCE_STATUS_LABELS, CASE_STATUS_LABELS, COURSE_STATUS_LABELS, INSTRUCTOR_STATUS_LABELS, label, SCHEDULE_STATUS_LABELS } from '../labels'
+import { ATTENDANCE_SHORT_LABELS, ATTENDANCE_STATUS_LABELS, CASE_STATUS_LABELS, COURSE_STATUS_LABELS, INSTRUCTOR_STATUS_LABELS, label, REVIEW_STATUS_LABELS, SCHEDULE_STATUS_LABELS, SUBMIT_STATUS_LABELS } from '../labels'
 
 // system-design 7.1·7.2: 확인필요 계열만 강조색 1개, 종결은 연녹색, 확인중은 회색, 나머지는 무채색.
 const TONE: Record<string, 'attention' | 'done' | 'muted' | 'neutral'> = {
@@ -40,4 +40,15 @@ export function InstructorStatusBadge({ status }: { status: string }) {
 // 회차 상태(baseline 3-6): 저장값 예정·휴강 + 계산값 진행완료. 휴강·진행완료는 흐리게, 예정은 기본
 export function ScheduleStatusBadge({ status }: { status: string }) {
   return <span className={status === 'SCHEDULED' ? 'badge badge-neutral' : 'badge badge-muted'}>{label(SCHEDULE_STATUS_LABELS, status)}</span>
+}
+
+// 제출 상태: "미제출"은 행이 없는 계산값이라 점선(출결 미출결과 같은 표시, C1)
+export function SubmitStatusBadge({ status }: { status: string }) {
+  return <span className={status === 'NOT_SUBMITTED' ? 'badge badge-computed' : 'badge badge-neutral'}>{label(SUBMIT_STATUS_LABELS, status)}</span>
+}
+
+// 검토 상태: 강조색은 확인필요 전용이라 쓰지 않는다(7.1). 적합만 완료색, 보완요청·부적합은 흐리게, 대기는 기본
+export function ReviewStatusBadge({ status }: { status: string }) {
+  const tone = status === 'APPROVED' ? 'done' : status === 'PENDING' ? 'neutral' : 'muted'
+  return <span className={`badge badge-${tone}`}>{label(REVIEW_STATUS_LABELS, status)}</span>
 }
