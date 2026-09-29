@@ -877,7 +877,7 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       const ops1 = await as('ops');
       await ops1.post(`/api/v1/schedules/${s1}/attendance/confirm-absence`).send({ trainee_ids: [tConfirmed1] }).expect(201);
       const list2 = (await ops1.get(`/api/v1/schedules/${s1}/attendance-roster`).expect(200)).body;
-      expect(list2.items[0]).toMatchObject({ displayStatus: 'ABSENT' });
+      expect(list2.items[0]).toMatchObject({ displayStatus: 'ABSENT', sourceType: 'MANUAL' }); // 출처(S07 명세 열)
       expect((await ops1.get(`/api/v1/schedules/${s1}/attendance-roster?status=NOT_CHECKED`)).body.items).toHaveLength(0);
       expect((await ops1.get(`/api/v1/schedules/${s1}/attendance-roster?status=ABSENT`)).body.items).toHaveLength(1);
     });
@@ -887,7 +887,8 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       await ops1.post(`/api/v1/schedules/${s1}/attendance/check-in`).send({ trainee_ids: [tConfirmed1] }).expect(201);
       const asOps = (await ops1.get(`/api/v1/courses/${c1}/attendance-matrix`).expect(200)).body;
       expect(asOps.items).toEqual([expect.objectContaining({ traineeId: tConfirmed1, attendanceRate: 1 })]);
-      expect(asOps.items[0].cells).toEqual([{ scheduleId: s1, displayStatus: 'PRESENT' }]);
+      const attId = await one(`SELECT attendance_id id FROM attendance WHERE trainee_id = $1 AND schedule_id = $2`, [tConfirmed1, s1]);
+      expect(asOps.items[0].cells).toEqual([{ scheduleId: s1, attendanceId: attId, displayStatus: 'PRESENT' }]); // 셀 → S09 정정 진입 키
 
       // 같은 과정에 다른 강사(i2)의 회차를 추가하면 ops 에는 보이지만 ins1(강사1)에는 보이지 않는다
       await ops1.post(`/api/v1/courses/${c1}/instructor-assignments`).send({ instructor_id: i2, round_no: 9 }).expect(201);
@@ -937,7 +938,9 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       await ops1.post(`/api/v1/attendance/${attendanceId}/correct`).send({ attendance_status: 'LATE', reason: '지각 정정', expected_last_modified_at: null }).expect(200);
 
       const list = (await (await as('exec')).get(`/api/v1/attendance-change-logs?course_id=${c1}`).expect(200)).body;
-      expect(list.items).toEqual([expect.objectContaining({ attendanceId, traineeId: tConfirmed1, reason: '지각 정정' })]);
+      expect(list.items).toEqual([expect.objectContaining({ attendanceId, traineeId: tConfirmed1, reason: '지각 정정', scheduleId: s1, roundNo: 1, classDate: '2027-01-05', courseName: '과정1' })]);
+      expect((await (await as('exec')).get(`/api/v1/attendance-change-logs?trainee_name=${encodeURIComponent('확정')}`)).body.total).toBe(1); // 훈련생명 검색(S10)
+      expect((await (await as('exec')).get(`/api/v1/attendance-change-logs?trainee_name=${encodeURIComponent('없는이름')}`)).body.total).toBe(0);
       expect((await (await as('exec')).get(`/api/v1/attendance-change-logs?trainee_id=${tConfirmed2}`)).body.total).toBe(0);
       expect((await (await as('ins1')).get('/api/v1/attendance-change-logs')).status).toBe(403);
     });

@@ -289,3 +289,83 @@ export interface TraineeChangeLog {
   traineeName: string
   courseName: string | null
 }
+
+// ── 출결(S07~S10) ──────────────────────────────────────────────────────
+// GET /schedules (S13 목록 — S07 회차 선택에 사용)
+export interface ScheduleListItem {
+  scheduleId: number
+  courseId: number
+  courseName: string
+  roundNo: number
+  classDate: string
+  startTime: string
+  endTime: string
+  instructorId: number
+  instructorName: string
+  status: string
+  displayStatus: string
+}
+
+// GET /schedules/{id}/attendance-roster (S07)
+export interface RosterItem {
+  traineeId: number
+  name: string
+  attendanceId: number | null
+  checkInTime: string | null
+  checkOutTime: string | null
+  attendanceStatus: string | null
+  sourceType: string | null
+  /** 저장 상태, 계산값 NOT_CHECKED, 휴강 회차면 null */
+  displayStatus: string | null
+}
+
+export interface AttendanceBatchResult {
+  created?: { attendanceId: number }[]
+  updated?: { attendanceId: number }[]
+  alreadyExists: unknown[]
+  notEligible?: number[]
+  notFound?: number[]
+}
+
+// GET /courses/{id}/attendance-matrix (S08)
+export interface AttendanceMatrix {
+  schedules: { scheduleId: number; roundNo: number; classDate: string; status: string }[]
+  items: {
+    traineeId: number
+    name: string
+    attendanceRate: number | null
+    cells: { scheduleId: number; attendanceId: number | null; displayStatus: string | null }[]
+  }[]
+}
+
+// GET /attendance/{id} (S09)
+export interface AttendanceRecord {
+  attendanceId: number
+  traineeId: number
+  scheduleId: number
+  checkInTime: string | null
+  checkOutTime: string | null
+  attendanceStatus: string
+  sourceType: string
+  lastModifiedAt: string | null
+}
+
+// GET /attendance-change-logs (S10)
+export interface AttendanceChangeLog {
+  logId: number
+  attendanceId: number
+  traineeId: number
+  traineeName: string
+  actorType: 'USER' | 'SYSTEM_BATCH' | 'SYSTEM_API'
+  changedBy: number | null
+  changedByName: string | null
+  changedAt: string
+  beforeValue: Record<string, unknown> | null
+  afterValue: Record<string, unknown> | null
+  reason: string
+  scheduleId: number
+  roundNo: number
+  classDate: string
+  courseId: number
+  courseName: string
+}

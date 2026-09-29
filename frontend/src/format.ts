@@ -33,3 +33,15 @@ const dateFormat = new Intl.DateTimeFormat('sv-SE', { timeZone: TIME_ZONE, year:
 /** 오늘 날짜(KST) 'YYYY-MM-DD' */
 export const todayKst = (now: Date = new Date()): string => dateFormat.format(now)
 
+const inputFormat = new Intl.DateTimeFormat('sv-SE', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+
+/** ISO 시각 → datetime-local 입력값(KST 'YYYY-MM-DDTHH:mm'). 없으면 '' */
+export function toKstInput(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const date = new Date(iso)
+  return Number.isNaN(date.getTime()) ? '' : inputFormat.format(date).replace(' ', 'T')
+}
+
+/** KST 날짜('YYYY-MM-DD')와 시각('HH:mm') 또는 datetime-local 값 → 서버로 보낼 ISO(+09:00) */
+export const kstIso = (dateTime: string): string => `${dateTime.length === 16 ? dateTime : dateTime.slice(0, 16)}:00+09:00`
+

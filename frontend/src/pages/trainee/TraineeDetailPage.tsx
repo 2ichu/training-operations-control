@@ -147,6 +147,7 @@ export function TraineeDetailPage() {
 }
 
 function AttendanceTab({ traineeId, courseId }: { traineeId: number; courseId: number }) {
+  const { can } = useAuth()
   const result = useApi(
     (signal) => api.get<{ items: AttendanceSummaryItem[] }>(`/trainees/${traineeId}/attendance-summary`, { course_id: courseId }, signal),
     `${traineeId}:${courseId}`,
@@ -155,6 +156,12 @@ function AttendanceTab({ traineeId, courseId }: { traineeId: number; courseId: n
   if (!result.data) return <p className="muted">불러오는 중…</p>
   if (result.data.items.length === 0) return <EmptyText>등록된 회차가 없습니다.</EmptyText>
   return (
+    <>
+    {can('S08', 'R') && (
+      <p className="toolbar">
+        <Link to={`/attendance/course?course_id=${courseId}`}>과정별 출결에서 보기</Link>
+      </p>
+    )}
     <table>
       <thead>
         <tr>
@@ -183,6 +190,7 @@ function AttendanceTab({ traineeId, courseId }: { traineeId: number; courseId: n
         ))}
       </tbody>
     </table>
+    </>
   )
 }
 

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import App from '../../App'
 import type { EnrollmentListItem, TraineeChangeLog, TraineeDetail } from '../../api/types'
 import { INSTRUCTOR_PERMISSIONS, me, mockApi, SYS_PERMISSIONS } from '../../test/mock-api'
-import { diffFields } from './change-diff'
+import { diffFields } from '../../diff'
 
 const renderAt = (path: string) => {
   window.history.replaceState(null, '', path)
