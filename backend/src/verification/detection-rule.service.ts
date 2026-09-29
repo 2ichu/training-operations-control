@@ -11,21 +11,16 @@ interface RuleMatch {
   traineeAttendance: Map<number, number | null>; // traineeId -> 대표 attendance_id(없으면 null)
 }
 
-// RULE_01·02 는 출결 이벤트 직후 해당 회차만 평가할 수 있다(baseline 6절 "attendance INSERT 커밋 후 즉시(비동기)").
-// 생략하면 전체 회차를 평가한다(배치·수동 호출과 동일).
-export interface RuleScope {
-  scheduleId?: number;
-}
-
 export interface RuleRunResult {
   skipped: boolean;
   casesCreated: number;
   casesUpdated: number;
 }
 
-// Phase 3 탐지 엔진: RULE_01~06 + RULE_07(공식 출결 업로드 시 recordOfficialMismatch 로 호출, D-12 확정).
-// HTTP 라우트는 없다. Phase 5 에서 호출 경로가 붙었다: RULE_03~06 은 BatchSchedulerService(baseline 6절 시점표),
-// RULE_01·02 는 입실 확인 커밋 후 DetectionEventService 가 해당 회차만 평가한다. 테스트는 직접 호출한다.
+// 탐지 엔진: RULE_03~06(배치) + RULE_07(공식 출결 업로드 시 recordOfficialMismatch 로 호출, D-12 확정).
+// RULE_01(동일 단말)·RULE_02(출결 채널)는 도입하지 않는다 — 출결은 등록 단말에 종속되지 않고 여러 기기로 자유롭게 입력되어
+// 신뢰할 수 있는 단말 식별자가 없다(2026-09-29 결정, decisions.md P7-01). device_id·channel 값은 판단 근거로 쓰지 않는다.
+// HTTP 라우트는 없다. RULE_03~06 은 BatchSchedulerService(baseline 6절 시점표)가 호출하고, 테스트는 직접 호출한다.
 // 행위자는 runAsSystem('SYSTEM_RULE', ruleCode) 로 태깅한다(기존 audit-tx 선례, src/audit/audit-context.ts 참고).
 @Injectable()
 export class DetectionRuleService {
@@ -33,76 +28,6 @@ export class DetectionRuleService {
     @Inject(AuditContext) private readonly auditContext: AuditContext,
     @Inject(AuditedTransactionService) private readonly transactions: AuditedTransactionService,
   ) {}
-
-  async runRule01(scope: RuleScope = {}): Promise<RuleRunResult> {
-    return this.withRule('RULE_01', async (tx, rule) => {
-      const params = rule.params as { min_trainees: number; window_minutes: number };
-      const { rows: groups } = await tx.query(
-        `SELECT a.schedule_id, s.course_id, a.related_info->>'device_id' AS device_id
-           FROM attendance a JOIN class_schedule s ON s.schedule_id = a.schedule_id
-          WHERE s.status <> 'CANCELLED' AND a.related_info->>'device_id' IS NOT NULL AND a.check_in_time IS NOT NULL
-            AND ($3::bigint IS NULL OR a.schedule_id = $3)
-          GROUP BY a.schedule_id, s.course_id, a.related_info->>'device_id'
-         HAVING count(DISTINCT a.trainee_id) >= $1
-            AND extract(epoch FROM (max(a.check_in_time) - min(a.check_in_time))) <= $2 * 60`,
-        [params.min_trainees, params.window_minutes, scope.scheduleId ?? null],
-      );
-      let casesCreated = 0;
-      let casesUpdated = 0;
-      for (const g of groups) {
-        const { rows: members } = await tx.query(
-          `SELECT trainee_id, attendance_id FROM attendance WHERE schedule_id = $1 AND related_info->>'device_id' = $2 ORDER BY trainee_id`,
-          [g.schedule_id, g.device_id],
-        );
-        const traineeAttendance = new Map<number, number | null>(members.map((m) => [Number(m.trainee_id), Number(m.attendance_id)]));
-        const dedupeKey = `${g.course_id}:${g.schedule_id}:${g.device_id}`;
-        const { created } = await this.upsertCase(tx, rule, {
-          courseId: Number(g.course_id),
-          dedupeKey,
-          items: [{ id: dedupeKey, schedule_id: Number(g.schedule_id), device_id: g.device_id, trainee_ids: [...traineeAttendance.keys()] }],
-          traineeAttendance,
-        });
-        created ? (casesCreated += 1) : (casesUpdated += 1);
-      }
-      return { casesCreated, casesUpdated };
-    });
-  }
-
-  // 채널 식별자 정의는 baseline `[결정 필요] #2` 미확정 — related_info.channel 키를 임시로 사용한다(RULE_01 과 동일한
-  // related_info 컨테이너 재사용, 새 정책 발명 아님). #2 확정 후 실제 스키마에 맞춰 조정 필요.
-  async runRule02(scope: RuleScope = {}): Promise<RuleRunResult> {
-    return this.withRule('RULE_02', async (tx, rule) => {
-      const params = rule.params as { min_events: number; window_minutes: number };
-      const { rows: groups } = await tx.query(
-        `SELECT a.schedule_id, s.course_id, a.related_info->>'channel' AS channel, count(*) AS event_count
-           FROM attendance a JOIN class_schedule s ON s.schedule_id = a.schedule_id
-          WHERE s.status <> 'CANCELLED' AND a.related_info->>'channel' IS NOT NULL AND a.check_in_time IS NOT NULL
-            AND ($3::bigint IS NULL OR a.schedule_id = $3)
-          GROUP BY a.schedule_id, s.course_id, a.related_info->>'channel'
-         HAVING count(*) >= $1
-            AND extract(epoch FROM (max(a.check_in_time) - min(a.check_in_time))) <= $2 * 60`,
-        [params.min_events, params.window_minutes, scope.scheduleId ?? null],
-      );
-      let casesCreated = 0;
-      let casesUpdated = 0;
-      for (const g of groups) {
-        const { rows: members } = await tx.query(
-          `SELECT trainee_id, attendance_id FROM attendance WHERE schedule_id = $1 AND related_info->>'channel' = $2 ORDER BY trainee_id`,
-          [g.schedule_id, g.channel],
-        );
-        const traineeAttendance = new Map<number, number | null>(members.map((m) => [Number(m.trainee_id), Number(m.attendance_id)]));
-        const dedupeKey = `${g.schedule_id}:${g.channel}`;
-        const { created } = await this.upsertCase(tx, rule, {
-          courseId: Number(g.course_id),
-          dedupeKey,
-          items: [{ id: dedupeKey, schedule_id: Number(g.schedule_id), channel: g.channel, event_count: Number(g.event_count), trainee_ids: [...traineeAttendance.keys()] }],
-          traineeAttendance,
-        });
-        created ? (casesCreated += 1) : (casesUpdated += 1);
-      }
-      return { casesCreated, casesUpdated };
-    });
-  }
 
   async runRule03(): Promise<RuleRunResult> {
     return this.withRule('RULE_03', async (tx, rule) => {
@@ -258,17 +183,6 @@ export class DetectionRuleService {
     return { caseId, created, toleranceMinutes };
   }
 
-  async runAll(): Promise<Record<string, RuleRunResult>> {
-    return {
-      RULE_01: await this.runRule01(),
-      RULE_02: await this.runRule02(),
-      RULE_03: await this.runRule03(),
-      RULE_04: await this.runRule04(),
-      RULE_05: await this.runRule05(),
-      RULE_06: await this.runRule06(),
-    };
-  }
-
   // ── 내부 헬퍼 ───────────────────────────────────────────────────────────
   // 같은 규칙의 실행은 트랜잭션 단위 advisory lock 으로 직렬화한다. 배치와 출결 이벤트가 겹치거나 여러 인스턴스가 동시에
   // 실행해도 upsertCase() 의 "활성 건 조회 → 없으면 생성"이 경합해 같은 dedupe_key 의 건이 두 번 생기지 않게 하기 위함이다.
@@ -286,7 +200,6 @@ export class DetectionRuleService {
   }
 
   // 활성(미종결) 건 중 같은 규칙·같은 dedupe_key 가 있으면 근거만 병합하고, 없으면 새로 생성한다(baseline 8.4 중복 방지 원칙).
-  // 새로 매칭된 훈련생은 기존 건에도 추가한다(RULE_01·02, system-design STEP 8.1-B).
   private async upsertCase(tx: AuditedTx, rule: Row, match: RuleMatch): Promise<{ created: boolean; caseId: number }> {
     const found = await tx.query(
       `SELECT case_id, evidence FROM verification_case WHERE detection_rule_id = $1 AND status = ANY($2::verification_case_status[]) AND evidence->>'dedupe_key' = $3 FOR UPDATE`,
@@ -326,7 +239,7 @@ export class DetectionRuleService {
   }
 
   // baseline 7-22행 대상 삽입은 tx.create() 로 감사까지 함께 남긴다(user_role 과 동일하게 자연키를 그대로 넘김 — create() 는
-  // update() 와 달리 PK 직접 지정을 막지 않는다). reason 은 systemTag(예: RULE_01)가 auditBase() 에서 자동으로 채워진다.
+  // update() 와 달리 PK 직접 지정을 막지 않는다). reason 은 systemTag(예: RULE_04)가 auditBase() 에서 자동으로 채워진다.
   private async linkTraineeAudited(tx: AuditedTx, caseId: number, traineeId: number, attendanceId: number | null): Promise<void> {
     await tx.create('verification_case_trainee', { case_id: caseId, trainee_id: traineeId, attendance_id: attendanceId });
   }

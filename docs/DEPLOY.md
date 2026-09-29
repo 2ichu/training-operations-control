@@ -71,7 +71,7 @@ docker compose --env-file deploy.env up -d --build
 | `LOGIN_MAX_FAILURES` / `LOGIN_LOCK_MINUTES` | | `5` / `15` | 로그인 실패 잠금(D-15/#29 확정값) |
 | `SESSION_COOKIE_NAME` | | `sid` | 세션 쿠키 이름 |
 | `APP_TIMEZONE` | | `Asia/Seoul` | "진행완료"·배치·오늘 판단 기준 시간대 |
-| `BATCH_ENABLED` | | `true` | 시간 기반 배치(RULE_03~06, 과정 자동 운영중 전환)와 입실 후 RULE_01·02 평가. **backend 를 여러 대 띄우면 한 대만 `true`** (decisions P5-07) |
+| `BATCH_ENABLED` | | `true` | 시간 기반 배치(RULE_03~06, 과정 자동 운영중 전환). **backend 를 여러 대 띄우면 한 대만 `true`** (decisions P5-07) |
 | `DB_POOL_MAX` | | `10` | DB 커넥션 풀 크기 |
 | `TRUST_PROXY` | | compose: `1` | 믿을 앞단 프록시 수(또는 Express trust proxy 값). 비우면 직접 접속 IP |
 | `UPLOAD_DIR` / `PORT` | | `/app/uploads` / `3000` | 이미지 기본값 — 바꿀 일 없음 |
@@ -112,6 +112,4 @@ docker compose --env-file deploy.env start backend web
 
 코드는 임시값으로 동작하며, 정해지면 환경변수·설정만 바꾼다.
 
-- 첨부 저장소(현재 서버 로컬 볼륨, D-14)
-- 단말·출결 채널 식별(#2, RULE_01·02 정식 가동 범위)
-- 공식 출결 연계·RULE_07(D-12)
+- 첨부 저장소(현재 서버 로컬 볼륨, D-14) — 그 밖의 운영 항목은 모두 확정됨(decisions.md 참고)

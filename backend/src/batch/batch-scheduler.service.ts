@@ -40,10 +40,6 @@ export class BatchSchedulerService implements OnApplicationBootstrap, BeforeAppl
       // RULE_05·06: 매일 1회(01:00 은 기술적 기본값 — 전일 수정분까지 집계되도록 자정 이후)
       { name: 'RULE_05', schedule: { kind: 'daily', hour: 1, minute: 0 }, run: () => this.detection.runRule05() },
       { name: 'RULE_06', schedule: { kind: 'daily', hour: 1, minute: 10 }, run: () => this.detection.runRule06() },
-      // RULE_01·02 보정: 원래는 출결 이벤트 직후 평가(DetectionEventService)지만, 커밋 직후 프로세스가 내려가면 그 평가가 유실될 수 있어
-      // 하루 한 번 전체 회차를 다시 평가한다(멱등 — 이미 잡힌 건은 무변화). 기술적 보완이며 탐지 조건·시점표 자체는 바꾸지 않는다.
-      { name: 'RULE_01-catchup', schedule: { kind: 'daily', hour: 1, minute: 20 }, run: () => this.detection.runRule01() },
-      { name: 'RULE_02-catchup', schedule: { kind: 'daily', hour: 1, minute: 30 }, run: () => this.detection.runRule02() },
     ];
   }
 

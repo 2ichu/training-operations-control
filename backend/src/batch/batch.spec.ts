@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ConfigService } from '@nestjs/config';
 import type { CourseService } from '../course/course.service.js';
-import { DetectionEventService } from '../verification/detection-event.service.js';
 import { mergeParams } from '../verification/detection-rule-admin.service.js';
 import type { DetectionRuleService } from '../verification/detection-rule.service.js';
 import { BatchSchedulerService } from './batch-scheduler.service.js';
@@ -30,8 +29,8 @@ describe('nextRunAt (Asia/Seoul 벽시계 기준)', () => {
 describe('BatchSchedulerService', () => {
   const scheduler = () => new BatchSchedulerService(config(true), {} as DetectionRuleService, {} as CourseService);
 
-  it('baseline 6절·5-3 시점표의 작업 + RULE_01·02 일일 보정이 등록되어 있다(RULE_07 은 D-12 미확정으로 제외)', () => {
-    expect(scheduler().jobs().map((j) => j.name)).toEqual(['course-auto-start', 'RULE_03', 'RULE_04', 'RULE_04-recheck', 'RULE_05', 'RULE_06', 'RULE_01-catchup', 'RULE_02-catchup']);
+  it('baseline 6절·5-3 시점표의 작업이 등록되어 있다(RULE_01·02 는 도입하지 않고, RULE_07 은 배치가 아니라 공식 출결 업로드가 호출)', () => {
+    expect(scheduler().jobs().map((j) => j.name)).toEqual(['course-auto-start', 'RULE_03', 'RULE_04', 'RULE_04-recheck', 'RULE_05', 'RULE_06']);
   });
 
   it('작업 실패는 삼키고(다음 주기 재시도), 실행 중인 같은 작업은 겹쳐 실행하지 않는다', async () => {
@@ -52,44 +51,6 @@ describe('BatchSchedulerService', () => {
     new BatchSchedulerService(config(false), {} as DetectionRuleService, {} as CourseService).onApplicationBootstrap();
     expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
-  });
-});
-
-describe('DetectionEventService (RULE_01·02 출결 이벤트 평가)', () => {
-  const detection = () => ({
-    runRule01: vi.fn(async () => ({ skipped: false, casesCreated: 0, casesUpdated: 0 })),
-    runRule02: vi.fn(async () => ({ skipped: false, casesCreated: 0, casesUpdated: 0 })),
-  });
-
-  it('device_id 가 있으면 RULE_01, channel 이 있으면 RULE_02 를 해당 회차로만 평가한다', async () => {
-    const d = detection();
-    const events = new DetectionEventService(d as unknown as DetectionRuleService, config(true));
-    events.attendanceCheckedIn(7, { device_id: 'dev-1' });
-    events.attendanceCheckedIn(8, { channel: 'kiosk-1', device_id: 'dev-2' });
-    events.attendanceCheckedIn(9, { note: 'x' }); // 평가 대상 아님
-    events.attendanceCheckedIn(10, undefined);
-    await events.drain();
-    expect(d.runRule01.mock.calls).toEqual([[{ scheduleId: 7 }], [{ scheduleId: 8 }]]);
-    expect(d.runRule02.mock.calls).toEqual([[{ scheduleId: 8 }]]);
-  });
-
-  it('한 규칙이 실패해도 다음 규칙·다음 이벤트는 계속 평가한다', async () => {
-    const d = detection();
-    d.runRule01.mockRejectedValueOnce(new Error('db down'));
-    const events = new DetectionEventService(d as unknown as DetectionRuleService, config(true));
-    events.attendanceCheckedIn(1, { device_id: 'a', channel: 'c' });
-    events.attendanceCheckedIn(2, { device_id: 'b' });
-    await events.drain();
-    expect(d.runRule02).toHaveBeenCalledWith({ scheduleId: 1 });
-    expect(d.runRule01).toHaveBeenLastCalledWith({ scheduleId: 2 });
-  });
-
-  it('BATCH_ENABLED=false 면 아무것도 평가하지 않는다', async () => {
-    const d = detection();
-    const events = new DetectionEventService(d as unknown as DetectionRuleService, config(false));
-    events.attendanceCheckedIn(1, { device_id: 'a' });
-    await events.drain();
-    expect(d.runRule01).not.toHaveBeenCalled();
   });
 });
 

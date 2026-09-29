@@ -5,6 +5,7 @@ import { toApi } from '../common/api.js';
 import { conflict } from '../common/tx.js';
 import { asObject, optBool, reqStr } from '../common/validation.js';
 import { PG_POOL } from '../database/database.module.js';
+import { RETIRED_RULE_CODES } from './verification.constants.js';
 
 // 파라미터 값 범위는 정책이 아니라 기술적 안전장치다(모든 규칙 파라미터가 건수·분·시간·일 단위의 양의 정수).
 const PARAM_MIN = 1;
@@ -39,6 +40,9 @@ export class DetectionRuleAdminService {
       const current = rows[0];
       if (!current) throw new NotFoundException('대상을 찾을 수 없습니다.');
       if (current.rule_code === 'MANUAL') throw conflict('RULE_NOT_EDITABLE', 'MANUAL 은 수동 전환용 고정 레코드라 수정할 수 없습니다.');
+      if (RETIRED_RULE_CODES.includes(current.rule_code as string)) {
+        throw conflict('RULE_RETIRED', '도입하지 않은 규칙(신뢰할 수 있는 단말 식별자가 없음)이라 수정하거나 켤 수 없습니다.');
+      }
 
       const set: Row = {};
       if (params !== undefined) set.params = JSON.stringify(mergeParams(current.params as Record<string, number>, params));
@@ -68,4 +72,7 @@ export function mergeParams(current: Record<string, number>, input: unknown): Re
   return merged;
 }
 
-const present = (row: Row) => ({ ...toApi(row), editable: row.rule_code !== 'MANUAL' });
+const present = (row: Row) => {
+  const retired = RETIRED_RULE_CODES.includes(row.rule_code as string);
+  return { ...toApi(row), editable: row.rule_code !== 'MANUAL' && !retired, retired };
+};

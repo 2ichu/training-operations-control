@@ -198,9 +198,9 @@ describe('S27 감사로그', () => {
 describe('S28 탐지규칙', () => {
   it('바꾼 기준값만·사유 필수로 저장, 범위 검사, MANUAL 은 수정 불가', async () => {
     const rules: DetectionRule[] = [
-      { ruleId: 1, ruleCode: 'RULE_03', ruleName: '회차 운영기록 지연', isActive: true, initialStatus: 'NEEDS_CHECK', params: { delay_hours: 3 }, description: '운영일지 지연', editable: true },
-      { ruleId: 2, ruleCode: 'RULE_05', ruleName: '반복적인 출결 수정', isActive: true, initialStatus: 'NEEDS_CHECK', params: { window_days: 30, min_changes: 3 }, description: '반복 수정', editable: true },
-      { ruleId: 7, ruleCode: 'MANUAL', ruleName: '수동 확인 필요 전환', isActive: true, initialStatus: 'NEEDS_CHECK', params: {}, description: '수동', editable: false },
+      { ruleId: 1, ruleCode: 'RULE_03', ruleName: '회차 운영기록 지연', isActive: true, initialStatus: 'NEEDS_CHECK', params: { delay_hours: 3 }, description: '운영일지 지연', editable: true, retired: false },
+      { ruleId: 2, ruleCode: 'RULE_05', ruleName: '반복적인 출결 수정', isActive: true, initialStatus: 'NEEDS_CHECK', params: { window_days: 30, min_changes: 3 }, description: '반복 수정', editable: true, retired: false },
+      { ruleId: 7, ruleCode: 'MANUAL', ruleName: '수동 확인 필요 전환', isActive: true, initialStatus: 'NEEDS_CHECK', params: {}, description: '수동', editable: false, retired: false },
     ]
     const { calls } = mockApi({
       'GET /auth/me': { status: 200, body: sysMe() },
@@ -261,5 +261,25 @@ describe('S28 지각·조퇴 판정 기준(D-08)', () => {
     expect(await screen.findByText('판정 기준을 저장했습니다. 이후 입실·퇴실 확인부터 적용됩니다.')).toBeInTheDocument()
     expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ late_grace_minutes: 15, reason: '기관 기준' })
     expect(await screen.findByText('15분 (시작 15분 초과 입실 → 지각)')).toBeInTheDocument()
+  })
+})
+
+describe('S28 도입하지 않은 규칙(RULE_01·02)', () => {
+  it('옛 배포에 남은 행은 "미도입"으로만 보이고 수정 버튼이 없다', async () => {
+    const rules: DetectionRule[] = [
+      { ruleId: 1, ruleCode: 'RULE_01', ruleName: '동일 환경 복수 출결', isActive: false, initialStatus: 'NEEDS_CHECK', params: { min_trainees: 3 }, description: '옛 규칙', editable: false, retired: true },
+      { ruleId: 2, ruleCode: 'RULE_03', ruleName: '회차 운영기록 지연', isActive: true, initialStatus: 'NEEDS_CHECK', params: { delay_hours: 3 }, description: '운영일지 지연', editable: true, retired: false },
+    ]
+    mockApi({
+      'GET /auth/me': { status: 200, body: sysMe() },
+      'GET /detection-rules': { status: 200, body: { items: rules } },
+      'GET /attendance-settings': { status: 200, body: { settingId: 1, lateGraceMinutes: 10, earlyLeaveGraceMinutes: 10 } },
+    })
+    renderAt('/admin/detection-rules')
+    const row = await screen.findByRole('row', { name: /RULE_01/ })
+    expect(row).toHaveTextContent('도입하지 않은 규칙')
+    expect(row).toHaveTextContent('미도입')
+    expect(screen.queryByRole('button', { name: 'RULE_01 수정' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'RULE_03 수정' })).toBeInTheDocument()
   })
 })
