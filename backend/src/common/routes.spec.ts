@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { AttachmentController } from '../attachment/attachment.controller.js';
 import { AttendanceSettingController } from '../attendance/attendance-setting.controller.js';
 import { AttendanceController } from '../attendance/attendance.controller.js';
+import { OfficialAttendanceController } from '../attendance/official-attendance.controller.js';
 import { AuditLogViewController } from '../audit-log/audit-log-view.controller.js';
 import { CourseIssueController } from '../course-issue/course-issue.controller.js';
 import { CourseController } from '../course/course.controller.js';
@@ -92,6 +93,9 @@ const EXPECTED: Record<string, string> = {
   'PATCH /detection-rules/:id': 'S28:U',
   'GET /attendance-settings': 'S28:R',
   'PATCH /attendance-settings': 'S28:U',
+  'POST /courses/:courseId/official-attendance': 'S29:C',
+  'GET /official-attendance-imports': 'S29:R',
+  'GET /official-attendance-imports/:batchId': 'S29:R',
 
   'GET /users': 'S25:R',
   'GET /users/:id': 'S25:R',
@@ -157,6 +161,7 @@ describe('도메인 API 라우트 권한 메타데이터', () => {
     ...routes(VerificationCaseController),
     ...routes(DetectionRuleController),
     ...routes(AttendanceSettingController),
+    ...routes(OfficialAttendanceController),
     ...routes(SubmissionController),
     ...routes(AttachmentController),
     ...routes(DashboardController),

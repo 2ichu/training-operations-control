@@ -93,7 +93,7 @@ docker run --rm -v training-ops_uploads:/data -v "$PWD":/backup alpine sh -c 'rm
 docker compose --env-file deploy.env start backend web
 ```
 
-- 감사로그(`audit_log`)·변경이력은 append-only 이고 계속 쌓인다. 보존 기간·정리 정책은 정해지지 않았다(baseline 결정 필요 사항) — 정해질 때까지 지우지 않는다.
+- 감사로그(`audit_log`)·변경이력은 append-only 이고 계속 쌓인다. 보존 기간은 **무기한 보관 유지**로 확정했다(D-16, 삭제·파기 기능 없음). 법정 기간·파기 절차가 정해지면 그때 개발한다. 그래서 DB·첨부(`uploads` 볼륨) 용량은 시간이 지날수록 늘어난다 — 디스크 여유를 정기적으로 확인하고 백업 보관 위치도 함께 늘려 둔다.
 
 ## 6. 점검·장애 대응
 
@@ -105,12 +105,13 @@ docker compose --env-file deploy.env start backend web
 | 감사로그 IP 가 모두 같은 값 | 앞단 프록시가 `X-Forwarded-For` 를 넘기는지, `TRUST_PROXY` 가 프록시 단계 수와 맞는지 |
 | 첨부 업로드 실패 | 20MB 초과(`FILE_TOO_LARGE`). 앞단 프록시의 요청 크기 제한도 25MB 이상인지 |
 | 관리자 계정이 모두 잠김·비활성 | 화면에서는 마지막 활성 시스템 관리자를 비활성화할 수 없다(P5-09). 그래도 로그인할 수 없으면 `deploy.env` 의 `SEED_ADMIN_LOGIN_ID` 를 새 값으로 바꾸고 `docker compose --env-file deploy.env run --rm migrate npm run db:seed` 로 새 관리자를 만든다 |
+| 배포·재시작 뒤 모두 로그아웃됨 | 세션·로그인 실패 횟수는 backend 메모리에 있다(설계상 backend 는 1대 운영). 재시작하면 세션이 사라져 다시 로그인하면 되고, 잠금 횟수도 초기화된다. backend 를 여러 대로 늘리려면 세션 저장소를 공유 저장소로 바꾸는 작업이 먼저 필요하다 |
 | 탐지 배치가 두 번 돈다 | backend 를 여러 대 띄웠다면 한 대만 `BATCH_ENABLED=true`(중복 건은 생기지 않지만 불필요한 실행이 늘어난다) |
 
 ## 7. 아직 정해지지 않은 운영 항목
 
 코드는 임시값으로 동작하며, 정해지면 환경변수·설정만 바꾼다.
 
-- 세션·로그인 잠금 정책값(STEP 12 #29)
-- 감사로그 보존 기간, 첨부 저장소(현재 서버 로컬 볼륨, D-14)
-- 결과물 제출기한 저장 위치(#24), 공식 출결 연계·RULE_07(D-12)
+- 첨부 저장소(현재 서버 로컬 볼륨, D-14)
+- 단말·출결 채널 식별(#2, RULE_01·02 정식 가동 범위)
+- 공식 출결 연계·RULE_07(D-12)

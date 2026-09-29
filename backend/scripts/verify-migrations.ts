@@ -14,11 +14,11 @@ const EXPECTED_TABLES = [
   'instructor', 'instructor_assignment', 'instructor_change_log', 'class_schedule',
   'attendance', 'attendance_change_log', 'operation_log', 'course_issue',
   'detection_rule', 'verification_case', 'verification_case_trainee', 'verification_action_log',
-  'submission', 'submission_review_log', 'attachment', 'attendance_setting',
+  'submission', 'submission_review_log', 'attachment', 'attendance_setting', 'attendance_source_raw',
 ];
 const APPEND_ONLY = [
   'audit_log', 'trainee_change_log', 'instructor_change_log', 'attendance_change_log',
-  'verification_case_trainee', 'verification_action_log', 'submission_review_log', 'attachment',
+  'verification_case_trainee', 'verification_action_log', 'submission_review_log', 'attachment', 'attendance_source_raw',
 ];
 const UPDATED_AT_TABLES = [
   'user_account', 'role', 'role_permission', 'course', 'trainee',
@@ -112,7 +112,7 @@ for (const file of files) {
         if (elt.ColumnDef) {
           cols.add(elt.ColumnDef.colname);
           const typeName = strings(elt.ColumnDef.typeName?.names).at(-1)!;
-          if (!typeName.startsWith('int') && !['varchar', 'text', 'bool', 'date', 'time', 'timestamptz', 'jsonb', 'numeric'].includes(typeName) && !createdTypes.has(typeName)) {
+          if (!typeName.startsWith('int') && !['varchar', 'text', 'bool', 'date', 'time', 'timestamptz', 'jsonb', 'numeric', 'uuid'].includes(typeName) && !createdTypes.has(typeName)) {
             fail(`${file}: ${table}.${elt.ColumnDef.colname} 이(가) 아직 생성되지 않은 타입 '${typeName}' 사용`);
           }
           for (const c of (elt.ColumnDef.constraints ?? []) as Node[]) {

@@ -180,6 +180,7 @@ export const SCREEN_NAMES: Record<string, string> = {
   S26: '권한',
   S27: '감사로그',
   S28: '탐지규칙',
+  S29: '공식 출결 대사',
 }
 
 // role_permission.action (baseline 4-1)
@@ -224,4 +225,16 @@ export const RULE_PARAM_LABELS: Record<string, string> = {
   window_days: '집계 기간(일)',
   min_changes: '최소 수정 횟수(회)',
   min_flips: '최소 반복 변경 횟수(회)',
+  tolerance_minutes: '허용 시간 차이(분)',
+}
+
+// S29 공식 출결 업로드의 행 처리 결과(backend OfficialAttendanceService)
+export const OFFICIAL_IMPORT_RESULT_LABELS: Record<string, string> = {
+  CREATED: '새로 기록',
+  UPDATED: '공식 정정',
+  CONVERTED: '공식으로 전환',
+  UNCHANGED: '변경 없음',
+  CASE: '불일치(확인 필요)',
+  MISMATCH: '불일치(건 미생성)',
+  ERROR: '오류(미반영)',
 }

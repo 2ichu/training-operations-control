@@ -105,6 +105,8 @@ export const api = {
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, { body }),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, { body }),
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, { body }),
+  /** multipart 업로드(파일 등). Content-Type 은 브라우저가 경계 문자열과 함께 정한다 */
+  postForm: <T>(path: string, form: FormData) => request<T>('POST', path, { body: form }),
   /** 첨부 업로드(POST /attachments, multipart). 다운로드는 attachmentUrl 링크로 한다 */
   upload: <T>(entityType: 'OPERATION_LOG' | 'COURSE_ISSUE' | 'SUBMISSION', entityId: number, file: File) => {
     const form = new FormData()

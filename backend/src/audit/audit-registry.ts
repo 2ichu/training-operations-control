@@ -71,6 +71,8 @@ export const AUDITABLE_TABLES: Record<string, AuditableTable> = {
   detection_rule: { pk: ['rule_id'], auditColumns: 'none' },
   // D-08 판정 유예분(단일 행). 감사컬럼 없이 audit_log before/after 로만 추적한다(detection_rule 과 동일).
   attendance_setting: { pk: ['setting_id'], auditColumns: 'none' },
+  // D-12 공식 출결 업로드 원본(append-only). 행 단위 결과가 곧 이력이라 audit_log CREATE 만 남긴다.
+  attendance_source_raw: { pk: ['raw_id'], auditColumns: 'none' },
   // 복합키(case_id, trainee_id)지만 대리키가 아닌 자연키라 tx.create() 에 그대로 넘길 수 있다(user_role 과 동일한 선례,
   // create() 는 PK 를 막지 않는다 — update() 만 막는다). created_by 는 auditColumns:'created' 로 자동 채운다
   // (시스템 행위자는 자동으로 NULL — 컬럼 코멘트 "SYSTEM_RULE 생성 시 NULL, MANUAL 생성 시 값 있음"과 일치).
