@@ -37,9 +37,9 @@ describe('S29 공식 출결 대사', () => {
       total: 3,
       counts: { CREATED: 1, CASE: 1, ERROR: 1 },
       rows: [
-        { rowNo: 2, roundNo: '1', traineeName: '가', result: 'CREATED', message: '공식 출결로 새로 기록했습니다', attendanceId: 5, caseId: null },
-        { rowNo: 3, roundNo: '1', traineeName: '나', result: 'CASE', message: '내부 기록과 15분 기준으로 불일치해 확인 필요 건을 만들었습니다(내부 기록은 그대로)', attendanceId: 6, caseId: 91 },
-        { rowNo: 4, roundNo: '9', traineeName: '다', result: 'ERROR', message: '9회차가 없습니다', attendanceId: null, caseId: null },
+        { rowNo: 2, roundNo: '1', classDate: null, traineeName: '가', result: 'CREATED', message: '공식 출결로 새로 기록했습니다', attendanceId: 5, caseId: null },
+        { rowNo: 3, roundNo: '1', classDate: null, traineeName: '나', result: 'CASE', message: '내부 기록과 15분 기준으로 불일치해 확인 필요 건을 만들었습니다(내부 기록은 그대로)', attendanceId: 6, caseId: 91 },
+        { rowNo: 4, roundNo: '9', classDate: null, traineeName: '다', result: 'ERROR', message: '9회차가 없습니다', attendanceId: null, caseId: null },
       ],
     }
     const { calls } = mockApi({
@@ -59,9 +59,9 @@ describe('S29 공식 출결 대사', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('과정을 선택해 주세요.')
     await user.selectOptions(await screen.findByLabelText('과정(필수)'), '3')
     await user.click(screen.getByRole('button', { name: '업로드·반영' }))
-    expect(screen.getByRole('alert')).toHaveTextContent('CSV 파일을 선택해 주세요.')
+    expect(screen.getByRole('alert')).toHaveTextContent('파일을 선택해 주세요.')
 
-    await user.upload(screen.getByLabelText(/^CSV 파일/), new File(['round_no,trainee_name,birth_date,status\n'], '공식.csv', { type: 'text/csv' }))
+    await user.upload(screen.getByLabelText(/^파일\(/), new File(['round_no,trainee_name,birth_date,status\n'], '공식.csv', { type: 'text/csv' }))
     await user.click(screen.getByRole('button', { name: '업로드·반영' }))
     const panel = (await screen.findByText('공식.csv 반영 결과')).closest('.panel') as HTMLElement
     expect(within(panel).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['새로 기록: 1행', '불일치(확인 필요): 1행', '오류(미반영): 1행'])
@@ -79,7 +79,7 @@ describe('S29 공식 출결 대사', () => {
       'GET /official-attendance-imports': { status: 200, body: { items: [batch()], page: 1, size: 20, total: 1 } },
       'GET /official-attendance-imports/11111111-1111-1111-1111-111111111111': {
         status: 200,
-        body: { items: [{ rowNo: 2, roundNo: '1', traineeName: '라', result: 'CONVERTED', message: '내부 기록과 일치해 공식 기록으로 전환했습니다', attendanceId: 5, caseId: null }] },
+        body: { items: [{ rowNo: 2, roundNo: null, classDate: '2026-09-29', traineeName: '라', result: 'CONVERTED', message: '내부 기록과 일치해 공식 기록으로 전환했습니다', attendanceId: 5, caseId: null }] },
       },
     })
     const user = userEvent.setup()

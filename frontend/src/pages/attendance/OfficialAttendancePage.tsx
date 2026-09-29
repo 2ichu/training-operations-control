@@ -35,7 +35,7 @@ export function OfficialAttendancePage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault()
     if (!courseId) return setError('과정을 선택해 주세요.')
-    if (!file) return setError('CSV 파일을 선택해 주세요.')
+    if (!file) return setError('파일을 선택해 주세요.')
     setBusy(true)
     setError(null)
     setResult(null)
@@ -68,7 +68,7 @@ export function OfficialAttendancePage() {
         <h1>공식 출결 대사</h1>
       </div>
       <p className="hint">
-        공식 출결 자료(CSV)를 올리면 내부 출결과 맞춰 봅니다. 내부 기록과 크게 다르면 내부 기록은 그대로 두고 확인 필요 건을 만듭니다. 종료·중단된 과정은 반영할 수 없습니다.
+        공식 출결 자료(공식 출석부 엑셀 또는 CSV)를 올리면 내부 출결과 맞춰 봅니다. 내부 기록과 크게 다르면 내부 기록은 그대로 두고 확인 필요 건을 만듭니다. 종료·중단된 과정은 반영할 수 없습니다.
       </p>
 
       {can('S29', 'C') && (
@@ -86,8 +86,8 @@ export function OfficialAttendancePage() {
               </select>
             </label>
             <label>
-              CSV 파일(2MB·1,000행 이하)
-              <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+              파일(엑셀 출석부 또는 CSV, 5MB 이하)
+              <input ref={fileRef} type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             </label>
             <button type="submit" className="button-primary" disabled={busy}>
               {busy ? '반영 중…' : '업로드·반영'}
@@ -97,7 +97,10 @@ export function OfficialAttendancePage() {
             </button>
           </div>
           <p className="hint">
-            필수 열: round_no(회차), trainee_name(훈련생명), status(출석·지각·조퇴·결석·인정결석 또는 영문 코드). 선택 열: birth_date(생년월일 YYYY-MM-DD, 동명이인 구분용), check_in·check_out(HH:MM). 훈련생은 확정된 사람 중 이름(과 생년월일)으로 찾습니다.
+            <strong>공식 출석부 엑셀</strong>은 그대로 올리면 됩니다. 성명·주민등록번호 열과 날짜별 기호(○ 출석, × 결석, ◎ 지각, ▲ 조퇴, ▶ 외출, ▦ 공가)를 읽고, 주민등록번호는 생년월일만 계산해 쓰고 저장하지 않습니다. 날짜로 회차를 찾으므로 하루에 회차가 하나여야 하고, 출석부에는 시각이 없어 내부 입·퇴실 시각은 그대로 둡니다.
+          </p>
+          <p className="hint">
+            CSV 양식 — 필수 열: round_no(회차), trainee_name(훈련생명), status(출석·지각·조퇴·결석·인정결석 또는 영문 코드). 선택 열: birth_date(생년월일 YYYY-MM-DD, 동명이인 구분용), check_in·check_out(HH:MM). 훈련생은 확정된 사람 중 이름(과 생년월일)으로 찾습니다.
           </p>
           {error && (
             <p className="form-error" role="alert">
@@ -183,7 +186,7 @@ function RowTable({ rows }: { rows: OfficialImportRow[] }) {
       <thead>
         <tr>
           <th className="num">줄</th>
-          <th>회차·훈련생</th>
+          <th>날짜·회차·훈련생</th>
           <th>결과</th>
           <th>내용</th>
           <th />
@@ -193,7 +196,7 @@ function RowTable({ rows }: { rows: OfficialImportRow[] }) {
         {rows.map((r) => (
           <tr key={r.rowNo} className={r.result === 'ERROR' ? 'muted' : undefined}>
             <td className="num">{r.rowNo}</td>
-            <td>{[r.roundNo ? `${r.roundNo}회차` : null, r.traineeName].filter(Boolean).join(' ')}</td>
+            <td>{[r.classDate, r.roundNo ? `${r.roundNo}회차` : null, r.traineeName].filter(Boolean).join(' ')}</td>
             <td>{label(OFFICIAL_IMPORT_RESULT_LABELS, r.result)}</td>
             <td className="wrap">{r.message}</td>
             <td>{r.caseId !== null && can('S23', 'R') ? <Link to={`/verification-cases/${r.caseId}`}>확인 필요 #{r.caseId}</Link> : null}</td>

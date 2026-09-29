@@ -12,8 +12,10 @@ import { ScopeService } from '../rbac/scope.service.js';
 import { SCHEDULE_TIMEZONE } from '../schedule/schedule.service.js';
 import { DetectionRuleService } from '../verification/detection-rule.service.js';
 import { type AttendanceValues, compareAttendance, OfficialFileError, type OfficialRow, parseOfficialFile } from './official-attendance.parse.js';
+import { parseAttendanceSheet } from './official-attendance.sheet.js';
+import { isXlsx, readFirstSheet, XlsxError } from './xlsx-reader.js';
 
-const MAX_FILE_SIZE = 2 * 1024 * 1024;
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 export type ImportResult = 'CREATED' | 'UPDATED' | 'CONVERTED' | 'UNCHANGED' | 'CASE' | 'MISMATCH' | 'ERROR';
 interface RowOutcome {
@@ -21,11 +23,15 @@ interface RowOutcome {
   message: string;
   attendanceId?: number;
   caseId?: number;
+  /** 훈련생·날짜 자체를 못 찾은 오류 — 같은 원인의 나머지 칸은 반복해서 보고하지 않는다(출석부는 훈련생당 수십 칸) */
+  unresolvedKey?: string;
+  /** 이미 보고한 같은 원인의 오류라 이번 칸은 기록·표시하지 않는다 */
+  skipRepeat?: boolean;
 }
 
 const iso = (d: Date | null): string | null => (d ? d.toISOString() : null);
 
-// D-12 확정(2026-09-29): 공식 출결은 CSV 파일 업로드로 받아 내부 기록과 대사한다(system-design STEP 8.2).
+// D-12 확정(2026-09-29): 공식 출결은 파일 업로드(CSV 또는 공식 출석부 엑셀)로 받아 내부 기록과 대사한다(system-design STEP 8.2).
 // - 내부 기록이 없으면 공식 값으로 생성(source_type=OFFICIAL), 이미 공식이면 정정으로 갱신(변경이력 기록).
 // - 내부 기록(수기·연계)이 있으면 비교: 임계치(RULE_07 tolerance_minutes) 이내면 공식 값으로 갱신하고 공식으로 전환,
 //   초과 불일치면 attendance 는 그대로 두고 RULE_07 확인 필요 건을 만든다(자동 덮어쓰기 없음).
@@ -48,9 +54,10 @@ export class OfficialAttendanceService {
     if (file.size > MAX_FILE_SIZE) throw new BadRequestException({ code: 'FILE_TOO_LARGE', message: `파일은 ${MAX_FILE_SIZE / 1024 / 1024}MB 이하여야 합니다` });
     let rows: OfficialRow[];
     try {
-      rows = parseOfficialFile(file.buffer.toString('utf8'));
+      // 엑셀(zip 서명)이면 공식 출석부 형식으로, 아니면 CSV 로 해석한다.
+      rows = isXlsx(file.buffer) ? parseAttendanceSheet(readFirstSheet(file.buffer)) : parseOfficialFile(file.buffer.toString('utf8'));
     } catch (e) {
-      if (e instanceof OfficialFileError) throw new BadRequestException({ code: 'INVALID_FILE', message: e.message });
+      if (e instanceof OfficialFileError || e instanceof XlsxError) throw new BadRequestException({ code: 'INVALID_FILE', message: e.message });
       throw e;
     }
 
@@ -62,9 +69,12 @@ export class OfficialAttendanceService {
         assertCourseOpen(await lockRow(tx, 'course', 'course_id', courseId)); // V7: 종료·중단 과정은 출결을 바꾸지 않는다
         const ctx = await this.loadContext(tx, courseId);
         const seen = new Set<string>();
+        const unresolved = new Set<string>();
         const out: { row: OfficialRow; outcome: RowOutcome }[] = [];
         for (const row of rows) {
-          const outcome = await this.processRow(tx, courseId, ctx, seen, row);
+          const outcome = await this.processRow(tx, courseId, ctx, seen, unresolved, row);
+          if (outcome.unresolvedKey) unresolved.add(outcome.unresolvedKey);
+          if (outcome.result === 'ERROR' && outcome.skipRepeat) continue;
           await tx.create('attendance_source_raw', {
             batch_id: batchId,
             file_name: fileName,
@@ -92,7 +102,7 @@ export class OfficialAttendanceService {
       fileName,
       total: outcomes.length,
       counts,
-      rows: outcomes.map(({ row, outcome }) => ({ rowNo: row.rowNo, roundNo: row.raw.round_no ?? null, traineeName: row.raw.trainee_name ?? null, result: outcome.result, message: outcome.message, attendanceId: outcome.attendanceId ?? null, caseId: outcome.caseId ?? null })),
+      rows: outcomes.map(({ row, outcome }) => ({ rowNo: row.rowNo, roundNo: row.raw.round_no ?? null, classDate: row.raw.date ?? null, traineeName: row.raw.trainee_name ?? null, result: outcome.result, message: outcome.message, attendanceId: outcome.attendanceId ?? null, caseId: outcome.caseId ?? null })),
     };
   }
 
@@ -120,7 +130,7 @@ export class OfficialAttendanceService {
   async batchRows(batchId: string) {
     if (!/^[0-9a-f-]{36}$/i.test(batchId)) throw new BadRequestException({ code: 'VALIDATION', field: 'batchId', message: '올바른 값이 아닙니다' });
     const { rows } = await this.db.query(
-      `SELECT row_no, raw_payload->>'round_no' AS round_no, raw_payload->>'trainee_name' AS trainee_name, raw_payload, result, message, attendance_id, case_id FROM attendance_source_raw WHERE batch_id = $1 ORDER BY row_no`,
+      `SELECT row_no, raw_payload->>'round_no' AS round_no, raw_payload->>'date' AS class_date, raw_payload->>'trainee_name' AS trainee_name, raw_payload, result, message, attendance_id, case_id FROM attendance_source_raw WHERE batch_id = $1 ORDER BY row_no`,
       [batchId],
     );
     return { items: rows.map((r) => toApi(r)) };
@@ -128,9 +138,10 @@ export class OfficialAttendanceService {
 
   // ── 내부 ────────────────────────────────────────────────────────────────
   private async loadContext(tx: AuditedTx, courseId: number) {
-    const schedules = new Map<number, Row>(
-      (await tx.query(`SELECT schedule_id, round_no, status FROM class_schedule WHERE course_id = $1`, [courseId])).rows.map((r) => [Number(r.round_no), r]),
-    );
+    const scheduleRows = (await tx.query(`SELECT schedule_id, round_no, status, to_char(class_date, 'YYYY-MM-DD') AS class_date FROM class_schedule WHERE course_id = $1`, [courseId])).rows;
+    const schedules = new Map<number, Row>(scheduleRows.map((r) => [Number(r.round_no), r]));
+    const schedulesByDate = new Map<string, Row[]>();
+    for (const r of scheduleRows) schedulesByDate.set(r.class_date as string, [...(schedulesByDate.get(r.class_date as string) ?? []), r]);
     const trainees = new Map<string, { traineeId: number; birthDate: string | null }[]>();
     const { rows } = await tx.query(
       `SELECT t.trainee_id, t.name, to_char(t.birth_date, 'YYYY-MM-DD') AS birth_date
@@ -142,18 +153,37 @@ export class OfficialAttendanceService {
     }
     const rule = (await tx.query(`SELECT params FROM detection_rule WHERE rule_code = 'RULE_07'`)).rows[0];
     const toleranceMinutes = Number((rule?.params as { tolerance_minutes?: number } | undefined)?.tolerance_minutes ?? 15);
-    return { schedules, trainees, toleranceMinutes };
+    return { schedules, schedulesByDate, trainees, toleranceMinutes };
   }
 
-  private async processRow(tx: AuditedTx, courseId: number, ctx: Awaited<ReturnType<OfficialAttendanceService['loadContext']>>, seen: Set<string>, row: OfficialRow): Promise<RowOutcome> {
+  private async processRow(tx: AuditedTx, courseId: number, ctx: Awaited<ReturnType<OfficialAttendanceService['loadContext']>>, seen: Set<string>, unresolved: Set<string>, row: OfficialRow): Promise<RowOutcome> {
     if (row.error) return { result: 'ERROR', message: row.error };
-    const schedule = ctx.schedules.get(row.roundNo!);
-    if (!schedule) return { result: 'ERROR', message: `이 과정에 ${row.roundNo}회차가 없습니다` };
-    if (schedule.status === 'CANCELLED') return { result: 'ERROR', message: `${row.roundNo}회차는 휴강 처리되어 출결을 반영할 수 없습니다` };
-    // 이름으로 찾고, 생년월일이 있으면 그 값과 일치하는 사람만 남긴다. 한 명으로 특정되지 않으면 오류.
+    // 회차 찾기: CSV 는 회차 번호, 출석부(엑셀)는 날짜(하루 한 회차). 날짜·훈련생을 못 찾는 오류는 한 번만 보고한다.
+    let schedule: Row | undefined;
+    let where: string;
+    if (row.classDate) {
+      const key = `d:${row.classDate}`;
+      if (unresolved.has(key)) return { result: 'ERROR', message: '', skipRepeat: true };
+      const onDate = ctx.schedulesByDate.get(row.classDate) ?? [];
+      where = `${row.classDate}`;
+      if (onDate.length === 0) return { result: 'ERROR', message: `${where} 에 이 과정의 수업 회차가 없습니다(이 날짜 칸은 모두 건너뜀)`, unresolvedKey: key };
+      if (onDate.length > 1) return { result: 'ERROR', message: `${where} 에 회차가 둘 이상이라 출석부 한 칸을 어느 회차에 반영할지 정할 수 없습니다(이 날짜 칸은 모두 건너뜀)`, unresolvedKey: key };
+      schedule = onDate[0];
+    } else {
+      where = `${row.roundNo}회차`;
+      schedule = ctx.schedules.get(row.roundNo!);
+      if (!schedule) return { result: 'ERROR', message: `이 과정에 ${where}가 없습니다` };
+    }
+    if (schedule.status === 'CANCELLED') {
+      const key = row.classDate ? `d:${row.classDate}` : undefined;
+      return { result: 'ERROR', message: `${where}는 휴강 처리되어 출결을 반영할 수 없습니다`, ...(key ? { unresolvedKey: key } : {}) };
+    }
+    // 이름으로 찾고, 생년월일이 있으면 그 값과 일치하는 사람만 남긴다. 한 명으로 특정되지 않으면 오류(출석부는 그 훈련생 칸 전체를 한 번만 보고).
+    const traineeKey = `t:${row.traineeName}|${row.birthDate ?? ''}`;
+    if (row.classDate && unresolved.has(traineeKey)) return { result: 'ERROR', message: '', skipRepeat: true };
     const candidates = (ctx.trainees.get(row.traineeName!) ?? []).filter((t) => !row.birthDate || t.birthDate === row.birthDate);
-    if (candidates.length === 0) return { result: 'ERROR', message: '확정된 훈련생 중 이름(·생년월일)이 일치하는 사람이 없습니다' };
-    if (candidates.length > 1) return { result: 'ERROR', message: '이름이 같은 훈련생이 둘 이상이라 특정할 수 없습니다(생년월일 열을 채워 주세요)' };
+    if (candidates.length === 0) return { result: 'ERROR', message: `확정된 훈련생 중 이름(·생년월일)이 일치하는 사람이 없습니다${row.classDate ? '(이 훈련생 칸은 모두 건너뜀)' : ''}`, ...(row.classDate ? { unresolvedKey: traineeKey } : {}) };
+    if (candidates.length > 1) return { result: 'ERROR', message: `이름이 같은 훈련생이 둘 이상이라 특정할 수 없습니다(${row.classDate ? '출석부에 주민등록번호 열이 있어야 구분됩니다. 이 훈련생 칸은 모두 건너뜀' : '생년월일 열을 채워 주세요'})`, ...(row.classDate ? { unresolvedKey: traineeKey } : {}) };
     const traineeId = candidates[0].traineeId;
     const scheduleId = Number(schedule.schedule_id);
     const key = `${scheduleId}:${traineeId}`;
@@ -187,10 +217,12 @@ export class OfficialAttendanceService {
       checkOut: existing.check_out_time ? new Date(existing.check_out_time as string) : null,
     };
 
+    // 공식에 없는 시각(출석부는 상태만 있음)은 내부 값을 유지한다.
+    const merged: AttendanceValues = { status: official.status, checkIn: official.checkIn ?? internal.checkIn, checkOut: official.checkOut ?? internal.checkOut };
     if (existing.source_type === 'OFFICIAL') {
       // 이미 공식 기록 → 최신 공식 값으로 정정(STEP 8.2 4번). 값이 같으면 변경 없음.
-      if (compareAttendance(internal, official, 0) === 'IDENTICAL') return { result: 'UNCHANGED', message: '이미 같은 공식 값입니다', attendanceId };
-      await this.apply(tx, existing, traineeId, official, '공식 출결 정정 반영');
+      if (compareAttendance(internal, merged, 0) === 'IDENTICAL') return { result: 'UNCHANGED', message: '이미 같은 공식 값입니다', attendanceId };
+      await this.apply(tx, existing, traineeId, merged, '공식 출결 정정 반영');
       return { result: 'UPDATED', message: '공식 값으로 정정했습니다', attendanceId };
     }
 
@@ -213,8 +245,7 @@ export class OfficialAttendanceService {
         caseId: recorded.caseId,
       };
     }
-    // 임계치 이내 일치 → 공식 값으로 갱신하고 공식으로 전환. 공식에 없는 시각은 내부 값을 유지한다.
-    const merged: AttendanceValues = { status: official.status, checkIn: official.checkIn ?? internal.checkIn, checkOut: official.checkOut ?? internal.checkOut };
+    // 임계치 이내 일치 → 공식 값으로 갱신하고 공식으로 전환.
     await this.apply(tx, existing, traineeId, merged, '공식 출결 대사 반영(임계치 이내 일치, 공식으로 전환)');
     return { result: 'CONVERTED', message: '내부 기록과 일치해 공식 기록으로 전환했습니다', attendanceId };
   }
