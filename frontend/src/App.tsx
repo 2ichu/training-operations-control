@@ -1,11 +1,14 @@
 import { BrowserRouter, Route, Routes } from 'react-router'
 import { AuthProvider } from './auth/AuthProvider'
 import { AppLayout } from './layout/AppLayout'
-import { PLANNED_PATHS } from './menu'
 import { ChangePasswordPage } from './pages/ChangePasswordPage'
+import { AuditLogPage } from './pages/admin/AuditLogPage'
+import { DetectionRulePage } from './pages/admin/DetectionRulePage'
+import { PermissionPage } from './pages/admin/PermissionPage'
+import { UserListPage } from './pages/admin/UserListPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { LoginPage } from './pages/LoginPage'
-import { NotFoundPage, NotImplementedPage } from './pages/PlaceholderPages'
+import { NotFoundPage } from './pages/PlaceholderPages'
 import { RequireAuth, RequirePermission } from './routing/guards'
 import { AttendanceChangeLogPage } from './pages/attendance/AttendanceChangeLogPage'
 import { CourseAttendancePage } from './pages/attendance/CourseAttendancePage'
@@ -199,6 +202,38 @@ export function AppRoutes() {
           }
         />
         <Route
+          path="/admin/users"
+          element={
+            <RequirePermission screenId="S25">
+              <UserListPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/admin/permissions"
+          element={
+            <RequirePermission screenId="S26">
+              <PermissionPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/admin/audit-logs"
+          element={
+            <RequirePermission screenId="S27">
+              <AuditLogPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/admin/detection-rules"
+          element={
+            <RequirePermission screenId="S28">
+              <DetectionRulePage />
+            </RequirePermission>
+          }
+        />
+        <Route
           path="/courses"
           element={
             <RequirePermission screenId="S15">
@@ -222,17 +257,6 @@ export function AppRoutes() {
             </RequirePermission>
           }
         />
-        {PLANNED_PATHS.map((item) => (
-          <Route
-            key={item.path}
-            path={item.path}
-            element={
-              <RequirePermission screenId={item.permissionScreen ?? item.screenId}>
-                <NotImplementedPage title={item.label} />
-              </RequirePermission>
-            }
-          />
-        ))}
         {/* 상세 화면: S16 과정·S23 확인 필요·S05 훈련생·S12 강사·S21 결과물 */}
         <Route
           path="/submissions/:id"

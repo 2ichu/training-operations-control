@@ -974,3 +974,53 @@ ol.timeline li {
 ol.timeline p {
   margin: 2px 0 0;
 }
+
+/* ── 시스템 관리 ───────────────────────────────────────────── */
+.temp-password code {
+  display: inline-block;
+  padding: 6px 12px;
+  font-size: 18px;
+  letter-spacing: 1px;
+  background: var(--muted-bg);
+  border-radius: 4px;
+  user-select: all;
+}
+
+.permission-matrix td.cell input {
+  margin: 0;
+}
+
+.permission-matrix tr.changed th,
+.diff-table tr.changed th,
+.diff-table tr.changed td {
+  font-weight: 600;
+}
+
+.permission-matrix tr.changed th::before {
+  content: '• ';
+  color: var(--link);
+}
+
+pre.json {
+  margin: 4px 0 0;
+  padding: 8px;
+  max-height: 320px;
+  overflow: auto;
+  font-size: 12px;
+  background: var(--muted-bg);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+ul.plain {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+label.checkbox-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

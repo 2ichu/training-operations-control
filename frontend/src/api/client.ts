@@ -89,6 +89,7 @@ export const api = {
   get: <T>(path: string, query?: Query, signal?: AbortSignal) => request<T>('GET', path, { query, signal }),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, { body }),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, { body }),
+  put: <T>(path: string, body?: unknown) => request<T>('PUT', path, { body }),
   /** 첨부 업로드(POST /attachments, multipart). 다운로드는 attachmentUrl 링크로 한다 */
   upload: <T>(entityType: 'OPERATION_LOG' | 'COURSE_ISSUE' | 'SUBMISSION', entityId: number, file: File) => {
     const form = new FormData()

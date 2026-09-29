@@ -365,13 +365,14 @@
 | S24 조치이력 | 조치 이력 | GET | /verification-action-logs | course_id, assignee_id, from, to, action_type | 이력 목록 | OPS·EXEC·SYS | 없음 |
 | S25 사용자 | 사용자 목록·상세 | GET | /users, /users/{id} | 조건 | 사용자(password_hash 제외) | SYS | 없음 |
 | | 사용자 등록 | POST | /users | login_id, name, email, role, linked_instructor_id(강사 역할 시 필수) | user | SYS | CREATE / user_account, user_role / USER |
-| | 사용자 수정·비활성화 | PATCH | /users/{id} | 변경 필드(status 포함) | 갱신본 | SYS | UPDATE / user_account, user_role / USER |
+| | 사용자 수정·비활성화 | PATCH | /users/{id} | 변경 필드(status 포함) | 갱신본. 마지막 활성 SYS_ADMIN 의 비활성화·역할 변경은 409 LAST_ADMIN(잠금 방지) | SYS | UPDATE / user_account, user_role / USER |
 | | 비밀번호 초기화 | POST | /users/{id}/reset-password | — | 임시 절차 | SYS | UPDATE / user_account / USER (값 미기록) |
-| S26 권한 | 권한 조회 | GET | /roles/permissions | role_id | 화면×기능 매트릭스 | SYS | 없음 |
-| | 권한 저장 | PUT | /roles/{id}/permissions | 매트릭스 | 저장 결과 | SYS | UPDATE / role_permission / USER (before/after) |
+| S26 권한 | 역할 목록 | GET | /roles | — | 역할(role_id·role_code·role_name, 4개 고정 — D-18) | SYS | 없음 |
+| | 권한 조회 | GET | /roles/permissions | role_id | 화면×기능 매트릭스 | SYS | 없음 |
+| | 권한 저장 | PUT | /roles/{id}/permissions | 매트릭스 | 저장 결과. SYS_ADMIN 역할에서 S26 R·U 를 빼면 409 SELF_LOCKOUT(잠금 방지) | SYS | UPDATE / role_permission / USER (before/after) |
 | S28 탐지규칙 (Phase 5) | 규칙 목록 | GET | /detection-rules | — | 규칙 목록(params·is_active·editable) | SYS | 없음 |
 | | 파라미터·활성 수정 | PATCH | /detection-rules/{id} | reason(필수), params(기존 키의 값만, 1~100000 정수), is_active | 갱신본. MANUAL 은 409 RULE_NOT_EDITABLE, initial_status 는 수정 불가(D-11) | SYS | UPDATE / detection_rule / USER (before/after, reason) |
-| S27 감사로그 | 로그 조회 | GET | /audit-logs | from·to(필수, 최대 범위 제한), actor_type, actor_user_id, target_table, action | 로그 목록 | SYS, EXEC | VIEW_SENSITIVE / audit_log / USER |
+| S27 감사로그 | 로그 조회 | GET | /audit-logs | from·to(필수, 최대 범위 제한), actor_type, actor_user_id, target_table, action | 로그 목록(행위자 이름·로그인ID 포함) | SYS, EXEC | VIEW_SENSITIVE / audit_log / USER |
 | | 로그 상세(diff) | GET | /audit-logs/{id} | — | before/after | SYS, EXEC | VIEW_SENSITIVE / audit_log / USER |
 
 ### 5-3. 화면이 없는 내부 처리(개발 범위에 포함)
@@ -687,7 +688,7 @@
 
 ### C. 최종 API 목록 (화면별)
 
-5-1·5-2의 표가 원본이며 화면별 요약은 다음과 같다(공통 5개 + 화면별 78개 = 83개 엔드포인트, S20은 S19의 조회 API를 재사용하므로 고유 82개. 화면 없는 내부 처리 4종은 별도).
+5-1·5-2의 표가 원본이며 화면별 요약은 다음과 같다(공통 5개 + 화면별 79개 = 84개 엔드포인트, S20은 S19의 조회 API를 재사용하므로 고유 83개. 화면 없는 내부 처리 4종은 별도).
 
 | 화면 | API |
 |---|---|
@@ -714,7 +715,7 @@
 | S23 | GET /verification-cases/{id}, POST …/start-review, /complete-confirmation, /require-action, /complete-action, /reopen |
 | S24 | GET /verification-action-logs |
 | S25 | GET /users, GET /users/{id}, POST /users, PATCH /users/{id}, POST /users/{id}/reset-password |
-| S26 | GET /roles/permissions, PUT /roles/{id}/permissions |
+| S26 | GET /roles, GET /roles/permissions, PUT /roles/{id}/permissions |
 | S27 | GET /audit-logs, GET /audit-logs/{id} |
 | S28 | GET /detection-rules, PATCH /detection-rules/{id} |
 | 내부 처리 | RULE_01·02 이벤트, RULE_03~06 배치, 공식 수집·대사·RULE_07(#1), 과정 자동 전환 |

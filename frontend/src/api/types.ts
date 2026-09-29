@@ -526,3 +526,63 @@ export interface SubmissionDetail {
   attachments: (AttachmentInfo & { entityVersion: number })[]
   reviews: { logId: number; version: number; reviewerId: number; reviewerName: string; reviewedAt: string; reviewResult: string; reviewComment: string | null }[]
 }
+
+// ── 시스템 관리(S25~S28) ───────────────────────────────────────────────
+// GET /users (S25) — password_hash 는 응답에 없다
+export interface UserAccount {
+  userId: number
+  loginId: string
+  name: string
+  email: string | null
+  linkedInstructorId: number | null
+  status: 'ACTIVE' | 'INACTIVE'
+  mustChangePassword: boolean
+  roleCode: RoleCode | null
+  createdAt: string
+  updatedAt: string | null
+}
+
+// GET /roles (S26)
+export interface RoleInfo {
+  roleId: number
+  roleCode: RoleCode
+  roleName: string
+}
+
+export interface RoleGrant {
+  screenId: string
+  action: PermissionAction
+  scope: 'ALL' | 'OWN_ASSIGNED'
+}
+
+// GET /audit-logs (S27)
+export interface AuditLogEntry {
+  logId: number
+  actorType: 'USER' | 'SYSTEM_RULE' | 'SYSTEM_BATCH' | 'SYSTEM_API'
+  actorUserId: number | null
+  actorName: string | null
+  actorLoginId: string | null
+  action: string
+  targetTable: string
+  targetId: number | null
+  actionAt: string
+  reason: string | null
+  ipAddress: string | null
+}
+
+export interface AuditLogDetail extends AuditLogEntry {
+  beforeValue: unknown
+  afterValue: unknown
+}
+
+// GET /detection-rules (S28)
+export interface DetectionRule {
+  ruleId: number
+  ruleCode: string
+  ruleName: string
+  isActive: boolean
+  initialStatus: string
+  params: Record<string, number>
+  description: string | null
+  editable: boolean
+}

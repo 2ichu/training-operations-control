@@ -80,6 +80,7 @@ const EXPECTED: Record<string, string> = {
   'POST /courses/:id/instructor-assignments': 'S13:C',
   'POST /instructor-assignments/:id/cancel': 'S13:U',
 
+  'GET /roles': 'S26:R',
   'GET /roles/permissions': 'S26:R',
   'PUT /roles/:id/permissions': 'S26:U',
 

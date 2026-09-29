@@ -1,6 +1,7 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type pg from 'pg';
 import { AuditedTransactionService } from '../audit/audited-transaction.js';
+import { conflict } from '../common/tx.js';
 import { toApi } from '../common/api.js';
 import { asObject, type Obj, oneOf, qInt } from '../common/validation.js';
 import { PG_POOL } from '../database/database.module.js';
@@ -24,6 +25,11 @@ export class RolePermissionService {
     @Inject(AuditedTransactionService) private readonly transactions: AuditedTransactionService,
   ) {}
 
+  async roles() {
+    const { rows } = await this.db.query(`SELECT role_id, role_code, role_name FROM role ORDER BY role_id`);
+    return { items: rows.map((r) => toApi(r)) };
+  }
+
   async get(query: Obj) {
     const roleId = qInt(query, 'role_id');
     if (roleId === undefined) throw new BadRequestException({ code: 'VALIDATION', field: 'role_id', message: 'role_id 는 필수입니다' });
@@ -36,8 +42,12 @@ export class RolePermissionService {
   }
 
   async replace(roleId: number, body: unknown) {
-    await this.findRole(roleId);
+    const role = await this.findRole(roleId);
     const grants = this.parseGrants(body);
+    // 잠금 방지(기술적 안전장치): 시스템 관리자 역할에서 권한 화면(S26) 조회·저장을 빼면 누구도 권한을 되돌릴 수 없다
+    if (role.role_code === 'SYS_ADMIN' && !(['R', 'U'] as const).every((a) => grants.some((g) => g.screenId === 'S26' && g.action === a))) {
+      throw conflict('SELF_LOCKOUT', '시스템 관리자 역할에서 권한 관리(S26) 조회·저장 권한은 뺄 수 없습니다.');
+    }
 
     return this.transactions.run(async (tx) => {
       const before = (await tx.query(`SELECT screen_id, action, scope_type FROM role_permission WHERE role_id = $1 ORDER BY screen_id, action`, [roleId])).rows;

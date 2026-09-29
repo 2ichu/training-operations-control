@@ -3,6 +3,7 @@ import type pg from 'pg';
 import { generateTempPassword, hashPassword } from '../auth/password.js';
 import { type AuditedTx, AuditedTransactionService, type Row } from '../audit/audited-transaction.js';
 import { escapeLike, pageOf, toApi, Where } from '../common/api.js';
+import { conflict } from '../common/tx.js';
 import { asObject, type Obj, oneOf, optInt, optStr, qEnumList, qStr, reqStr } from '../common/validation.js';
 import { PG_POOL } from '../database/database.module.js';
 
@@ -119,6 +120,16 @@ export class UserService {
 
     return this.transactions.run(async (tx) => {
       const current = await this.lockUser(tx, userId);
+      // 잠금 방지(기술적 안전장치): 마지막 활성 시스템 관리자를 비활성화하거나 다른 역할로 바꾸면 사용자·권한을 관리할 사람이 없어진다
+      const losesAdmin = currentRole === 'SYS_ADMIN' && current.status === 'ACTIVE' && (set.status === 'INACTIVE' || (role !== undefined && role !== 'SYS_ADMIN'));
+      if (losesAdmin) {
+        const { rows } = await tx.query(
+          `SELECT count(*) AS n FROM user_account ua JOIN user_role ur ON ur.user_id = ua.user_id JOIN role r ON r.role_id = ur.role_id
+            WHERE r.role_code = 'SYS_ADMIN' AND ua.status = 'ACTIVE' AND ua.user_id <> $1`,
+          [userId],
+        );
+        if (Number(rows[0].n) === 0) throw conflict('LAST_ADMIN', '마지막 활성 시스템 관리자는 비활성화하거나 역할을 바꿀 수 없습니다.');
+      }
       const updated = Object.keys(set).length > 0 ? await tx.update('user_account', { user_id: userId }, set) : current;
       if (role !== undefined && role !== currentRole) {
         await tx.query(`DELETE FROM user_role WHERE user_id = $1`, [userId]);
