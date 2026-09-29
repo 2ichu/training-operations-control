@@ -494,31 +494,48 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
 
     it('완료 후보(D-05 §6): 마지막 회차 종료 전에는 준비되지 않음(ready=false)', async () => {
       const res = (await (await as('ops')).get(`/api/v1/courses/${c1}/completion-candidates`).expect(200)).body;
-      expect(res).toEqual({ ready: false, threshold: 0.8, lateWeight: 0.5, earlyLeaveWeight: 0.5, items: [] }); // s1 은 미래 회차(2027-01-05)
+      expect(res).toEqual({ ready: false, threshold: 0.8, lateToAbsence: 3, items: [] }); // s1 은 미래 회차(2027-01-05)
     });
 
-    it('완료 후보: 마지막 회차 종료 후 가중 출석률(LATE=0.5, EXCUSED=1.0) 계산, 80% 미달만 표시, 조회는 감사로그를 남기지 않는다', async () => {
+    it('완료 후보: 마지막 회차 종료 후 출석률(지각·조퇴 3회 = 결석 1일) 계산, 80% 미달만 표시, S08 과 같은 수치, 조회는 감사로그를 남기지 않는다', async () => {
+      // 5회차를 모두 과거로 만든다(s1 + 추가 4개)
+      const rounds = [s1];
       await client.query(`UPDATE class_schedule SET class_date = '2020-01-01' WHERE schedule_id = $1`, [s1]);
+      for (let n = 2; n <= 5; n += 1) {
+        rounds.push(await one(`INSERT INTO class_schedule (course_id, round_no, class_date, start_time, end_time, instructor_id) VALUES ($1, $2, $3, '09:00', '18:00', $4) RETURNING schedule_id id`, [c1, n, `2020-01-0${n}`, i1]));
+      }
       const ops1 = await as('ops');
       const since = await maxAudit();
-      const noAttendance = (await ops1.get(`/api/v1/courses/${c1}/completion-candidates`).expect(200)).body;
-      expect(noAttendance.ready).toBe(true);
-      expect(noAttendance.items).toEqual([expect.objectContaining({ traineeId: tConfirmed1, name: '확정1', attendanceRate: 0 })]); // 출결 없음 = 0%
+      const setAll = async (statuses: string[]) => {
+        await client.query(`DELETE FROM attendance WHERE trainee_id = $1`, [tConfirmed1]);
+        for (const [i, status] of statuses.entries()) {
+          await client.query(`INSERT INTO attendance (trainee_id, schedule_id, attendance_status, source_type) VALUES ($1, $2, $3, 'MANUAL')`, [tConfirmed1, rounds[i], status]);
+        }
+      };
+      const rate = async (): Promise<{ candidate: number | null; matrix: number }> => {
+        const cand = (await ops1.get(`/api/v1/courses/${c1}/completion-candidates`).expect(200)).body;
+        const matrix = (await ops1.get(`/api/v1/courses/${c1}/attendance-matrix`).expect(200)).body.items[0].attendanceRate;
+        return { candidate: cand.items[0]?.attendanceRate ?? null, matrix };
+      };
 
-      await client.query(`INSERT INTO attendance (trainee_id, schedule_id, attendance_status, source_type) VALUES ($1, $2, 'PRESENT', 'MANUAL')`, [tConfirmed1, s1]);
-      expect((await ops1.get(`/api/v1/courses/${c1}/completion-candidates`).expect(200)).body.items).toEqual([]); // 100% ≥ 80%
+      const empty = (await ops1.get(`/api/v1/courses/${c1}/completion-candidates`).expect(200)).body;
+      expect(empty).toMatchObject({ ready: true, lateToAbsence: 3 });
+      expect(empty.items).toEqual([expect.objectContaining({ traineeId: tConfirmed1, name: '확정1', attendanceRate: 0 })]); // 출결 없음 = 0%
 
-      await client.query(`UPDATE attendance SET attendance_status = 'LATE' WHERE trainee_id = $1 AND schedule_id = $2`, [tConfirmed1, s1]);
-      const late = (await ops1.get(`/api/v1/courses/${c1}/completion-candidates`).expect(200)).body;
-      expect(late.items).toEqual([expect.objectContaining({ attendanceRate: 0.5 })]); // LATE 가중치 0.5 < 80%
-
-      await client.query(`UPDATE attendance SET attendance_status = 'EARLY_LEAVE' WHERE trainee_id = $1 AND schedule_id = $2`, [tConfirmed1, s1]);
-      expect((await ops1.get(`/api/v1/courses/${c1}/completion-candidates`).expect(200)).body.items).toEqual([expect.objectContaining({ attendanceRate: 0.5 })]); // 조퇴 가중치 0.5(D-08)
-      // S08 출석률도 같은 가중치 표를 쓴다(화면 간 수치 일치)
-      expect((await ops1.get(`/api/v1/courses/${c1}/attendance-matrix`).expect(200)).body.items[0].attendanceRate).toBe(0.5);
-
-      await client.query(`UPDATE attendance SET attendance_status = 'EXCUSED' WHERE trainee_id = $1 AND schedule_id = $2`, [tConfirmed1, s1]);
-      expect((await ops1.get(`/api/v1/courses/${c1}/completion-candidates`).expect(200)).body.items).toEqual([]); // 인정결석 전액 인정 ≥ 80%
+      await setAll(['PRESENT', 'PRESENT', 'PRESENT', 'PRESENT', 'PRESENT']);
+      expect(await rate()).toEqual({ candidate: null, matrix: 1 }); // 100%
+      await setAll(['LATE', 'LATE', 'PRESENT', 'PRESENT', 'PRESENT']);
+      expect(await rate()).toEqual({ candidate: null, matrix: 1 }); // 지각 2회는 환산 없음
+      await setAll(['LATE', 'LATE', 'LATE', 'PRESENT', 'PRESENT']);
+      expect(await rate()).toEqual({ candidate: null, matrix: 0.8 }); // 지각 3회 = 결석 1일 → 4/5 = 80%(기준 미만이 아님)
+      await setAll(['LATE', 'EARLY_LEAVE', 'LATE', 'PRESENT', 'PRESENT']);
+      expect(await rate()).toEqual({ candidate: null, matrix: 0.8 }); // 지각·조퇴는 합산해 3회
+      await setAll(['LATE', 'LATE', 'EARLY_LEAVE', 'EARLY_LEAVE', 'PRESENT']);
+      expect(await rate()).toEqual({ candidate: null, matrix: 0.8 }); // 합 4회 → 1일만 환산(⌊4/3⌋)
+      await setAll(['LATE', 'LATE', 'LATE', 'ABSENT', 'ABSENT']);
+      expect(await rate()).toEqual({ candidate: 0.4, matrix: 0.4 }); // (지각 3 − 환산 1) / 5 — 미달이라 후보, S08 과 같은 수치
+      await setAll(['EXCUSED', 'EXCUSED', 'EXCUSED', 'EXCUSED', 'ABSENT']);
+      expect(await rate()).toEqual({ candidate: null, matrix: 0.8 }); // 인정결석은 출석으로 전액 인정
       expect(await auditSince(since)).toHaveLength(0); // 단순 조회, audit_log 없음
     });
 

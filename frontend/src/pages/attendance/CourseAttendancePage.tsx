@@ -13,7 +13,7 @@ import { AttendanceCorrectDialog } from './AttendanceCorrectDialog'
 
 // S08 과정별 출결(system-design 7-A): 훈련생 × 회차 매트릭스. 기록 없는 셀은 계산값 "미출결"(C1), 휴강 회차는 제외.
 // 셀 클릭: 기록이 있으면 S09 수정(권한 없으면 상세), 미출결이면 그 회차의 일일 출결(S07)로 이동해 입실·결석을 처리한다.
-// 강사에게는 서버가 본인 회차 열만 준다. 출석률 = 가중 출석률(출석 1·지각 0.5·조퇴 0.5·인정결석 1·결석 0) / 휴강 제외 전체 회차(미출결 포함).
+// 강사에게는 서버가 본인 회차 열만 준다. 출석률 = (출석·지각·조퇴·인정결석 일수 − 지각·조퇴 3회당 결석 1일) / 휴강 제외 전체 회차(미출결 포함).
 export function CourseAttendancePage() {
   const { can } = useAuth()
   const { get, set } = useUrlFilters()

@@ -159,7 +159,7 @@ export function EnrollmentReviewPage() {
   )
 }
 
-// D-05 §6: 마지막 회차 종료 후 가중 출석률이 기준 미달인 확정 훈련생을 "확인 필요 후보"로만 보여준다.
+// D-05 §6: 마지막 회차 종료 후 출석률이 기준 미달인 확정 훈련생을 "확인 필요 후보"로만 보여준다.
 // 시스템은 판정하지 않고, 최종 처리는 사람이 위 목록의 수료·중도포기·제적으로 한다.
 function CompletionCandidatesPanel({ courseId }: { courseId: number }) {
   const result = useApi((signal) => api.get<CompletionCandidates>(`/courses/${courseId}/completion-candidates`, undefined, signal), String(courseId))
@@ -176,13 +176,13 @@ function CompletionCandidatesPanel({ courseId }: { courseId: number }) {
       ) : (
         <>
           <p className="hint">
-            가중 출석률(출석 + 지각×{data.lateWeight} + 조퇴×{data.earlyLeaveWeight} + 인정결석, 휴강 제외)이 {Math.round(data.threshold * 100)}% 미만인 훈련생입니다. 시스템은 판정하지 않으며, 처리는 담당자가 합니다.
+            출석률(출석·지각·조퇴·인정결석 일수에서 지각·조퇴 {data.lateToAbsence}회당 결석 1일을 뺀 값, 휴강 제외)이 {Math.round(data.threshold * 100)}% 미만인 훈련생입니다. 시스템은 판정하지 않으며, 처리는 담당자가 합니다.
           </p>
           <table className="compact">
             <thead>
               <tr>
                 <th>성명</th>
-                <th className="num">가중 출석률</th>
+                <th className="num">출석률</th>
               </tr>
             </thead>
             <tbody>
