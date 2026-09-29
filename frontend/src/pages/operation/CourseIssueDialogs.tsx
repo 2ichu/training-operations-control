@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { ApiError, api } from '../../api/client'
-import type { CourseIssue, Paged, ScheduleListItem, TraineeListItem } from '../../api/types'
+import type { CourseIssue, ScheduleListItem, TraineeListItem } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { useCourseOptions } from '../../api/useCourseOptions'
 import { Modal } from '../../components/Modal'
@@ -44,7 +44,7 @@ export function CourseIssueFormDialog({
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const schedules = useApi(
-    (signal) => (courseId ? api.get<Paged<ScheduleListItem>>('/schedules', { course_id: courseId, size: 100 }, signal).then((r) => r.items) : Promise.resolve([] as ScheduleListItem[])),
+    (signal) => (courseId ? api.getAll<ScheduleListItem>('/schedules', { course_id: courseId }, signal).then((r) => r.items) : Promise.resolve([] as ScheduleListItem[])),
     courseId,
   )
 
@@ -149,7 +149,7 @@ export function CourseIssueFormDialog({
 export function EscalateDialog({ issue, onClose, onExisting }: { issue: CourseIssue; onClose: () => void; onExisting: (message: string) => void }) {
   const navigate = useNavigate()
   const trainees = useApi(
-    (signal) => api.get<Paged<TraineeListItem>>('/trainees', { course_id: issue.courseId, status: 'CONFIRMED', size: 100 }, signal).then((r) => r.items),
+    (signal) => api.getAll<TraineeListItem>('/trainees', { course_id: issue.courseId, status: 'CONFIRMED' }, signal).then((r) => r.items),
     String(issue.courseId),
   )
   const [selected, setSelected] = useState<Set<number>>(new Set())

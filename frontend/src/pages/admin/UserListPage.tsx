@@ -24,7 +24,7 @@ export function UserListPage() {
   const list = useApi((signal) => api.get<Paged<UserAccount>>('/users', query, signal), JSON.stringify(query))
   // 강사 역할 계정의 연결 강사 표시·선택용
   const instructors = useApi(
-    (signal) => (can('S11', 'R') ? api.get<Paged<InstructorListItem>>('/instructors', { size: 100 }, signal).then((r) => r.items) : Promise.resolve([] as InstructorListItem[])),
+    (signal) => (can('S11', 'R') ? api.getAll<InstructorListItem>('/instructors', {}, signal).then((r) => r.items) : Promise.resolve([] as InstructorListItem[])),
     'instructors',
   )
   const [name, setName] = useState(get('name'))

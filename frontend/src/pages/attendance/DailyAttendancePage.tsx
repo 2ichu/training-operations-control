@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { ApiError, api } from '../../api/client'
-import type { AttendanceBatchResult, Paged, RosterItem, ScheduleListItem } from '../../api/types'
+import type { AttendanceBatchResult, RosterItem, ScheduleListItem } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { useCourseOptions } from '../../api/useCourseOptions'
 import { useAuth } from '../../auth/auth-context'
@@ -24,7 +24,7 @@ export function DailyAttendancePage() {
   const courseId = get('course_id')
   const courses = useCourseOptions()
   const schedules = useApi(
-    (signal) => api.get<Paged<ScheduleListItem>>('/schedules', { from: date, to: date, course_id: courseId, size: 100 }, signal).then((r) => r.items),
+    (signal) => api.getAll<ScheduleListItem>('/schedules', { from: date, to: date, course_id: courseId }, signal).then((r) => r.items),
     `${date}:${courseId}`,
   )
   const scheduleList = schedules.data ?? []

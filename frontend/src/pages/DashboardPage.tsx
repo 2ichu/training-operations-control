@@ -1,6 +1,6 @@
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { api } from '../api/client'
-import type { CourseSummary, DashboardSummary, Paged } from '../api/types'
+import type { CourseSummary, DashboardSummary } from '../api/types'
 import { useApi } from '../api/useApi'
 import { useAuth, useCurrentUser } from '../auth/auth-context'
 import { EmptyText, ErrorText } from '../components/Feedback'
@@ -37,7 +37,7 @@ export function DashboardPage() {
   // 과정 필터 목록(S15 조회 권한이 있을 때만). 서버가 역할별 범위(강사는 본인 배정 과정)로 걸러 준다.
   const canListCourses = can('S15', 'R')
   const courses = useApi(
-    (signal) => (canListCourses ? api.get<Paged<CourseSummary>>('/courses', { size: 100 }, signal) : Promise.resolve(null)),
+    (signal) => (canListCourses ? api.getAll<CourseSummary>('/courses', {}, signal) : Promise.resolve(null)),
     String(canListCourses),
   )
 

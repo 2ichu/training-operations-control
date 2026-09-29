@@ -36,7 +36,7 @@ export function VerificationCaseListPage() {
     size: PAGE_SIZE,
   }
   const list = useApi((signal) => api.get<Paged<VerificationCaseListItem>>('/verification-cases', query, signal), JSON.stringify(query))
-  const courses = useApi((signal) => api.get<Paged<CourseSummary>>('/courses', { size: 100 }, signal), 'courses')
+  const courses = useApi((signal) => api.getAll<CourseSummary>('/courses', {}, signal), 'courses')
   const [traineeName, setTraineeName] = useState(get('trainee_name'))
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)

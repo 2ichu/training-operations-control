@@ -261,53 +261,62 @@ export class CourseService {
     });
   }
 
-  // S01 대시보드도 재사용한다(항목 1·2·4·5·6 합산) — 새 집계 로직을 만들지 않고 종료 체크리스트와 같은 계산을 공유.
+  // 종료 체크리스트(baseline 9절) 계산. 항목 1·2·4·5·6 은 S01 대시보드도 같은 SQL 로 여러 과정을 한 번에 합산한다(closureCounts).
   async computeClosureItems(db: Queryable, courseId: number): Promise<ClosureItem[]> {
     const count = async (sql: string, params: unknown[]): Promise<number> => Number((await db.query<{ n: string }>(sql, params)).rows[0].n);
+    const shared = await this.closureCounts(db, [courseId]);
 
-    const item1 = await count(
-      `SELECT count(*) n FROM class_schedule s
-         JOIN trainee_enrollment te ON te.course_id = s.course_id AND te.status = 'CONFIRMED'
-         LEFT JOIN attendance a ON a.schedule_id = s.schedule_id AND a.trainee_id = te.trainee_id
-        WHERE s.course_id = $1 AND s.status <> 'CANCELLED'
-          AND now() > ((s.class_date + s.end_time) AT TIME ZONE $2) AND a.attendance_id IS NULL`,
-      [courseId, SCHEDULE_TIMEZONE],
-    );
-    const item2 = await count(
-      `SELECT count(*) n FROM attendance a JOIN class_schedule s ON s.schedule_id = a.schedule_id
-        WHERE s.course_id = $1 AND a.attendance_status IN ('PRESENT', 'LATE') AND a.check_out_time IS NULL`,
-      [courseId],
-    );
     const item3 = await count(`SELECT count(*) n FROM verification_case WHERE course_id = $1 AND status = ANY($2::verification_case_status[])`, [courseId, ACTIVE_STATUSES]);
-    const item4 = await count(
-      `SELECT count(*) n FROM class_schedule s
-        WHERE s.course_id = $1 AND s.status <> 'CANCELLED' AND now() > ((s.class_date + s.end_time) AT TIME ZONE $2)
-          AND NOT EXISTS (SELECT 1 FROM operation_log ol WHERE ol.schedule_id = s.schedule_id)`,
-      [courseId, SCHEDULE_TIMEZONE],
-    );
-    const item5 = await count(
-      `SELECT count(*) n FROM trainee_enrollment te
-        WHERE te.course_id = $1 AND te.status = 'CONFIRMED'
-          AND NOT EXISTS (SELECT 1 FROM submission s WHERE s.course_id = te.course_id AND s.trainee_id = te.trainee_id)`,
-      [courseId],
-    );
-    const item6 = await count(`SELECT count(*) n FROM submission WHERE course_id = $1 AND review_status IN ('PENDING', 'REVISION_REQUESTED')`, [courseId]);
     const item7 = await count(`SELECT count(*) n FROM trainee_enrollment WHERE course_id = $1 AND status = 'CONFIRMED'`, [courseId]);
-    const confirmedCount = await count(`SELECT count(*) n FROM trainee_enrollment WHERE course_id = $1 AND status = 'CONFIRMED'`, [courseId]);
     const scheduleCount = await count(`SELECT count(*) n FROM class_schedule WHERE course_id = $1`, [courseId]);
-    const item8 = (confirmedCount === 0 ? 1 : 0) + (scheduleCount === 0 ? 1 : 0);
+    const item8 = (item7 === 0 ? 1 : 0) + (scheduleCount === 0 ? 1 : 0);
 
     return [
-      { item: 1, label: '미출결 대상자', classification: 'BLOCKING', count: item1 },
-      { item: 2, label: '퇴실 미확인 출결', classification: 'WARNING', count: item2 },
+      { item: 1, label: '미출결 대상자', classification: 'BLOCKING', count: shared[1] },
+      { item: 2, label: '퇴실 미확인 출결', classification: 'WARNING', count: shared[2] },
       { item: 3, label: '미종결 확인 필요 건', classification: 'BLOCKING', count: item3 },
-      { item: 4, label: '운영일지 누락', classification: 'WARNING', count: item4 },
-      { item: 5, label: '결과물 미제출', classification: 'WARNING', count: item5 },
-      { item: 6, label: '결과물 미검토·보완 미해결', classification: 'WARNING', count: item6 },
+      { item: 4, label: '운영일지 누락', classification: 'WARNING', count: shared[4] },
+      { item: 5, label: '결과물 미제출', classification: 'WARNING', count: shared[5] },
+      { item: 6, label: '결과물 미검토·보완 미해결', classification: 'WARNING', count: shared[6] },
       { item: 7, label: '확정 상태로 남은 등록 건', classification: 'WARNING', count: item7 },
       { item: 8, label: '필수 과정 데이터', classification: 'WARNING', count: item8 },
       { item: 9, label: '변경이력 존재 여부', classification: 'NOT_NEEDED', count: 0 },
     ];
+  }
+
+  /** 종료 체크리스트 항목 1·2·4·5·6 을 여러 과정에 대해 합산(과정 수와 무관하게 쿼리 5개). 단일 과정 체크리스트와 SQL 을 공유한다 */
+  async closureCounts(db: Queryable, courseIds: number[]): Promise<Record<1 | 2 | 4 | 5 | 6, number>> {
+    const count = async (sql: string, params: unknown[]): Promise<number> => Number((await db.query<{ n: string }>(sql, params)).rows[0].n);
+    if (courseIds.length === 0) return { 1: 0, 2: 0, 4: 0, 5: 0, 6: 0 };
+    const ids = [courseIds];
+    return {
+      1: await count(
+        `SELECT count(*) n FROM class_schedule s
+           JOIN trainee_enrollment te ON te.course_id = s.course_id AND te.status = 'CONFIRMED'
+           LEFT JOIN attendance a ON a.schedule_id = s.schedule_id AND a.trainee_id = te.trainee_id
+          WHERE s.course_id = ANY($1::bigint[]) AND s.status <> 'CANCELLED'
+            AND now() > ((s.class_date + s.end_time) AT TIME ZONE $2) AND a.attendance_id IS NULL`,
+        [courseIds, SCHEDULE_TIMEZONE],
+      ),
+      2: await count(
+        `SELECT count(*) n FROM attendance a JOIN class_schedule s ON s.schedule_id = a.schedule_id
+          WHERE s.course_id = ANY($1::bigint[]) AND a.attendance_status IN ('PRESENT', 'LATE') AND a.check_out_time IS NULL`,
+        ids,
+      ),
+      4: await count(
+        `SELECT count(*) n FROM class_schedule s
+          WHERE s.course_id = ANY($1::bigint[]) AND s.status <> 'CANCELLED' AND now() > ((s.class_date + s.end_time) AT TIME ZONE $2)
+            AND NOT EXISTS (SELECT 1 FROM operation_log ol WHERE ol.schedule_id = s.schedule_id)`,
+        [courseIds, SCHEDULE_TIMEZONE],
+      ),
+      5: await count(
+        `SELECT count(*) n FROM trainee_enrollment te
+          WHERE te.course_id = ANY($1::bigint[]) AND te.status = 'CONFIRMED'
+            AND NOT EXISTS (SELECT 1 FROM submission s WHERE s.course_id = te.course_id AND s.trainee_id = te.trainee_id)`,
+        ids,
+      ),
+      6: await count(`SELECT count(*) n FROM submission WHERE course_id = ANY($1::bigint[]) AND review_status IN ('PENDING', 'REVISION_REQUESTED')`, ids),
+    };
   }
 
   private transition(courseId: number, from: string[], to: string, reason?: string, precheck?: (tx: AuditedTx) => Promise<void>) {

@@ -16,8 +16,6 @@ import { CancelClassDialog, ReassignDialog, ScheduleCreateDialog, ScheduleEditDi
 import { isMonth, monthRange, shiftMonth } from './schedule-model'
 
 const LIST_SIZE = 50
-// 캘린더는 한 달치를 한 번에 가져온다(API 최대 페이지 크기)
-const CALENDAR_SIZE = 100
 
 type Dialog = { kind: 'create' } | { kind: 'edit' | 'cancel' | 'reassign'; schedule: ScheduleListItem }
 
@@ -36,11 +34,20 @@ export function SchedulePage() {
   const month = isMonth(get('month')) ? get('month') : today.slice(0, 7)
   const page = Number(get('page')) || 1
   const range = view === 'calendar' ? monthRange(month) : { from: get('from'), to: get('to') }
-  const query = { course_id: courseId, instructor_id: instructorId, ...range, page: view === 'list' ? page : 1, size: view === 'list' ? LIST_SIZE : CALENDAR_SIZE }
-  const schedules = useApi((signal) => api.get<Paged<ScheduleListItem>>('/schedules', query, signal), JSON.stringify(query))
+  const query = { view, course_id: courseId, instructor_id: instructorId, ...range, page: view === 'list' ? page : 1 }
+  // 캘린더는 그 달의 회차를 전부(여러 페이지를 모아) 가져오고, 목록은 페이지 단위로 가져온다
+  const schedules = useApi(
+    (signal) =>
+      view === 'calendar'
+        ? api
+            .getAll<ScheduleListItem>('/schedules', { course_id: courseId, instructor_id: instructorId, ...range }, signal)
+            .then((r): Paged<ScheduleListItem> => ({ items: r.items, total: r.total, page: 1, size: r.items.length }))
+        : api.get<Paged<ScheduleListItem>>('/schedules', { course_id: courseId, instructor_id: instructorId, ...range, page, size: LIST_SIZE }, signal),
+    JSON.stringify(query),
+  )
   const courses = useCourseOptions()
   const instructors = useApi(
-    (signal) => (can('S11', 'R') ? api.get<Paged<InstructorListItem>>('/instructors', { size: 100 }, signal).then((r) => r.items) : Promise.resolve([] as InstructorListItem[])),
+    (signal) => (can('S11', 'R') ? api.getAll<InstructorListItem>('/instructors', {}, signal).then((r) => r.items) : Promise.resolve([] as InstructorListItem[])),
     'instructors',
   )
   const course = useApi((signal) => (courseId ? api.get<CourseDetail>(`/courses/${courseId}`, undefined, signal) : Promise.resolve(null)), courseId)
@@ -147,7 +154,7 @@ export function SchedulePage() {
           </div>
           {schedules.data && schedules.data.total > schedules.data.items.length && (
             <p className="hint">
-              이 달의 일정이 많아 {schedules.data.items.length}건만 표시합니다. 과정·강사를 선택하거나 목록 보기를 이용해 주세요.
+              이 달의 회차가 너무 많아 {schedules.data.items.length}건(전체 {schedules.data.total}건)만 표시합니다. 과정·강사를 선택하거나 목록 보기를 이용해 주세요.
             </p>
           )}
           {schedules.data && items.length === 0 && <EmptyText>이 달에 편성된 회차가 없습니다.</EmptyText>}

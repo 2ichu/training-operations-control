@@ -635,6 +635,30 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect(insSummary.todaySchedules.map((s: { scheduleId: number }) => s.scheduleId)).toEqual([s1]); // 본인 과정(c1)만
     });
 
+    it('집계는 과정별 종료 체크리스트(항목 1·2·4·5·6)의 합과 같다(여러 과정을 한 번에 합산해도 결과 동일)', async () => {
+      // 두 과정 모두에 지난 회차·퇴실 누락·미검토 결과물을 만든다
+      const past1 = await one(`INSERT INTO class_schedule (course_id, round_no, class_date, start_time, end_time, instructor_id) VALUES ($1, 97, '2020-01-01', '09:00', '10:00', $2) RETURNING schedule_id id`, [c1, i1]);
+      await one(`INSERT INTO class_schedule (course_id, round_no, class_date, start_time, end_time, instructor_id) VALUES ($1, 97, '2020-01-02', '09:00', '10:00', $2) RETURNING schedule_id id`, [c2, i2]);
+      await client.query(`INSERT INTO attendance (trainee_id, schedule_id, check_in_time, attendance_status, source_type) VALUES ($1, $2, '2020-01-01T00:00:00Z', 'PRESENT', 'MANUAL')`, [tConfirmed1, past1]);
+      await client.query(`INSERT INTO submission (trainee_id, course_id, title, submitted_at) VALUES ($1, $2, '과제', now())`, [tConfirmed2, c2]);
+
+      const ops1 = await as('ops');
+      const pick = (items: { item: number; count: number }[]) => Object.fromEntries(items.filter((i) => [1, 2, 4, 5, 6].includes(i.item)).map((i) => [i.item, i.count]));
+      const openCourses = (await rows(`SELECT course_id FROM course WHERE status IN ('PREPARING', 'RECRUITING', 'IN_PROGRESS')`)).map((r) => Number(r.course_id));
+      const sums: Record<number, number> = { 1: 0, 2: 0, 4: 0, 5: 0, 6: 0 };
+      for (const courseId of openCourses) {
+        const items = pick((await ops1.get(`/api/v1/courses/${courseId}/closure-checklist`).expect(200)).body.items);
+        for (const k of [1, 2, 4, 5, 6]) sums[k] += items[k];
+      }
+      const { counts } = (await ops1.get('/api/v1/dashboard').expect(200)).body;
+      expect(counts).toEqual({ notCheckedIn: sums[1], checkoutMissing: sums[2], operationLogMissing: sums[4], submissionMissing: sums[5], reviewPending: sums[6] });
+      expect(Object.values(counts).every((n) => (n as number) > 0)).toBe(true); // 모든 항목이 실제로 합산되는 상황에서 검증
+
+      const c1Only = pick((await ops1.get(`/api/v1/courses/${c1}/closure-checklist`).expect(200)).body.items);
+      const insCounts = (await (await as('ins1')).get('/api/v1/dashboard').expect(200)).body.counts; // 강사는 본인 과정(c1)만
+      expect(insCounts).toEqual({ notCheckedIn: c1Only[1], checkoutMissing: c1Only[2], operationLogMissing: c1Only[4], submissionMissing: c1Only[5], reviewPending: c1Only[6] });
+    });
+
     it('확인 필요 요약: 상태별 건수 + 최근 목록(관련 훈련생 포함), INSTRUCTOR 도 본인 과정 범위로는 대시보드에서 확인 가능', async () => {
       const manual = await one(`SELECT rule_id id FROM detection_rule WHERE rule_code = 'MANUAL'`);
       const caseId = await one(
