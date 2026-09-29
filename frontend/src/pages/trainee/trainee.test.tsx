@@ -73,7 +73,7 @@ describe('S02 대상자 확인', () => {
       'GET /auth/me': { status: 200, body: me() },
       'GET /courses': courses,
       'GET /enrollments': page([enrollment({ status: 'CONFIRMED' })]),
-      'GET /courses/3/completion-candidates': { status: 200, body: { ready: true, threshold: 0.8, lateWeight: 0.5, items: [{ traineeId: 1, enrollmentId: 50, name: '김하나', attendanceRate: 0.625 }] } },
+      'GET /courses/3/completion-candidates': { status: 200, body: { ready: true, threshold: 0.8, lateWeight: 0.5, earlyLeaveWeight: 0.5, items: [{ traineeId: 1, enrollmentId: 50, name: '김하나', attendanceRate: 0.625 }] } },
       'POST /enrollments/50/complete': { status: 200, body: {} },
     })
     const user = userEvent.setup()

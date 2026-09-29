@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import type pg from 'pg';
 import { type AuditedTx, AuditedTransactionService, type Row } from '../audit/audited-transaction.js';
 import { escapeLike, pageOf, toApi, Where } from '../common/api.js';
+import { ATTENDANCE_WEIGHTS } from '../common/attendance-weight.js';
 import { assertCourseOpen, conflict, lockRow } from '../common/tx.js';
 import {
   asObject, type Obj, oneOf, optIso, optObj, qDate, qEnumList, qInt, qStr, reqIntArray, reqStr,
@@ -200,7 +201,7 @@ export class AttendanceService {
         const status = (found?.attendance_status as string | undefined) ?? null;
         if (!cancelled) {
           applicable += 1;
-          if (status === 'PRESENT' || status === 'LATE') present += 1;
+          if (status) present += ATTENDANCE_WEIGHTS[status] ?? 0; // 수료 후보(S02)와 같은 가중 출석률
         }
         // attendanceId: 셀에서 S09 정정으로 들어가기 위한 키(미출결 셀은 null — 최초 입실·결석 확정은 S07, C1)
         return { scheduleId: Number(s.schedule_id), attendanceId: found ? Number(found.attendance_id) : null, displayStatus: status ?? (cancelled ? null : NOT_CHECKED) };

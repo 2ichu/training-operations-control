@@ -176,7 +176,7 @@ function CompletionCandidatesPanel({ courseId }: { courseId: number }) {
       ) : (
         <>
           <p className="hint">
-            가중 출석률(출석 + 지각×{data.lateWeight} + 인정결석, 휴강 제외)이 {Math.round(data.threshold * 100)}% 미만인 훈련생입니다. 시스템은 판정하지 않으며, 처리는 담당자가 합니다.
+            가중 출석률(출석 + 지각×{data.lateWeight} + 조퇴×{data.earlyLeaveWeight} + 인정결석, 휴강 제외)이 {Math.round(data.threshold * 100)}% 미만인 훈련생입니다. 시스템은 판정하지 않으며, 처리는 담당자가 합니다.
           </p>
           <table className="compact">
             <thead>

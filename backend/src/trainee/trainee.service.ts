@@ -7,6 +7,7 @@ import { assertCourseOpen, conflict, lockRow } from '../common/tx.js';
 import {
   asObject, type Obj, optDate, optInt, optIso, optStr, qDate, qEnumList, qInt, qStr, reqDate, reqInt, reqStr,
 } from '../common/validation.js';
+import { EARLY_LEAVE_WEIGHT, LATE_WEIGHT } from '../common/attendance-weight.js';
 import { PG_POOL } from '../database/database.module.js';
 import type { AccessContext, RbacRequest } from '../rbac/rbac.types.js';
 import { ScopeService } from '../rbac/scope.service.js';
@@ -16,7 +17,6 @@ const ENROLLMENT_STATUSES = ['APPLIED', 'REVIEWING', 'CONFIRMED', 'COMPLETED', '
 const ENTITY_TYPES = ['TRAINEE', 'ENROLLMENT'] as const;
 // D-05 §6(2026-09-28 확정): 자동 수료 후보 판정 상수. 정책값이며 코드 상수 변경 시에도 이 결정을 그대로 따른다.
 const ATTENDANCE_THRESHOLD = 0.8;
-const LATE_WEIGHT = 0.5;
 // 강사(OWN_ASSIGNED)가 볼 수 없는 등록 상태 = 대상자 확인(S02) 단계 + 취소 (ScopeService.canAccessTrainee 와 동일)
 const HIDDEN_FOR_SCOPED = `('APPLIED', 'REVIEWING', 'CANCELLED')`;
 
@@ -102,7 +102,7 @@ export class TraineeService {
 
   // D-05 §6(2026-09-28 확정): 자동 판정은 "확인 필요" 후보 표시까지만 하고, 최종 확정은 항상 사람이
   // complete/drop/expel 로 실행한다(verification_case 없이 조회 전용으로 구현, Phase 3 선행 불필요).
-  // 가중 출석률 = (PRESENT + LATE×0.5 + EXCUSED) / 적용 가능 회차(휴강 제외). 임계값 80% 미달만 후보로 표시.
+  // 가중 출석률 = (PRESENT + LATE×0.5 + EARLY_LEAVE×0.5 + EXCUSED) / 적용 가능 회차(휴강 제외). 임계값 80% 미달만 후보로 표시.
   // 판정 시점 = 과정의 마지막 회차(휴강 제외) 종료 후(course.status 와 무관).
   async completionCandidates(request: RbacRequest, courseId: number) {
     await this.scope.requireCourse(request, courseId);
@@ -115,7 +115,7 @@ export class TraineeService {
     );
     const lastEnd = lastRound.rows[0]?.last_end as string | null;
     if (!lastEnd || new Date(lastEnd) > new Date()) {
-      return { ready: false, threshold: ATTENDANCE_THRESHOLD, lateWeight: LATE_WEIGHT, items: [] };
+      return { ready: false, threshold: ATTENDANCE_THRESHOLD, lateWeight: LATE_WEIGHT, earlyLeaveWeight: EARLY_LEAVE_WEIGHT, items: [] };
     }
 
     const { rows } = await this.db.query(
@@ -123,6 +123,7 @@ export class TraineeService {
               count(s.schedule_id) AS applicable_count,
               count(*) FILTER (WHERE a.attendance_status = 'PRESENT') AS present_count,
               count(*) FILTER (WHERE a.attendance_status = 'LATE') AS late_count,
+              count(*) FILTER (WHERE a.attendance_status = 'EARLY_LEAVE') AS early_leave_count,
               count(*) FILTER (WHERE a.attendance_status = 'EXCUSED') AS excused_count
          FROM trainee_enrollment te
          JOIN trainee t ON t.trainee_id = te.trainee_id
@@ -135,12 +136,12 @@ export class TraineeService {
     const items = rows
       .map((r) => {
         const applicable = Number(r.applicable_count);
-        const weighted = Number(r.present_count) + Number(r.late_count) * LATE_WEIGHT + Number(r.excused_count);
+        const weighted = Number(r.present_count) + Number(r.late_count) * LATE_WEIGHT + Number(r.early_leave_count) * EARLY_LEAVE_WEIGHT + Number(r.excused_count);
         const attendanceRate = applicable > 0 ? weighted / applicable : null;
         return { traineeId: Number(r.trainee_id), enrollmentId: Number(r.enrollment_id), name: r.name as string, attendanceRate };
       })
       .filter((r) => r.attendanceRate !== null && r.attendanceRate < ATTENDANCE_THRESHOLD);
-    return { ready: true, threshold: ATTENDANCE_THRESHOLD, lateWeight: LATE_WEIGHT, items };
+    return { ready: true, threshold: ATTENDANCE_THRESHOLD, lateWeight: LATE_WEIGHT, earlyLeaveWeight: EARLY_LEAVE_WEIGHT, items };
   }
 
   // baseline 5-2 는 확인 착수·확정에 사유 입력을 정의하지 않지만 전용 변경이력은 사유가 필수다.

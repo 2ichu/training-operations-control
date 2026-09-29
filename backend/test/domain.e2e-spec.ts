@@ -493,7 +493,7 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
 
     it('완료 후보(D-05 §6): 마지막 회차 종료 전에는 준비되지 않음(ready=false)', async () => {
       const res = (await (await as('ops')).get(`/api/v1/courses/${c1}/completion-candidates`).expect(200)).body;
-      expect(res).toEqual({ ready: false, threshold: 0.8, lateWeight: 0.5, items: [] }); // s1 은 미래 회차(2027-01-05)
+      expect(res).toEqual({ ready: false, threshold: 0.8, lateWeight: 0.5, earlyLeaveWeight: 0.5, items: [] }); // s1 은 미래 회차(2027-01-05)
     });
 
     it('완료 후보: 마지막 회차 종료 후 가중 출석률(LATE=0.5, EXCUSED=1.0) 계산, 80% 미달만 표시, 조회는 감사로그를 남기지 않는다', async () => {
@@ -510,6 +510,11 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       await client.query(`UPDATE attendance SET attendance_status = 'LATE' WHERE trainee_id = $1 AND schedule_id = $2`, [tConfirmed1, s1]);
       const late = (await ops1.get(`/api/v1/courses/${c1}/completion-candidates`).expect(200)).body;
       expect(late.items).toEqual([expect.objectContaining({ attendanceRate: 0.5 })]); // LATE 가중치 0.5 < 80%
+
+      await client.query(`UPDATE attendance SET attendance_status = 'EARLY_LEAVE' WHERE trainee_id = $1 AND schedule_id = $2`, [tConfirmed1, s1]);
+      expect((await ops1.get(`/api/v1/courses/${c1}/completion-candidates`).expect(200)).body.items).toEqual([expect.objectContaining({ attendanceRate: 0.5 })]); // 조퇴 가중치 0.5(D-08)
+      // S08 출석률도 같은 가중치 표를 쓴다(화면 간 수치 일치)
+      expect((await ops1.get(`/api/v1/courses/${c1}/attendance-matrix`).expect(200)).body.items[0].attendanceRate).toBe(0.5);
 
       await client.query(`UPDATE attendance SET attendance_status = 'EXCUSED' WHERE trainee_id = $1 AND schedule_id = $2`, [tConfirmed1, s1]);
       expect((await ops1.get(`/api/v1/courses/${c1}/completion-candidates`).expect(200)).body.items).toEqual([]); // 인정결석 전액 인정 ≥ 80%
@@ -1968,6 +1973,10 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
 
       expect((await ownAgent.post('/api/v1/auth/change-password').send({ currentPassword: 'wrong', newPassword: 'a-new-password-1' })).status).toBe(401);
       expect((await ownAgent.post('/api/v1/auth/change-password').send({ currentPassword: created.tempPassword, newPassword: 'short' })).status).toBe(400); // 최소 길이
+      for (const weak of ['abcdefghij1', 'abcdefghij-', '1234567890-', 'a-1']) {
+        // D-15: 10자 이상 + 영문·숫자·기호 모두 포함
+        expect((await ownAgent.post('/api/v1/auth/change-password').send({ currentPassword: created.tempPassword, newPassword: weak })).status, weak).toBe(400);
+      }
 
       const since = await maxAudit();
       await ownAgent.post('/api/v1/auth/change-password').send({ currentPassword: created.tempPassword, newPassword: 'a-new-password-1' }).expect(200);
@@ -1997,7 +2006,7 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
         expect((await agent.post('/api/v1/users').send({})).status, who).toBe(403);
       }
       const ins = await as('ins1');
-      expect((await ins.post('/api/v1/auth/change-password').send({ currentPassword: 'wrong', newPassword: 'irrelevant1' })).status).toBe(401); // 권한 문제가 아니라 비밀번호 불일치
+      expect((await ins.post('/api/v1/auth/change-password').send({ currentPassword: 'wrong', newPassword: 'irrelevant-1' })).status).toBe(401); // 권한 문제가 아니라 비밀번호 불일치
     });
   });
 

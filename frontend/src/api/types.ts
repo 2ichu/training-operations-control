@@ -274,6 +274,7 @@ export interface CompletionCandidates {
   ready: boolean
   threshold: number
   lateWeight: number
+  earlyLeaveWeight: number
   items: { traineeId: number; enrollmentId: number; name: string; attendanceRate: number }[]
 }
 

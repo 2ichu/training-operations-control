@@ -6,11 +6,12 @@ const num = (name: string, fallback: number): number => {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 };
 
-// 세션·비밀번호 정책값은 STEP 12 #29 미확정이므로 아래 기본값은 임시 설정값이다(환경변수로 조정, 코드 상수 아님).
+// 세션·잠금 정책값(D-15, #29 확정 2026-09-29): 유휴 30분·절대 8시간, 5회 실패 시 15분 잠금. 환경변수로 조정할 수 있다.
+// 비밀번호 규칙은 password.ts(PASSWORD_MIN_LENGTH·passwordPolicyError).
 export default registerAs('auth', () => ({
   cookieName: process.env.SESSION_COOKIE_NAME || 'sid',
   idleMinutes: num('SESSION_IDLE_MINUTES', 30),
-  absoluteHours: num('SESSION_ABSOLUTE_HOURS', 12),
+  absoluteHours: num('SESSION_ABSOLUTE_HOURS', 8),
   cookieSecure: process.env.SESSION_COOKIE_SECURE
     ? process.env.SESSION_COOKIE_SECURE === 'true'
     : process.env.NODE_ENV === 'production',
