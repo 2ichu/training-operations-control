@@ -135,3 +135,16 @@ export const ATTENDANCE_SHORT_LABELS: Record<string, string> = {
   EXCUSED: '인',
 }
 
+
+// operation_log 작성 여부(S17). 미작성은 저장하지 않는 계산값
+export const OPERATION_LOG_STATUS_LABELS: Record<string, string> = {
+  WRITTEN: '작성',
+  NOT_WRITTEN: '미작성',
+}
+
+// course_issue.status (baseline 3-8)
+export const ISSUE_STATUS_LABELS: Record<string, string> = {
+  REGISTERED: '등록',
+  IN_REVIEW: '확인중',
+  RESOLVED: '조치완료',
+}

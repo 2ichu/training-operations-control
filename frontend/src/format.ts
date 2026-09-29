@@ -45,3 +45,12 @@ export function toKstInput(iso: string | null | undefined): string {
 /** KST 날짜('YYYY-MM-DD')와 시각('HH:mm') 또는 datetime-local 값 → 서버로 보낼 ISO(+09:00) */
 export const kstIso = (dateTime: string): string => `${dateTime.length === 16 ? dateTime : dateTime.slice(0, 16)}:00+09:00`
 
+
+/** 파일 크기 표시(첨부 목록) */
+export function formatBytes(size: string | number): string {
+  const n = Number(size)
+  if (!Number.isFinite(n)) return '-'
+  if (n < 1024) return `${n}B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)}KB`
+  return `${(n / 1024 / 1024).toFixed(1)}MB`
+}

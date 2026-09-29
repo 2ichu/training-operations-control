@@ -90,6 +90,8 @@ describe('S13 교육일정(과정 진입)', () => {
     expect(within(panel).getByText('과정 전체')).toBeInTheDocument()
     expect(within(panel).queryByText('정강사')).not.toBeInTheDocument() // 취소된 배정은 기본 숨김
     await waitFor(() => expect(screen.getByRole('row', { name: /1회차.*오리엔테이션/ })).toHaveTextContent('진행완료'))
+    // 회차 클릭 → 해당 회차 운영일지(S17)
+    expect(screen.getByRole('link', { name: '1회차' })).toHaveAttribute('href', '/operation-logs?course_id=3&schedule_id=11')
 
     await user.click(screen.getByRole('button', { name: '신규 회차 추가' }))
     const dialog = screen.getByRole('dialog', { name: '회차 추가' })

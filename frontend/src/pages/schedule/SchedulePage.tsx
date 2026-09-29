@@ -25,6 +25,7 @@ type Dialog = { kind: 'create' } | { kind: 'edit' | 'cancel' | 'reassign'; sched
 // - 강사 관리 > 강의 일정: 강사 기준, 캘린더 우선(강사 계정은 서버가 본인 회차만 준다)
 // - 과정 운영 > 과정 상세 > 교육일정: course_id 지정, 회차 순 목록 우선 + 강사 배정 관리
 // 운영담당자는 회차 추가·수정·휴강·강사 재배정과 배정 추가·취소를 한다. 종료·중단 과정은 바꿀 수 없다(V7).
+// 회차를 누르면 그 회차의 운영일지(S17)로 간다.
 export function SchedulePage() {
   const { can } = useAuth()
   const { get, set } = useUrlFilters()
@@ -150,7 +151,7 @@ export function SchedulePage() {
             </p>
           )}
           {schedules.data && items.length === 0 && <EmptyText>이 달에 편성된 회차가 없습니다.</EmptyText>}
-          <ScheduleCalendar month={month} items={items} today={today} />
+          <ScheduleCalendar month={month} items={items} today={today} linkToLog={can('S17', 'R')} />
         </div>
       ) : (
         <div className={schedules.status === 'loading' && schedules.data ? 'panel is-refreshing' : 'panel'}>
@@ -176,7 +177,10 @@ export function SchedulePage() {
                 {items.map((s) => (
                   <tr key={s.scheduleId}>
                     {!courseId && <td>{s.courseName}</td>}
-                    <td>{s.roundNo}회차</td>
+                    <td>
+                      {/* 회차 클릭 → 해당 회차 운영일지(S17). 휴강 회차는 작성 대상이 아니다 */}
+                      {can('S17', 'R') && s.status !== 'CANCELLED' ? <Link to={`/operation-logs?course_id=${s.courseId}&schedule_id=${s.scheduleId}`}>{s.roundNo}회차</Link> : `${s.roundNo}회차`}
+                    </td>
                     <td>{s.classDate}</td>
                     <td>
                       {formatTime(s.startTime)}~{formatTime(s.endTime)}

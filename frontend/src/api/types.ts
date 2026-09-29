@@ -433,3 +433,61 @@ export interface InstructorChangeLog {
   courseName: string | null
   roundNo: number | null
 }
+
+// ── 운영일지·특이사항(S17·S18) ──────────────────────────────────────────
+// GET /courses/{id}/operation-logs (S17): 회차별 작성 현황. 미작성은 계산값(행 없음), 휴강 회차는 displayStatus=null
+export interface OperationLogRow {
+  scheduleId: number
+  roundNo: number
+  classDate: string
+  startTime: string
+  endTime: string
+  scheduleStatus: string
+  instructorId: number
+  instructorName: string
+  operationLogId: number | null
+  participantCount: number | null
+  writtenAt: string | null
+  displayStatus: 'WRITTEN' | 'NOT_WRITTEN' | null
+}
+
+export interface AttachmentInfo {
+  attachmentId: number
+  fileName: string
+  /** BIGINT 라 문자열로 온다 */
+  fileSize: string | number
+  uploadedAt: string
+}
+
+// GET /schedules/{id}/operation-log (S17)
+export interface OperationLogDetail {
+  operationLogId: number
+  scheduleId: number
+  instructorId: number
+  instructorName: string
+  content: string
+  participantCount: number
+  issueNote: string | null
+  authorId: number
+  authorName: string
+  writtenAt: string
+  attachments: AttachmentInfo[]
+}
+
+// GET /course-issues (S18)
+export interface CourseIssue {
+  issueId: number
+  courseId: number
+  courseName: string
+  scheduleId: number | null
+  roundNo: number | null
+  classDate: string | null
+  category: string
+  content: string
+  status: 'REGISTERED' | 'IN_REVIEW' | 'RESOLVED'
+  reportedBy: number
+  reportedByName: string
+  reportedAt: string
+  verificationCaseId: number | null
+  verificationCaseStatus: string | null
+}

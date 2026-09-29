@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import type { ScheduleListItem } from '../../api/types'
 import { formatTime } from '../../format'
 import { SCHEDULE_STATUS_LABELS, label } from '../../labels'
@@ -5,8 +6,11 @@ import { calendarWeeks } from './schedule-model'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 
+const eventText = (s: ScheduleListItem) =>
+  `${formatTime(s.startTime)} ${s.courseName} ${s.roundNo}회차 · ${s.instructorName}${s.displayStatus !== 'SCHEDULED' ? ` (${label(SCHEDULE_STATUS_LABELS, s.displayStatus)})` : ''}`
+
 // S13 캘린더 뷰(강사 진입 기본). 월 단위, 일요일 시작. 좁은 화면에서는 일정이 있는 날만 세로 목록으로 보인다(CSS).
-export function ScheduleCalendar({ month, items, today }: { month: string; items: ScheduleListItem[]; today: string }) {
+export function ScheduleCalendar({ month, items, today, linkToLog = false }: { month: string; items: ScheduleListItem[]; today: string; linkToLog?: boolean }) {
   const byDate = new Map<string, ScheduleListItem[]>()
   for (const s of items) byDate.set(s.classDate, [...(byDate.get(s.classDate) ?? []), s])
   return (
@@ -36,8 +40,11 @@ export function ScheduleCalendar({ month, items, today }: { month: string; items
                     <ul>
                       {events.map((s) => (
                         <li key={s.scheduleId} className={s.displayStatus === 'SCHEDULED' ? 'event' : 'event muted'}>
-                          {formatTime(s.startTime)} {s.courseName} {s.roundNo}회차 · {s.instructorName}
-                          {s.displayStatus !== 'SCHEDULED' && ` (${label(SCHEDULE_STATUS_LABELS, s.displayStatus)})`}
+                          {linkToLog && s.status !== 'CANCELLED' ? (
+                            <Link to={`/operation-logs?course_id=${s.courseId}&schedule_id=${s.scheduleId}`}>{eventText(s)}</Link>
+                          ) : (
+                            eventText(s)
+                          )}
                         </li>
                       ))}
                     </ul>

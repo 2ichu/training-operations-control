@@ -339,11 +339,11 @@
 | | 종료 체크리스트 | GET | /courses/{id}/closure-checklist | — | 9절 항목별 건수·처리 구분(차단/경고/불필요) | OPS·SYS·EXEC | 없음 |
 | | 과정 종료 | POST | /courses/{id}/close | override_reason(경고 항목 강행 시 필수) | status=CLOSED | OPS 단독(D-06 확정, EXECUTIVE 승인 없음). 구현은 Phase 2~4 이후(P1-03) | UPDATE / course / USER, after에 미해결 항목 스냅샷, reason |
 | | 과정 중단 | POST | /courses/{id}/suspend | reason(필수) | status=SUSPENDED | OPS | UPDATE / course / USER |
-| S17 회차별 운영일지 | 회차별 작성 현황 | GET | /courses/{id}/operation-logs | round_no, from, to | 회차 목록(미작성 계산 포함), 참여인원 | OPS·SYS·EXEC, INSTRUCTOR ◎ | 없음 |
-| | 운영일지 조회 | GET | /schedules/{id}/operation-log | — | 운영일지, 첨부 | 〃 | 없음 |
+| S17 회차별 운영일지 | 회차별 작성 현황 | GET | /courses/{id}/operation-logs | round_no, from, to | 회차 목록(미작성 계산 포함, 교육 시간·강사명), 참여인원 | OPS·SYS·EXEC, INSTRUCTOR ◎ | 없음 |
+| | 운영일지 조회 | GET | /schedules/{id}/operation-log | — | 운영일지(작성자·강사명), 첨부 목록(파일명·크기·업로드 시각, 저장 경로 제외) | 〃 | 없음 |
 | | 운영일지 작성 | POST | /schedules/{id}/operation-log | content, participant_count, issue_note | operation_log(휴강 회차 거부, 이미 있으면 409) | INSTRUCTOR ◎ | CREATE / operation_log / USER |
 | | 운영일지 수정 | PATCH | /operation-logs/{id} | 변경 필드 | 갱신본 | 작성 강사 ◎, OPS(검수) | UPDATE / operation_log / USER (before/after) |
-| S18 특이사항 | 목록 | GET | /course-issues | course_id, round_no, status | 특이사항(연결된 확인 건 상태 포함) | OPS·SYS·EXEC, INSTRUCTOR 본인 등록분 ◎ | 없음 |
+| S18 특이사항 | 목록 | GET | /course-issues | course_id, round_no, status | 특이사항(과정명·교육일, 연결된 확인 건 ID·현재 상태 — 가장 최근 건) | OPS·SYS·EXEC, INSTRUCTOR 본인 등록분 ◎ | 없음 |
 | | 등록 | POST | /course-issues | course_id, schedule_id(선택), category, content | course_issue(REGISTERED) | INSTRUCTOR ◎, OPS | CREATE / course_issue / USER |
 | | 수정 | PATCH | /course-issues/{id} | 변경 필드 | 갱신본 | OPS | UPDATE / course_issue / USER |
 | | 확인 필요로 전환 | POST | /course-issues/{id}/escalate | trainee_ids[](선택) | 생성된 verification_case(MANUAL), issue.status=IN_REVIEW, 이미 활성 건 있으면 409 | OPS, EXEC | CREATE / verification_case, verification_case_trainee / USER 동시 UPDATE / course_issue |

@@ -34,10 +34,10 @@ export class OperationLogService {
     if (to) where.add((p) => `s.class_date <= ${p}`, to);
 
     const { rows } = await this.db.query(
-      `SELECT s.schedule_id, s.round_no, s.class_date, s.status AS schedule_status, s.instructor_id,
+      `SELECT s.schedule_id, s.round_no, s.class_date, s.start_time, s.end_time, s.status AS schedule_status, s.instructor_id, i.name AS instructor_name,
               o.operation_log_id, o.participant_count, o.written_at,
               CASE WHEN o.operation_log_id IS NOT NULL THEN 'WRITTEN' WHEN s.status = 'CANCELLED' THEN NULL ELSE 'NOT_WRITTEN' END AS display_status
-         FROM class_schedule s LEFT JOIN operation_log o ON o.schedule_id = s.schedule_id
+         FROM class_schedule s JOIN instructor i ON i.instructor_id = s.instructor_id LEFT JOIN operation_log o ON o.schedule_id = s.schedule_id
         WHERE ${where.sql} ORDER BY s.round_no`,
       where.params,
     );
@@ -49,7 +49,12 @@ export class OperationLogService {
     await this.scope.requireSchedule(request, scheduleId);
     const row = await this.findBySchedule(scheduleId);
     if (!row) throw new NotFoundException('대상을 찾을 수 없습니다.'); // 미작성(계산 상태) — 행 없음
-    return toApi(row);
+    // baseline 5-2 "운영일지, 첨부": 첨부 목록(파일 경로는 내부 값이라 제외 — 다운로드는 /attachments/{id}/download)
+    const { rows: attachments } = await this.db.query(
+      `SELECT attachment_id, file_name, file_size, uploaded_at FROM attachment WHERE entity_type = 'OPERATION_LOG' AND entity_id = $1 ORDER BY attachment_id`,
+      [row.operation_log_id],
+    );
+    return { ...toApi(row), attachments: attachments.map((r) => toApi(r)) };
   }
 
   async create(request: RbacRequest, scheduleId: number, body: unknown) {
@@ -91,7 +96,12 @@ export class OperationLogService {
   }
 
   private async findBySchedule(scheduleId: number): Promise<Row | undefined> {
-    const { rows } = await this.db.query(`SELECT * FROM operation_log WHERE schedule_id = $1`, [scheduleId]);
+    const { rows } = await this.db.query(
+      `SELECT o.*, a.name AS author_name, i.name AS instructor_name FROM operation_log o
+         JOIN user_account a ON a.user_id = o.author_id JOIN instructor i ON i.instructor_id = o.instructor_id
+        WHERE o.schedule_id = $1`,
+      [scheduleId],
+    );
     return rows[0];
   }
 }

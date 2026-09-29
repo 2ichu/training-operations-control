@@ -17,6 +17,8 @@ import { InstructorChangeLogPage } from './pages/instructor/InstructorChangeLogP
 import { InstructorCreatePage } from './pages/instructor/InstructorCreatePage'
 import { InstructorDetailPage } from './pages/instructor/InstructorDetailPage'
 import { InstructorListPage } from './pages/instructor/InstructorListPage'
+import { CourseIssuePage } from './pages/operation/CourseIssuePage'
+import { OperationLogPage } from './pages/operation/OperationLogPage'
 import { SchedulePage } from './pages/schedule/SchedulePage'
 import { EnrollmentReviewPage } from './pages/trainee/EnrollmentReviewPage'
 import { TraineeChangeLogPage } from './pages/trainee/TraineeChangeLogPage'
@@ -149,6 +151,22 @@ export function AppRoutes() {
           element={
             <RequirePermission screenId="S14">
               <InstructorChangeLogPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/operation-logs"
+          element={
+            <RequirePermission screenId="S17">
+              <OperationLogPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/course-issues"
+          element={
+            <RequirePermission screenId="S18">
+              <CourseIssuePage />
             </RequirePermission>
           }
         />

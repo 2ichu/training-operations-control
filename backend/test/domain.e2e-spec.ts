@@ -996,13 +996,19 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
     it('조회: 회차 목록의 미작성 계산(NOT_WRITTEN), 단일 조회 404→200, round_no 필터', async () => {
       const ops1 = await as('ops');
       const before = (await ops1.get(`/api/v1/courses/${c1}/operation-logs`).expect(200)).body;
-      expect(before.items).toEqual([expect.objectContaining({ scheduleId: s1, displayStatus: 'NOT_WRITTEN', operationLogId: null })]);
+      expect(before.items).toEqual([expect.objectContaining({ scheduleId: s1, displayStatus: 'NOT_WRITTEN', operationLogId: null, instructorName: '강사1', startTime: '09:00:00', endTime: '18:00:00' })]);
       expect((await ops1.get(`/api/v1/schedules/${s1}/operation-log`)).status).toBe(404); // 미작성
 
       await (await as('ins1')).post(`/api/v1/schedules/${s1}/operation-log`).send({ content: '진행', participant_count: 2 }).expect(201);
       const after = (await ops1.get(`/api/v1/courses/${c1}/operation-logs`).expect(200)).body;
       expect(after.items[0]).toMatchObject({ displayStatus: 'WRITTEN', participantCount: 2 });
-      expect((await ops1.get(`/api/v1/schedules/${s1}/operation-log`).expect(200)).body.content).toBe('진행');
+      const detail = (await ops1.get(`/api/v1/schedules/${s1}/operation-log`).expect(200)).body;
+      expect(detail).toMatchObject({ content: '진행', authorName: 'e2e_ins1', instructorName: '강사1', attachments: [] });
+      // 첨부 목록: 저장 경로(file_path)는 내부 값이라 응답에 없다
+      await client.query(`INSERT INTO attachment (entity_type, entity_id, file_name, file_path, file_size, uploaded_by) VALUES ('OPERATION_LOG', $1, '출석부.pdf', 'x-출석부.pdf', 1024, $2)`, [detail.operationLogId, insUser1]);
+      const withFile = (await ops1.get(`/api/v1/schedules/${s1}/operation-log`).expect(200)).body;
+      expect(withFile.attachments).toEqual([expect.objectContaining({ fileName: '출석부.pdf', fileSize: '1024' })]);
+      expect(JSON.stringify(withFile.attachments)).not.toContain('x-출석부');
       expect((await ops1.get(`/api/v1/courses/${c1}/operation-logs?round_no=99`)).body.items).toHaveLength(0);
     });
 
@@ -1087,6 +1093,9 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect(await num(`SELECT count(*) n FROM verification_case_trainee WHERE case_id = $1`, [escalated.caseId])).toBe(1);
       expect((await auditSince(since)).filter((r) => r.target_table === 'verification_case' && r.action === 'CREATE')).toHaveLength(1);
 
+      // 목록은 연결된 확인 건의 현재 상태를 참고 열로 준다(system-design S18)
+      const listed = (await ops1.get(`/api/v1/course-issues?course_id=${c1}`).expect(200)).body.items[0];
+      expect(listed).toMatchObject({ issueId: issue.issueId, courseName: '과정1', status: 'IN_REVIEW', verificationCaseId: escalated.caseId, verificationCaseStatus: 'NEEDS_CHECK' });
       expect((await ops1.post(`/api/v1/course-issues/${issue.issueId}/escalate`).send({})).body.code).toBe('VERIFICATION_CASE_EXISTS');
       const exec1 = await as('exec');
       expect((await exec1.post(`/api/v1/course-issues/${issue.issueId}/escalate`).send({})).body.code).toBe('VERIFICATION_CASE_EXISTS'); // EXEC 도 권한은 있음(baseline 4-2)
@@ -1588,6 +1597,17 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       expect(viewLogs).toHaveLength(1);
 
       expect((await ops1.get('/api/v1/attachments/999999/download')).status).toBe(404);
+    });
+
+    it('한글 파일명이 깨지지 않는다(multipart filename 을 UTF-8 로 해석)', async () => {
+      const ins1 = await as('ins1');
+      const log = (await ins1.post(`/api/v1/schedules/${s1}/operation-log`).send({ content: '진행', participant_count: 1 }).expect(201)).body;
+      const uploaded = (
+        await ins1.post('/api/v1/attachments').field('entity_type', 'OPERATION_LOG').field('entity_id', String(log.operationLogId)).attach('file', Buffer.from('x'), '출석부 사진.png').expect(201)
+      ).body;
+      expect(uploaded.fileName).toBe('출석부 사진.png');
+      const dl = await ins1.get(`/api/v1/attachments/${uploaded.attachmentId}/download`).expect(200);
+      expect(decodeURIComponent(dl.headers['content-disposition'])).toContain('출석부 사진.png');
     });
 
     it('업로드: 허용되지 않는 entity_type 값은 400', async () => {

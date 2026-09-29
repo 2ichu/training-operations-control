@@ -50,8 +50,9 @@ export async function request<T>(method: string, path: string, options: RequestO
     response = await fetch(buildUrl(path, options.query), {
       method,
       credentials: 'same-origin',
-      headers: options.body === undefined ? { Accept: 'application/json' } : { Accept: 'application/json', 'Content-Type': 'application/json' },
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      // FormData(첨부 업로드)는 브라우저가 multipart 경계를 붙이도록 Content-Type 을 비워 둔다
+      headers: options.body === undefined || options.body instanceof FormData ? { Accept: 'application/json' } : { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: options.body === undefined ? undefined : options.body instanceof FormData ? options.body : JSON.stringify(options.body),
       signal: options.signal,
     })
   } catch (error) {
@@ -88,4 +89,14 @@ export const api = {
   get: <T>(path: string, query?: Query, signal?: AbortSignal) => request<T>('GET', path, { query, signal }),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, { body }),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, { body }),
+  /** 첨부 업로드(POST /attachments, multipart). 다운로드는 attachmentUrl 링크로 한다 */
+  upload: <T>(entityType: 'OPERATION_LOG' | 'COURSE_ISSUE' | 'SUBMISSION', entityId: number, file: File) => {
+    const form = new FormData()
+    form.append('entity_type', entityType)
+    form.append('entity_id', String(entityId))
+    form.append('file', file)
+    return request<T>('POST', '/attachments', { body: form })
+  },
 }
+
+export const attachmentUrl = (attachmentId: number): string => `${API_BASE}/attachments/${attachmentId}/download`
