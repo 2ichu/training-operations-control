@@ -2269,3 +2269,95 @@ table.todo td.group {
   font-size: 13px;
   color: #4b5563;
 }
+
+/* ════════════════════════════════════════════════════════════
+   대시보드: 구역을 옅은 테두리 영역으로 묶고, 도표를 키워 빈 공간을 채운다
+   ════════════════════════════════════════════════════════════ */
+.dashboard {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.dash-todo,
+.dash-today,
+.dash-cases {
+  padding: 12px 16px 14px;
+  background: #fff;
+  border: 1px solid var(--line-head);
+  border-radius: 3px;
+}
+
+.dash-today {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--line-head);
+}
+
+.dash-todo > h2,
+.dash-today > h2,
+.dash-cases > h2 {
+  margin-bottom: 4px;
+}
+
+/* 오늘 출결: 도넛을 크게, 범례는 세로로 크게 읽히게 */
+.att-today {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-top: 18px;
+}
+
+.att-donut {
+  flex: 1;
+  align-items: center;
+  justify-content: space-around;
+  gap: 24px;
+  padding: 10px 0 4px;
+}
+
+.att-donut .donut {
+  flex: none;
+}
+
+.att-donut .legend-list {
+  grid-template-columns: 1fr;
+  gap: 9px;
+  font-size: 15px;
+}
+
+.donut-value {
+  font-size: 26px;
+}
+
+.donut-label {
+  font-size: 12px;
+}
+
+/* 하단 확인 필요: 왼쪽 도넛+상태표를 키워 오른쪽 표 높이와 맞춘다 */
+.case-overview {
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 32px;
+}
+
+.case-donut {
+  align-items: center;
+  gap: 12px;
+}
+
+.case-overview table.legend {
+  width: 100%;
+}
+
+table.legend td,
+table.legend th {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  font-size: 14px;
+}
+
+@media (max-width: 1100px) {
+  .dashboard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

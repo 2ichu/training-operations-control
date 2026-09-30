@@ -221,7 +221,7 @@ export function DashboardPage() {
             <div className="case-overview">
               <div className="case-donut">
                 <Donut
-                  size={84}
+                  size={148}
                   segments={CASE_STATUS_ORDER.map((status): Segment => ({ key: status, label: label(CASE_STATUS_LABELS, status), value: byStatus.get(status) ?? 0, color: CASE_COLORS[status] ?? '#a8afba' }))}
                   centerValue={CASE_STATUS_ORDER.reduce((sum, status) => sum + (byStatus.get(status) ?? 0), 0)}
                   centerLabel="전체 건"
@@ -294,7 +294,7 @@ function AttendanceToday({ roster }: { roster: RosterItem[] }) {
       <h3>오늘 출결 현황 <span className="muted">(입력 {done}/{total}명)</span></h3>
       <div className="att-donut">
         <Donut
-          size={104}
+          size={148}
           segments={order.map((k): Segment => ({ key: k, label: label(ATTENDANCE_STATUS_LABELS, k), value: counts.get(k) ?? 0, color: ATTENDANCE_COLORS[k] }))}
           centerValue={total === 0 ? '-' : `${Math.round((done / total) * 100)}%`}
           centerLabel="입력률"
