@@ -2830,42 +2830,65 @@ table.legend th {
 }
 
 /* ════════════════════════════════════════════════════════════
-   상단 "오늘 운영 상태" 밴드: 카드 없이 한 줄(세로 구분선), 수업 진행 · 출결 입력 · 확인 필요
+   상단 "오늘 운영 상태": 둥근 요약 영역 안에 3칸(색 윗선·큰 숫자·바로가기), 처리할 업무 수치는 넣지 않는다
    ════════════════════════════════════════════════════════════ */
 .ops-band {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: 1.3fr 1.3fr 1fr;
-  border-top: 2px solid var(--line-section);
-  border-bottom: 1px solid var(--line-head);
-  background: #f7f9fc;
+  grid-template-columns: 1.15fr 1.15fr 1.3fr;
+  gap: 12px;
+  padding: 14px 16px 16px;
+  border: 1px solid #dfe4ec;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f7f9fc 0%, #ffffff 100%);
 }
 
 .ops-item {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-areas:
-    'label label'
-    'value extra';
-  align-items: center;
-  column-gap: 18px;
-  row-gap: 2px;
-  padding: 12px 22px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px 10px;
+  border: 1px solid #dfe4ec;
+  border-top: 4px solid #a8afba;
+  border-radius: 6px;
+  background: #fff;
 }
 
-.ops-item + .ops-item {
-  border-left: 1px solid var(--line-head);
+.ops-lesson {
+  border-top-color: #3f6fb5;
+}
+
+.ops-att {
+  border-top-color: #4d8a63;
+}
+
+.ops-case {
+  border-top-color: #c98f00;
+}
+
+.ops-alert {
+  background: #fffaf0;
+}
+
+.ops-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
 }
 
 .ops-label {
-  grid-area: label;
   font-size: 13.5px;
   font-weight: 600;
   color: #4b5563;
 }
 
+.ops-pct {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
 .ops-value {
-  grid-area: value;
   font-size: 34px;
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -2882,36 +2905,27 @@ table.legend th {
   color: #6b7280;
 }
 
-.ops-sub,
-.ops-go {
-  grid-area: extra;
+.ops-alert .ops-value {
+  color: #8a4b00;
+}
+
+.ops-sub {
   font-size: 13px;
   color: #5b6474;
 }
 
 .ops-go {
+  margin-top: auto;
+  padding-top: 2px;
+  font-size: 12.5px;
   font-weight: 700;
 }
 
-.ops-alert {
-  background: #fff8e1;
-  box-shadow: inset 0 -3px 0 #d99a00;
-}
-
-.ops-alert .ops-label {
-  color: #7a4300;
-}
-
-.ops-alert .ops-value {
-  color: #8a4b00;
-}
-
-/* 수업 시간축: 08~19시 위에 수업 구간 */
+/* 수업 시간축 */
 .ops-axis {
-  grid-area: extra;
   position: relative;
-  height: 28px;
-  border-bottom: 1px solid var(--line-head);
+  height: 34px;
+  margin-top: 2px;
 }
 
 .ops-axis::before {
@@ -2919,80 +2933,67 @@ table.legend th {
   position: absolute;
   left: 0;
   right: 0;
-  top: 6px;
-  height: 10px;
-  border-radius: 2px;
+  top: 4px;
+  height: 14px;
+  border-radius: 3px;
   background: #e1e7f0;
 }
 
 .ops-block {
   position: absolute;
-  top: 6px;
-  height: 10px;
+  top: 4px;
+  height: 14px;
   min-width: 6px;
-  border-radius: 2px;
+  border-radius: 3px;
   background: #3f6fb5;
 }
 
 .ops-tick {
   position: absolute;
-  top: 17px;
-  font-size: 10.5px;
+  top: 20px;
+  font-size: 11px;
   font-style: normal;
-  color: #7b8798;
+  color: #6b7686;
 }
 
 /* 출결 입력 진행 막대 */
 .ops-progress {
-  grid-area: extra;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  height: 14px;
+  margin: 2px 0 20px;
+  border-radius: 3px;
+  background: #e1e7f0;
+  overflow: hidden;
 }
 
 .ops-progress span {
   display: block;
-  height: 10px;
-  border-radius: 2px;
-  background: #5a9a6e;
-  flex: none;
+  height: 100%;
+  background: #4d8a63;
 }
 
-.ops-progress {
-  position: relative;
+/* 확인 건 상태별 누적 막대(구간 안에 이름·건수) */
+.ops-stack {
+  display: flex;
+  gap: 3px;
+  height: 22px;
+  margin: 2px 0 12px;
 }
 
-.ops-progress::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 44px;
-  height: 10px;
-  border-radius: 2px;
-  background: #e1e7f0;
-}
-
-.ops-progress span {
-  position: relative;
-  max-width: calc(100% - 44px);
-}
-
-.ops-progress em {
-  margin-left: auto;
-  font-size: 13px;
-  font-style: normal;
+.ops-stack span {
+  min-width: 22px;
+  padding: 0 7px;
+  overflow: hidden;
+  border-radius: 3px;
+  color: #fff;
+  font-size: 12.5px;
   font-weight: 700;
-  color: #374151;
+  line-height: 22px;
+  white-space: nowrap;
 }
 
 @media (max-width: 900px) {
   .ops-band {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .ops-item + .ops-item {
-    border-left: 0;
-    border-top: 1px solid var(--line-head);
   }
 }
 

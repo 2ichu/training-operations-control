@@ -8,10 +8,13 @@ import { Bar, Gauge } from '../components/Charts'
 import { EmptyText, ErrorText, Loading } from '../components/Feedback'
 import { CaseStatusBadge } from '../components/StatusBadge'
 import { formatDateTime, formatTime, formatTrainees } from '../format'
-import { ATTENDANCE_STATUS_LABELS, label, RULE_LABELS, SCHEDULE_STATUS_LABELS } from '../labels'
+import { ATTENDANCE_STATUS_LABELS, CASE_STATUS_LABELS, CASE_STATUS_ORDER, label, RULE_LABELS, SCHEDULE_STATUS_LABELS } from '../labels'
 
 // 도식 색: 색만으로 구분하지 않도록 항상 텍스트(범례·표)를 함께 표시한다. 채도를 낮춰 쓰고, 노랑=확인 필요, 주황=조치·지각·조퇴, 빨강=결석, 파랑=확인 중·인정결석, 초록=정상·완료
 const ATTENDANCE_COLORS: Record<string, string> = { PRESENT: '#5a9a6e', LATE: '#c98a3a', EARLY_LEAVE: '#d9ac66', ABSENT: '#c0524a', EXCUSED: '#5b7db1', NOT_CHECKED: '#a8afba' }
+
+// 확인 필요 카드의 상태별 막대 색(같은 상태는 같은 색)
+const CASE_BAR: Record<string, string> = { NEEDS_CHECK: '#c98f00', PRIORITY_CHECK: '#c26f1c', FOLLOW_UP: '#b45a1a', ACTION_REQUIRED: '#9c4a1a', IN_REVIEW: '#4a6fa8', CONFIRMED: '#4d8a63', ACTION_DONE: '#3d7350' }
 
 // S01 대시보드(system-design 7.1). 조회 전용이며 역할별 범위는 서버가 정한다(INSTRUCTOR 는 본인 과정만).
 // 필터(날짜·과정·담당)는 URL 쿼리에 두어 새로고침·공유 시에도 유지된다.
@@ -88,6 +91,8 @@ export function DashboardPage() {
   const rosterDone = rosterAll.filter((r) => r.displayStatus && r.displayStatus !== 'NOT_CHECKED').length
   const lessons = data?.todaySchedules.filter((x) => x.displayStatus !== 'CANCELLED') ?? []
   const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
+  const lessonsDone = lessons.filter((x) => x.displayStatus === 'COMPLETED').length
+  const caseTotal = CASE_STATUS_ORDER.reduce((sum, st) => sum + (byStatus.get(st) ?? 0), 0)
   const AXIS_FROM = 8
   const AXIS_TO = 19
 
@@ -125,8 +130,11 @@ export function DashboardPage() {
       {data && (
         <div className={summary.status === 'loading' ? 'dashboard is-refreshing' : 'dashboard'}>
           <section className="ops-band" aria-label="오늘 운영 상태">
-            <div className="ops-item">
-              <span className="ops-label">오늘 수업</span>
+            <div className="ops-item ops-lesson">
+              <div className="ops-top">
+                <span className="ops-label">오늘 수업</span>
+                <span className="ops-pct">{lessons.length > 0 ? `진행 ${lessonsDone}/${lessons.length}` : ''}</span>
+              </div>
               <span className="ops-value">
                 {lessons.length}
                 <small>건</small>
@@ -140,16 +148,24 @@ export function DashboardPage() {
                       style={{ left: `${((minutes(x.startTime) - AXIS_FROM * 60) / ((AXIS_TO - AXIS_FROM) * 60)) * 100}%`, width: `${((minutes(x.endTime) - minutes(x.startTime)) / ((AXIS_TO - AXIS_FROM) * 60)) * 100}%` }}
                     />
                   ))}
-                  <i className="ops-tick" style={{ left: '0%' }}>08</i>
-                  <i className="ops-tick" style={{ left: '45%' }}>13</i>
-                  <i className="ops-tick" style={{ left: '92%' }}>19</i>
+                  <i className="ops-tick" style={{ left: '0%' }}>08시</i>
+                  <i className="ops-tick" style={{ left: '44%' }}>13시</i>
+                  <i className="ops-tick" style={{ right: '0%' }}>19시</i>
                 </div>
               ) : (
                 <span className="ops-sub">예정된 수업 없음</span>
               )}
+              {lessons.length > 0 && canOpenCourse && (
+                <Link className="ops-go" to={`/courses/${lessons[0].courseId}`}>
+                  과정 보기 ›
+                </Link>
+              )}
             </div>
-            <div className="ops-item">
-              <span className="ops-label">출결 입력</span>
+            <div className="ops-item ops-att">
+              <div className="ops-top">
+                <span className="ops-label">출결 입력</span>
+                <span className="ops-pct">{rosterTotal > 0 ? `${Math.round((rosterDone / rosterTotal) * 100)}%` : ''}</span>
+              </div>
               <span className="ops-value">
                 {rosterTotal > 0 ? `${rosterDone}/${rosterTotal}` : '-'}
                 {rosterTotal > 0 && <small>명</small>}
@@ -157,24 +173,40 @@ export function DashboardPage() {
               {rosterTotal > 0 ? (
                 <div className="ops-progress" aria-hidden="true">
                   <span style={{ width: `${(rosterDone / rosterTotal) * 100}%` }} />
-                  <em>{Math.round((rosterDone / rosterTotal) * 100)}%</em>
                 </div>
               ) : (
                 <span className="ops-sub">오늘 출결 명단 없음</span>
               )}
+              {can('S07', 'R') && (
+                <Link className="ops-go" to={`/attendance/daily?date=${dayParam}`}>
+                  출결 입력 ›
+                </Link>
+              )}
             </div>
-            <div className={needsCheck > 0 ? 'ops-item ops-alert' : 'ops-item'}>
-              <span className="ops-label">확인 필요</span>
+            <div className={needsCheck > 0 ? 'ops-item ops-case ops-alert' : 'ops-item ops-case'}>
+              <div className="ops-top">
+                <span className="ops-label">확인 필요</span>
+                <span className="ops-pct">{caseTotal > 0 ? `전체 ${caseTotal}건 중` : ''}</span>
+              </div>
               <span className="ops-value">
                 {needsCheck}
                 <small>건</small>
               </span>
-              {todo[0]?.to && needsCheck > 0 ? (
+              {caseTotal > 0 ? (
+                <div className="ops-stack" role="group" aria-label="확인 건 상태별 비율">
+                  {CASE_STATUS_ORDER.filter((st) => (byStatus.get(st) ?? 0) > 0).map((st) => (
+                    <span key={st} style={{ flex: byStatus.get(st) ?? 0, background: CASE_BAR[st] ?? '#a8afba' }} title={`${label(CASE_STATUS_LABELS, st)} ${byStatus.get(st)}건`}>
+                      {label(CASE_STATUS_LABELS, st)} {byStatus.get(st)}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="ops-sub">처리할 건 없음</span>
+              )}
+              {todo[0]?.to && (
                 <Link className="ops-go" to={todo[0].to}>
                   확인하기 ›
                 </Link>
-              ) : (
-                <span className="ops-sub">처리할 건 없음</span>
               )}
             </div>
           </section>
