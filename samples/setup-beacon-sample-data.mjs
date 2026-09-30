@@ -28,6 +28,7 @@ if (!ADMIN_ID || !ADMIN_PW) {
 
 // ── 가상 데이터(generate_beacon_samples.py 가 만든 beacon-scenario.json) ───────────────
 import { readFileSync } from 'node:fs'
+import { basename } from 'node:path'
 const scenario = JSON.parse(readFileSync(new URL('./beacon-scenario.json', import.meta.url), 'utf8'))
 const COURSE_NAME = 'AI 활용 데이터 분석 실무 1기'
 const INSTRUCTOR_NAMES = scenario.instructors
@@ -50,6 +51,12 @@ class Session {
     const data = text ? JSON.parse(text) : null
     if (!res.ok) throw new Error(`${method} ${path} → ${res.status} ${data?.code ?? ''} ${data?.message ?? text}`.trim())
     return data
+  }
+  async upload(path, file) {
+    const form = new FormData()
+    form.append('file', new Blob([readFileSync(new URL(`./excuse-evidence/${file}`, import.meta.url))]), basename(file))
+    const res = await fetch(`${API_BASE}/api/v1${path}`, { method: 'POST', headers: this.cookie ? { Cookie: this.cookie } : {}, body: form })
+    if (!res.ok) throw new Error(`POST ${path} → ${res.status} ${await res.text()}`)
   }
   login(loginId, password) {
     return this.call('POST', '/auth/login', { loginId, password })
@@ -161,6 +168,14 @@ async function main() {
 
   await ops.call('POST', `/courses/${courseId}/start`, { acknowledge_no_confirmed_trainees: false })
   step('과정 운영중 전환')
+
+  // 공결(사유결석) 신청: 증빙서류를 붙여 승인 대기로 두고(화면에서 승인·반려해 보세요), 1건은 반려까지 처리해 둔다
+  for (const e of scenario.excuses ?? []) {
+    const created = await ops.call('POST', '/excuse-requests', { trainee_id: ids[TRAINEES[e.ti].name], schedule_id: schedules[e.round], reason_type: e.reason, reason_note: e.note })
+    await ops.upload(`/excuse-requests/${created.requestId}/evidence`, e.evidence)
+    if (e.decision === 'REJECT') await ops.call('POST', `/excuse-requests/${created.requestId}/reject`, { decision_note: e.decision_note })
+  }
+  step(`공결 신청 ${(scenario.excuses ?? []).length}건(증빙 첨부, 승인 대기 ${(scenario.excuses ?? []).filter((e) => e.decision !== 'REJECT').length}건 + 반려 1건)`)
 
   console.log(`
 완료. 가상 과정 '${COURSE_NAME}' (ID ${courseId}) 이 준비되었습니다.

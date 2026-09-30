@@ -181,6 +181,7 @@ export const SCREEN_NAMES: Record<string, string> = {
   S27: '감사로그',
   S28: '탐지규칙',
   S29: '공식 출결 대사',
+  S30: '공결 신청·승인',
 }
 
 // role_permission.action (baseline 4-1)
@@ -237,4 +238,18 @@ export const OFFICIAL_IMPORT_RESULT_LABELS: Record<string, string> = {
   CASE: '불일치(확인 필요)',
   MISMATCH: '불일치(건 미생성)',
   ERROR: '오류(미반영)',
+}
+
+// S30 공결(사유결석) 신청
+export const EXCUSE_REASON_LABELS: Record<string, string> = {
+  MEDICAL: '병원 진단(진단서·진료확인서)',
+  MILITARY: '예비군·민방위(통지서)',
+  INTERVIEW: '면접(면접 확인서)',
+  FAMILY_EVENT: '경조사',
+  OTHER: '기타',
+}
+export const EXCUSE_STATUS_LABELS: Record<string, string> = {
+  PENDING: '승인 대기',
+  APPROVED: '승인',
+  REJECTED: '반려',
 }

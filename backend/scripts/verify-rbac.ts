@@ -13,13 +13,13 @@ const check = (name: string, ok: boolean, detail?: string): void => {
 
 // baseline.md 4-2 (Phase 1 화면). 시드 파일과 독립적으로 기대값을 적어 시드·가드를 함께 검증한다. 표기: 기능 문자열, *=OWN_ASSIGNED
 const EXPECTED: Record<string, Record<string, string>> = {
-  SYS_ADMIN: { S01: 'R', S02: 'R', S03: 'R', S04: 'R', S05: 'RA', S06: 'R', S07: 'R', S08: 'R', S09: 'R', S10: 'R', S11: 'R', S12: 'R', S13: 'R', S14: 'R', S15: 'R', S16: 'RA', S17: 'R', S18: 'R', S19: 'R', S21: 'R', S22: 'R', S23: 'R', S24: 'R', S25: 'CRU', S26: 'RU', S27: 'R', S28: 'RU', S29: 'R' },
-  OPS_MANAGER: { S01: 'R', S02: 'RU', S03: 'R', S04: 'CRU', S05: 'RA', S06: 'R', S07: 'CRUA', S08: 'R', S09: 'RU', S10: 'R', S11: 'R', S12: 'CRU', S13: 'CRU', S14: 'R', S15: 'CR', S16: 'CRUA', S17: 'RU', S18: 'CRUA', S19: 'CRU', S21: 'CR', S22: 'RA', S23: 'RA', S24: 'R', S29: 'CR' },
-  INSTRUCTOR: { S01: 'R*', S03: 'R*', S05: 'R*', S07: 'CRUA*', S08: 'R*', S09: 'R*', S11: 'R*', S12: 'R*', S13: 'R*', S15: 'R*', S16: 'R*', S17: 'CRU*', S18: 'CR*', S19: 'R*' },
-  EXECUTIVE: { S01: 'R', S02: 'R', S03: 'R', S04: 'R', S05: 'RA', S06: 'R', S07: 'R', S08: 'R', S09: 'R', S10: 'R', S11: 'R', S12: 'R', S13: 'R', S14: 'R', S15: 'R', S16: 'RA', S17: 'R', S18: 'RA', S19: 'R', S21: 'R', S22: 'RA', S23: 'RA', S24: 'R', S27: 'R', S29: 'R' },
+  SYS_ADMIN: { S01: 'R', S02: 'R', S03: 'R', S04: 'R', S05: 'RA', S06: 'R', S07: 'R', S08: 'R', S09: 'R', S10: 'R', S11: 'R', S12: 'R', S13: 'R', S14: 'R', S15: 'R', S16: 'RA', S17: 'R', S18: 'R', S19: 'R', S21: 'R', S22: 'R', S23: 'R', S24: 'R', S25: 'CRU', S26: 'RU', S27: 'R', S28: 'RU', S29: 'R', S30: 'R' },
+  OPS_MANAGER: { S01: 'R', S02: 'RU', S03: 'R', S04: 'CRU', S05: 'RA', S06: 'R', S07: 'CRUA', S08: 'R', S09: 'RU', S10: 'R', S11: 'R', S12: 'CRU', S13: 'CRU', S14: 'R', S15: 'CR', S16: 'CRUA', S17: 'RU', S18: 'CRUA', S19: 'CRU', S21: 'CR', S22: 'RA', S23: 'RA', S24: 'R', S29: 'CR', S30: 'CRU' },
+  INSTRUCTOR: { S01: 'R*', S03: 'R*', S05: 'R*', S07: 'CRUA*', S08: 'R*', S09: 'R*', S11: 'R*', S12: 'R*', S13: 'R*', S15: 'R*', S16: 'R*', S17: 'CRU*', S18: 'CR*', S19: 'R*', S30: 'CRU*' },
+  EXECUTIVE: { S01: 'R', S02: 'R', S03: 'R', S04: 'R', S05: 'RA', S06: 'R', S07: 'R', S08: 'R', S09: 'R', S10: 'R', S11: 'R', S12: 'R', S13: 'R', S14: 'R', S15: 'R', S16: 'RA', S17: 'R', S18: 'RA', S19: 'R', S21: 'R', S22: 'RA', S23: 'RA', S24: 'R', S27: 'R', S29: 'R', S30: 'R' },
 };
 const ACTIONS: PermissionAction[] = ['C', 'R', 'U', 'D', 'A'];
-const screens = Array.from({ length: 29 }, (_, i) => `S${String(i + 1).padStart(2, '0')}`);
+const screens = Array.from({ length: 30 }, (_, i) => `S${String(i + 1).padStart(2, '0')}`);
 
 const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
@@ -42,7 +42,7 @@ try {
     users[role] = userId;
   }
 
-  // ── 1. 권한 매트릭스: 4개 역할 × 29개 화면 × 5개 기능을 가드가 쓰는 조회로 전수 확인 ─────────
+  // ── 1. 권한 매트릭스: 4개 역할 × 30개 화면 × 5개 기능을 가드가 쓰는 조회로 전수 확인 ─────────
   for (const [role, expected] of Object.entries(EXPECTED)) {
     const mismatches: string[] = [];
     let granted = 0;
@@ -60,7 +60,7 @@ try {
       }
     }
     const total = Object.values(expected).reduce((n, s) => n + s.replace('*', '').length, 0);
-    check(`${role}: 29화면×5기능 전수 일치 (허용 ${total}건, 그 외 전부 거부)`, mismatches.length === 0 && granted === total, mismatches.slice(0, 3).join('; '));
+    check(`${role}: 30화면×5기능 전수 일치 (허용 ${total}건, 그 외 전부 거부)`, mismatches.length === 0 && granted === total, mismatches.slice(0, 3).join('; '));
   }
   const ins = await permissions.lookup(users.INSTRUCTOR, 'S13', 'R');
   check('강사 조회: instructorId 와 역할이 함께 반환됨', ins.status === 'OK' && ins.instructorId === i1 && ins.roles.join() === 'INSTRUCTOR');

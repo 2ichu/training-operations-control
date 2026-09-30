@@ -24,12 +24,13 @@ const TABLES = [
   'attendance', 'attendance_change_log', 'operation_log', 'course_issue',
   'detection_rule', 'verification_case', 'verification_case_trainee', 'verification_action_log',
   'submission', 'submission_review_log', 'attachment', 'attendance_setting', 'attendance_source_raw',
+  'excuse_request', 'excuse_evidence',
 ];
 const tables = (await q<{ relname: string }>(`SELECT relname FROM pg_class WHERE relkind = 'r' AND relnamespace = 'public'::regnamespace AND relname <> 'pgmigrations'`)).map((r) => r.relname);
-check('테이블 26개', sameSet(tables, TABLES), tables.join(','));
+check('테이블 28개', sameSet(tables, TABLES), tables.join(','));
 
 const fkCount = Number((await q(`SELECT count(*)::int n FROM pg_constraint WHERE contype = 'f' AND connamespace = 'public'::regnamespace`))[0].n);
-check('FK 65개 (정적 검증과 동일)', fkCount === 65, `실제 ${fkCount}`);
+check('FK 73개 (정적 검증과 동일)', fkCount === 73, `실제 ${fkCount}`);
 
 const cons = await q<{ conname: string; contype: string }>(`SELECT conname, contype FROM pg_constraint WHERE connamespace = 'public'::regnamespace`);
 const names = (type: string): string[] => cons.filter((c) => c.contype === type).map((c) => c.conname);
@@ -227,7 +228,7 @@ try {
   await expectFail('FK: 존재하지 않는 manager_user_id 차단', `INSERT INTO course (course_name, start_date, end_date, total_hours, training_site, manager_user_id) VALUES ('t','2026-10-01','2026-10-31',1,'s',999999999)`, '23503');
   await expectFail('enum: 잘못된 course.status 차단', `UPDATE course SET status = 'BOGUS' WHERE course_id = $1`, '22P02', [courseId]);
   await expectFail('CHECK: 종료일 < 시작일 차단', `UPDATE course SET end_date = '2020-01-01' WHERE course_id = $1`, '23514', [courseId]);
-  await expectFail('CHECK: role_permission.screen_id 형식(S30 차단)', `INSERT INTO role_permission (role_id, screen_id, action) SELECT role_id, 'S30', 'R' FROM role LIMIT 1`, '23514');
+  await expectFail('CHECK: role_permission.screen_id 형식(S31 차단)', `INSERT INTO role_permission (role_id, screen_id, action) SELECT role_id, 'S31', 'R' FROM role LIMIT 1`, '23514');
   await expectFail('UNIQUE: 강사 1인 1계정 (linked_instructor_id)', `INSERT INTO user_account (login_id, password_hash, name, linked_instructor_id) VALUES ('dup1','h','n',$1),('dup2','h','n',$1)`, '23505', [instA]);
 
   // attendance: 동일 (trainee_id, schedule_id) 중복 차단(C1), enum·CHECK

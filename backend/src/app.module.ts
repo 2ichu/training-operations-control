@@ -11,6 +11,7 @@ import authConfig from './auth/auth.config.js';
 import { CommonModule } from './common/common.module.js';
 import { CourseIssueModule } from './course-issue/course-issue.module.js';
 import { CourseModule } from './course/course.module.js';
+import { ExcuseModule } from './excuse/excuse.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { InstructorModule } from './instructor/instructor.module.js';
 import { OperationLogModule } from './operation-log/operation-log.module.js';
@@ -46,6 +47,7 @@ import { DatabaseModule } from './database/database.module.js';
     VerificationModule,
     SubmissionModule,
     AttachmentModule,
+    ExcuseModule,
     DashboardModule,
     BatchModule,
   ],

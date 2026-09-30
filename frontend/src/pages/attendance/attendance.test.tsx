@@ -74,6 +74,34 @@ describe('S07 일일 출결', () => {
     expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ trainee_ids: [1, 2], check_in_time: '2026-09-28T09:10:00+09:00' })
   })
 
+  it('전광판: 상태별 인원 카드가 보이고, 카드를 누르면 그 상태만 걸러지며, 전체 출석 처리는 기록 없는 훈련생 전원을 입실 확인한다', async () => {
+    const { calls } = mockApi({
+      'GET /auth/me': { status: 200, body: me() },
+      'GET /courses': courses,
+      'GET /schedules': page([schedule()]),
+      'GET /schedules/11/attendance-roster': { status: 200, body: { items: roster } },
+      'POST /schedules/11/attendance/check-in': { status: 201, body: { created: [{ attendanceId: 1 }, { attendanceId: 2 }], alreadyExists: [], notEligible: [] } },
+    })
+    const user = userEvent.setup()
+    renderAt('/attendance/daily?date=2026-09-28')
+    const board = await screen.findByRole('list', { name: '출결 현황 요약' })
+    expect(within(board).getByRole('button', { name: /^출석 2명$/ })).toBeInTheDocument()
+    expect(within(board).getByRole('button', { name: /^미출결 2명$/ })).toBeInTheDocument()
+    expect(within(board).getByRole('button', { name: /^결석 0명$/ })).toBeInTheDocument()
+    expect(within(board).getByText('전체 4명')).toBeInTheDocument()
+
+    await user.click(within(board).getByRole('button', { name: /^출석 2명$/ }))
+    expect(screen.queryByRole('row', { name: /^가 선택/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('row', { name: /^다 선택/ })).toBeInTheDocument()
+    await user.click(within(board).getByRole('button', { name: /^출석 2명$/ })) // 다시 누르면 해제
+
+    await user.click(screen.getByRole('button', { name: '미입력 전체 출석 처리 (2)' }))
+    const dialog = await screen.findByRole('dialog', { name: '전체 출석 처리' })
+    await user.click(within(dialog).getByRole('button', { name: '전체 출석 처리' }))
+    expect(await screen.findByText('입실 확인 2건 처리했습니다.')).toBeInTheDocument()
+    expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ trainee_ids: [1, 2] })
+  })
+
   it('퇴실 확인은 기록이 있고 퇴실이 비었으며 공식 출결이 아닌 행만 대상', async () => {
     const { calls } = mockApi({
       'GET /auth/me': { status: 200, body: me() },
@@ -184,7 +212,8 @@ describe('S08 과정별 출결', () => {
     expect(await screen.findByText('과정을 선택해 주세요.')).toBeInTheDocument()
     await screen.findByRole('option', { name: '웹개발 1기' }) // 과정 목록이 온 뒤에 고른다(먼저 고르면 옵션이 없어 실패)
     await user.selectOptions(screen.getByLabelText('과정(필수)'), '3')
-    const row = await screen.findByRole('row', { name: /다/ })
+    // 아래 이수 위험군·월별 표에도 같은 이름의 행이 있어 매트릭스(맨 위) 행을 쓴다
+    const [row] = await screen.findAllByRole('row', { name: /다/ })
     expect(within(row).getByText('50.0%')).toBeInTheDocument()
     expect(within(row).getByText('휴')).toBeInTheDocument()
     expect(within(row).getByRole('link', { name: '다 3회차 미출결 — 일일 출결에서 처리' })).toHaveAttribute('href', '/attendance/daily?date=2026-09-23&course_id=3&schedule_id=13')

@@ -15,10 +15,11 @@ const EXPECTED_TABLES = [
   'attendance', 'attendance_change_log', 'operation_log', 'course_issue',
   'detection_rule', 'verification_case', 'verification_case_trainee', 'verification_action_log',
   'submission', 'submission_review_log', 'attachment', 'attendance_setting', 'attendance_source_raw',
+  'excuse_request', 'excuse_evidence',
 ];
 const APPEND_ONLY = [
   'audit_log', 'trainee_change_log', 'instructor_change_log', 'attendance_change_log',
-  'verification_case_trainee', 'verification_action_log', 'submission_review_log', 'attachment', 'attendance_source_raw',
+  'verification_case_trainee', 'verification_action_log', 'submission_review_log', 'attachment', 'attendance_source_raw', 'excuse_evidence',
 ];
 const UPDATED_AT_TABLES = [
   'user_account', 'role', 'role_permission', 'course', 'trainee',

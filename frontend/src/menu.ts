@@ -32,6 +32,7 @@ export const MENU: MenuGroup[] = [
       { screenId: 'S07', label: '일일 출결', path: '/attendance/daily' },
       { screenId: 'S08', label: '과정별 출결', path: '/attendance/course' },
       { screenId: 'S29', label: '공식 출결 대사', path: '/attendance/official' },
+      { screenId: 'S30', label: '공결 신청·승인', path: '/excuse-requests' },
       { screenId: 'S10', label: '출결 수정이력', path: '/attendance-change-logs' },
     ],
   },

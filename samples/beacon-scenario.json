@@ -142,172 +142,186 @@
    "round": 1,
    "ti": 0,
    "kind": "present",
-   "check_in": "08:33",
-   "check_out": "17:59"
+   "check_in": "08:38",
+   "check_out": "17:58"
   },
   {
    "round": 1,
    "ti": 1,
    "kind": "present",
    "check_in": "08:57",
-   "check_out": "18:06"
+   "check_out": "18:10"
   },
   {
    "round": 1,
    "ti": 2,
    "kind": "present",
-   "check_in": "08:44",
+   "check_in": "08:43",
    "check_out": null
   },
   {
    "round": 1,
    "ti": 3,
    "kind": "present",
-   "check_in": "08:51",
-   "check_out": "18:09"
+   "check_in": "08:50",
+   "check_out": "18:12"
   },
   {
    "round": 1,
    "ti": 4,
    "kind": "present",
-   "check_in": "08:54",
-   "check_out": "18:10"
+   "check_in": "08:53",
+   "check_out": "18:12"
   },
   {
    "round": 1,
    "ti": 5,
-   "kind": "absent"
+   "kind": "present",
+   "check_in": "09:09",
+   "check_out": null
   },
   {
    "round": 1,
    "ti": 6,
    "kind": "present",
+   "check_in": "08:47",
+   "check_out": "18:07"
+  },
+  {
+   "round": 1,
+   "ti": 7,
+   "kind": "present",
    "check_in": "08:44",
-   "check_out": "18:11"
+   "check_out": "18:13"
   },
   {
    "round": 1,
    "ti": 8,
    "kind": "present",
-   "check_in": "08:51",
-   "check_out": "18:01"
+   "check_in": "08:48",
+   "check_out": "18:06"
   },
   {
    "round": 1,
    "ti": 9,
    "kind": "present",
-   "check_in": "08:39",
-   "check_out": "18:00"
+   "check_in": "09:02",
+   "check_out": "18:02"
   },
   {
    "round": 1,
    "ti": 10,
    "kind": "present",
-   "check_in": "08:34",
-   "check_out": "18:06"
+   "check_in": "08:51",
+   "check_out": "18:14"
   },
   {
    "round": 1,
    "ti": 11,
    "kind": "present",
-   "check_in": "09:03",
-   "check_out": "18:02"
+   "check_in": "08:50",
+   "check_out": "16:31"
   },
   {
    "round": 1,
    "ti": 12,
    "kind": "present",
-   "check_in": "08:38",
+   "check_in": "08:48",
    "check_out": "18:11"
   },
   {
    "round": 1,
    "ti": 13,
    "kind": "present",
-   "check_in": "08:48",
-   "check_out": "16:29"
+   "check_in": "09:42",
+   "check_out": "18:11"
   },
   {
    "round": 1,
    "ti": 14,
    "kind": "present",
-   "check_in": "08:40",
-   "check_out": "18:12"
+   "check_in": "09:11",
+   "check_out": "18:08"
   },
   {
    "round": 1,
    "ti": 15,
    "kind": "present",
-   "check_in": "09:19",
-   "check_out": "18:04"
+   "check_in": "08:49",
+   "check_out": "18:10"
   },
   {
    "round": 1,
    "ti": 16,
    "kind": "present",
-   "check_in": "08:43",
-   "check_out": "18:05"
+   "check_in": "08:57",
+   "check_out": "18:10"
+  },
+  {
+   "round": 1,
+   "ti": 17,
+   "kind": "present",
+   "check_in": "09:30",
+   "check_out": "18:13"
   },
   {
    "round": 1,
    "ti": 18,
    "kind": "present",
-   "check_in": "09:07",
-   "check_out": "18:01"
+   "check_in": "08:41",
+   "check_out": "18:04"
   },
   {
    "round": 1,
    "ti": 19,
    "kind": "present",
-   "check_in": "08:34",
-   "check_out": "18:05"
+   "check_in": "08:57",
+   "check_out": "18:06"
   },
   {
    "round": 1,
    "ti": 20,
    "kind": "present",
-   "check_in": "08:46",
-   "check_out": "15:05"
+   "check_in": "08:34",
+   "check_out": "18:12"
   },
   {
    "round": 1,
    "ti": 21,
-   "kind": "present",
-   "check_in": "09:01",
-   "check_out": "18:11"
-  },
-  {
-   "round": 1,
-   "ti": 22,
    "kind": "absent"
   },
   {
    "round": 1,
-   "ti": 23,
+   "ti": 22,
    "kind": "present",
-   "check_in": "08:50",
-   "check_out": "18:06"
+   "check_in": "09:04",
+   "check_out": "18:08"
+  },
+  {
+   "round": 1,
+   "ti": 23,
+   "kind": "absent"
   },
   {
    "round": 1,
    "ti": 24,
    "kind": "present",
-   "check_in": "09:16",
-   "check_out": "18:13"
+   "check_in": "08:56",
+   "check_out": "17:59"
   },
   {
    "round": 1,
    "ti": 25,
    "kind": "present",
-   "check_in": "09:20",
-   "check_out": "18:07"
+   "check_in": "08:48",
+   "check_out": "18:15"
   },
   {
    "round": 1,
    "ti": 26,
    "kind": "present",
-   "check_in": "08:43",
-   "check_out": "18:06"
+   "check_in": "08:37",
+   "check_out": "18:12"
   },
   {
    "round": 1,
@@ -320,823 +334,858 @@
    "round": 1,
    "ti": 28,
    "kind": "present",
-   "check_in": "08:49",
-   "check_out": "18:01"
+   "check_in": "08:45",
+   "check_out": "18:04"
   },
   {
    "round": 1,
    "ti": 29,
    "kind": "present",
-   "check_in": "08:43",
-   "check_out": "18:09"
+   "check_in": "09:07",
+   "check_out": "18:13"
   },
   {
    "round": 2,
    "ti": 0,
    "kind": "present",
    "check_in": "08:52",
-   "check_out": "18:12"
+   "check_out": "18:07"
   },
   {
    "round": 2,
    "ti": 1,
    "kind": "present",
    "check_in": "08:44",
-   "check_out": "18:01"
+   "check_out": "18:03"
   },
   {
    "round": 2,
    "ti": 2,
    "kind": "present",
-   "check_in": "09:34",
-   "check_out": "18:01"
+   "check_in": "09:35",
+   "check_out": "18:02"
   },
   {
    "round": 2,
    "ti": 3,
    "kind": "present",
-   "check_in": "08:54",
-   "check_out": "18:07"
+   "check_in": "08:51",
+   "check_out": "18:08"
   },
   {
    "round": 2,
    "ti": 4,
    "kind": "present",
-   "check_in": "08:56",
-   "check_out": "18:14"
+   "check_in": "09:02",
+   "check_out": "18:04"
   },
   {
    "round": 2,
    "ti": 5,
    "kind": "present",
-   "check_in": "08:55",
-   "check_out": "18:02"
+   "check_in": "08:49",
+   "check_out": "18:00"
   },
   {
    "round": 2,
    "ti": 6,
    "kind": "present",
-   "check_in": "08:49",
-   "check_out": "18:02"
+   "check_in": "08:43",
+   "check_out": "18:05"
   },
   {
    "round": 2,
    "ti": 7,
    "kind": "present",
-   "check_in": "09:31",
-   "check_out": "18:03"
+   "check_in": "09:28",
+   "check_out": "18:11"
   },
   {
    "round": 2,
    "ti": 8,
    "kind": "present",
-   "check_in": "08:57",
-   "check_out": "18:01"
+   "check_in": "09:22",
+   "check_out": "18:02"
+  },
+  {
+   "round": 2,
+   "ti": 9,
+   "kind": "present",
+   "check_in": "08:49",
+   "check_out": "18:02"
   },
   {
    "round": 2,
    "ti": 10,
    "kind": "present",
-   "check_in": "09:03",
-   "check_out": "18:07"
+   "check_in": "08:48",
+   "check_out": "18:06"
   },
   {
    "round": 2,
    "ti": 11,
    "kind": "present",
-   "check_in": "08:59",
-   "check_out": "18:13"
+   "check_in": "08:40",
+   "check_out": "18:10"
   },
   {
    "round": 2,
    "ti": 12,
    "kind": "present",
-   "check_in": "09:20",
-   "check_out": "18:00"
+   "check_in": "09:27",
+   "check_out": "18:02"
   },
   {
    "round": 2,
    "ti": 13,
    "kind": "present",
-   "check_in": "08:49",
-   "check_out": "18:08"
+   "check_in": "09:35",
+   "check_out": "18:09"
   },
   {
    "round": 2,
    "ti": 14,
    "kind": "present",
-   "check_in": "08:35",
-   "check_out": "18:05"
+   "check_in": "08:38",
+   "check_out": "18:09"
   },
   {
    "round": 2,
    "ti": 15,
    "kind": "present",
-   "check_in": "09:02",
+   "check_in": "09:37",
    "check_out": "18:03"
   },
   {
    "round": 2,
    "ti": 16,
    "kind": "present",
-   "check_in": "09:04",
-   "check_out": "18:02"
+   "check_in": "09:40",
+   "check_out": "18:05"
   },
   {
    "round": 2,
    "ti": 17,
    "kind": "present",
-   "check_in": "08:45",
-   "check_out": "18:02"
+   "check_in": "08:43",
+   "check_out": "18:08"
   },
   {
    "round": 2,
    "ti": 18,
    "kind": "present",
-   "check_in": "09:06",
-   "check_out": "18:03"
-  },
-  {
-   "round": 2,
-   "ti": 19,
-   "kind": "present",
-   "check_in": "08:51",
-   "check_out": "18:06"
+   "check_in": "09:11",
+   "check_out": "18:08"
   },
   {
    "round": 2,
    "ti": 20,
    "kind": "present",
-   "check_in": "08:33",
+   "check_in": "09:01",
    "check_out": "18:08"
   },
   {
    "round": 2,
    "ti": 21,
    "kind": "present",
-   "check_in": "09:04",
-   "check_out": "17:59"
+   "check_in": "09:19",
+   "check_out": "18:10"
   },
   {
    "round": 2,
    "ti": 22,
    "kind": "present",
-   "check_in": "09:38",
-   "check_out": "18:09"
+   "check_in": "08:34",
+   "check_out": "18:10"
   },
   {
    "round": 2,
    "ti": 23,
    "kind": "present",
-   "check_in": "09:09",
-   "check_out": "17:58"
+   "check_in": "09:01",
+   "check_out": "18:09"
   },
   {
    "round": 2,
    "ti": 24,
    "kind": "present",
-   "check_in": "09:11",
-   "check_out": "18:03"
+   "check_in": "08:52",
+   "check_out": "18:06"
   },
   {
    "round": 2,
    "ti": 25,
    "kind": "present",
-   "check_in": "08:51",
-   "check_out": "18:03"
+   "check_in": "09:20",
+   "check_out": "18:01"
   },
   {
    "round": 2,
    "ti": 26,
    "kind": "present",
-   "check_in": "08:44",
-   "check_out": "18:03"
+   "check_in": "08:40",
+   "check_out": "18:05"
   },
   {
    "round": 2,
    "ti": 27,
    "kind": "present",
-   "check_in": "09:50",
-   "check_out": "18:06"
+   "check_in": "08:39",
+   "check_out": "18:08"
   },
   {
    "round": 2,
    "ti": 28,
    "kind": "present",
-   "check_in": "09:06",
-   "check_out": "18:07"
+   "check_in": "09:01",
+   "check_out": "18:01"
   },
   {
    "round": 2,
    "ti": 29,
    "kind": "present",
-   "check_in": "09:01",
-   "check_out": "18:08"
+   "check_in": "08:49",
+   "check_out": "18:13"
   },
   {
    "round": 3,
    "ti": 0,
    "kind": "present",
-   "check_in": "09:07",
+   "check_in": "09:12",
    "check_out": "18:08"
   },
   {
    "round": 3,
    "ti": 1,
    "kind": "present",
-   "check_in": "08:56",
+   "check_in": "08:57",
    "check_out": null
   },
   {
    "round": 3,
    "ti": 2,
    "kind": "present",
-   "check_in": "08:46",
-   "check_out": "18:06"
+   "check_in": "08:43",
+   "check_out": "18:09"
   },
   {
    "round": 3,
    "ti": 3,
+   "kind": "present",
+   "check_in": "09:36",
+   "check_out": "18:07"
+  },
+  {
+   "round": 3,
+   "ti": 4,
+   "kind": "present",
+   "check_in": "08:36",
+   "check_out": "18:06"
+  },
+  {
+   "round": 3,
+   "ti": 5,
+   "kind": "present",
+   "check_in": "09:33",
+   "check_out": "18:10"
+  },
+  {
+   "round": 3,
+   "ti": 6,
    "kind": "present",
    "check_in": "08:47",
    "check_out": "18:06"
   },
   {
    "round": 3,
-   "ti": 4,
+   "ti": 8,
+   "kind": "present",
+   "check_in": "08:48",
+   "check_out": "18:02"
+  },
+  {
+   "round": 3,
+   "ti": 9,
+   "kind": "present",
+   "check_in": "08:39",
+   "check_out": "18:00"
+  },
+  {
+   "round": 3,
+   "ti": 10,
+   "kind": "present",
+   "check_in": "08:35",
+   "check_out": "18:06"
+  },
+  {
+   "round": 3,
+   "ti": 11,
    "kind": "present",
    "check_in": "09:45",
    "check_out": "18:04"
   },
   {
    "round": 3,
-   "ti": 5,
+   "ti": 12,
    "kind": "present",
-   "check_in": "09:12",
-   "check_out": "15:19"
-  },
-  {
-   "round": 3,
-   "ti": 6,
-   "kind": "present",
-   "check_in": "09:49",
-   "check_out": "18:05"
-  },
-  {
-   "round": 3,
-   "ti": 7,
-   "kind": "present",
-   "check_in": "09:14",
-   "check_out": "18:01"
-  },
-  {
-   "round": 3,
-   "ti": 8,
-   "kind": "present",
-   "check_in": "08:34",
-   "check_out": "18:09"
-  },
-  {
-   "round": 3,
-   "ti": 9,
-   "kind": "present",
-   "check_in": "08:50",
-   "check_out": "18:03"
-  },
-  {
-   "round": 3,
-   "ti": 10,
-   "kind": "present",
-   "check_in": "08:42",
-   "check_out": "18:06"
-  },
-  {
-   "round": 3,
-   "ti": 11,
-   "kind": "present",
-   "check_in": "08:57",
-   "check_out": "17:58"
+   "check_in": "08:40",
+   "check_out": "18:10"
   },
   {
    "round": 3,
    "ti": 13,
-   "kind": "present",
-   "check_in": "09:19",
-   "check_out": "18:10"
+   "kind": "absent"
   },
   {
    "round": 3,
    "ti": 14,
    "kind": "present",
-   "check_in": "08:51",
-   "check_out": "18:12"
+   "check_in": "08:40",
+   "check_out": "18:05"
   },
   {
    "round": 3,
    "ti": 15,
    "kind": "present",
-   "check_in": "08:41",
+   "check_in": "09:03",
    "check_out": "18:08"
   },
   {
    "round": 3,
    "ti": 16,
    "kind": "present",
-   "check_in": "09:51",
-   "check_out": "18:07"
+   "check_in": "09:01",
+   "check_out": "18:04"
   },
   {
    "round": 3,
    "ti": 17,
    "kind": "present",
-   "check_in": "09:03",
+   "check_in": "09:01",
    "check_out": "18:11"
   },
   {
    "round": 3,
    "ti": 18,
    "kind": "present",
-   "check_in": "09:01",
-   "check_out": "18:09"
+   "check_in": "09:18",
+   "check_out": "18:02"
   },
   {
    "round": 3,
    "ti": 19,
    "kind": "present",
-   "check_in": "08:45",
-   "check_out": "18:06"
+   "check_in": "08:53",
+   "check_out": "18:08"
   },
   {
    "round": 3,
    "ti": 20,
    "kind": "present",
-   "check_in": "09:00",
-   "check_out": "18:04"
+   "check_in": "09:25",
+   "check_out": "18:09"
   },
   {
    "round": 3,
    "ti": 21,
    "kind": "present",
-   "check_in": "09:05",
-   "check_out": "18:09"
+   "check_in": "10:34",
+   "check_out": "17:59"
   },
   {
    "round": 3,
    "ti": 22,
    "kind": "present",
-   "check_in": "09:09",
-   "check_out": "18:04"
+   "check_in": "08:39",
+   "check_out": "18:01"
   },
   {
    "round": 3,
    "ti": 23,
    "kind": "present",
-   "check_in": "08:58",
-   "check_out": "18:01"
+   "check_in": "08:55",
+   "check_out": "18:05"
   },
   {
    "round": 3,
    "ti": 24,
    "kind": "present",
-   "check_in": "08:45",
-   "check_out": "18:11"
+   "check_in": "08:43",
+   "check_out": null
   },
   {
    "round": 3,
    "ti": 25,
    "kind": "present",
-   "check_in": "08:55",
-   "check_out": "18:09"
+   "check_in": "08:48",
+   "check_out": "17:57"
   },
   {
    "round": 3,
    "ti": 26,
    "kind": "present",
-   "check_in": "09:06",
+   "check_in": "09:18",
    "check_out": "18:03"
   },
   {
    "round": 3,
    "ti": 27,
    "kind": "present",
-   "check_in": "08:42",
-   "check_out": "18:04"
+   "check_in": "09:37",
+   "check_out": "18:12"
   },
   {
    "round": 3,
    "ti": 28,
    "kind": "present",
-   "check_in": "08:54",
-   "check_out": "18:04"
+   "check_in": "09:33",
+   "check_out": "18:07"
   },
   {
    "round": 3,
    "ti": 29,
    "kind": "present",
    "check_in": "08:52",
-   "check_out": "18:04"
+   "check_out": "18:10"
   },
   {
    "round": 4,
    "ti": 0,
    "kind": "present",
-   "check_in": "08:41",
-   "check_out": "18:12"
+   "check_in": "09:27",
+   "check_out": "18:10"
   },
   {
    "round": 4,
    "ti": 1,
    "kind": "present",
-   "check_in": "09:06",
-   "check_out": "18:11"
+   "check_in": "09:05",
+   "check_out": "18:15"
   },
   {
    "round": 4,
    "ti": 2,
    "kind": "present",
-   "check_in": "08:46",
-   "check_out": "18:11"
+   "check_in": "09:12",
+   "check_out": "18:15"
   },
   {
    "round": 4,
    "ti": 3,
    "kind": "present",
-   "check_in": "08:47",
-   "check_out": "18:09"
+   "check_in": "08:44",
+   "check_out": "18:11"
   },
   {
    "round": 4,
    "ti": 4,
    "kind": "present",
-   "check_in": "08:46",
-   "check_out": "18:10"
+   "check_in": "09:38",
+   "check_out": "18:07"
   },
   {
    "round": 4,
    "ti": 5,
    "kind": "present",
-   "check_in": "08:52",
-   "check_out": "18:02"
+   "check_in": "08:57",
+   "check_out": "18:06"
   },
   {
    "round": 4,
    "ti": 6,
    "kind": "present",
-   "check_in": "08:38",
-   "check_out": "18:04"
+   "check_in": "08:49",
+   "check_out": "17:59"
   },
   {
    "round": 4,
    "ti": 7,
    "kind": "present",
-   "check_in": "09:02",
+   "check_in": "08:51",
    "check_out": "18:03"
   },
   {
    "round": 4,
    "ti": 8,
    "kind": "present",
-   "check_in": "08:39",
-   "check_out": null
-  },
-  {
-   "round": 4,
-   "ti": 9,
-   "kind": "present",
-   "check_in": "08:41",
-   "check_out": "18:02"
+   "check_in": "08:56",
+   "check_out": "18:05"
   },
   {
    "round": 4,
    "ti": 10,
    "kind": "present",
-   "check_in": "09:02",
-   "check_out": "18:02"
+   "check_in": "09:03",
+   "check_out": "18:05"
   },
   {
    "round": 4,
    "ti": 11,
    "kind": "present",
-   "check_in": "08:41",
-   "check_out": null
+   "check_in": "09:01",
+   "check_out": "18:11"
   },
   {
    "round": 4,
    "ti": 12,
-   "kind": "absent"
+   "kind": "present",
+   "check_in": "09:00",
+   "check_out": "18:06"
   },
   {
    "round": 4,
    "ti": 13,
    "kind": "present",
-   "check_in": "08:55",
-   "check_out": "18:10"
+   "check_in": "08:43",
+   "check_out": "18:06"
   },
   {
    "round": 4,
    "ti": 14,
    "kind": "present",
-   "check_in": "08:45",
-   "check_out": "18:14"
+   "check_in": "08:57",
+   "check_out": null
   },
   {
    "round": 4,
    "ti": 15,
    "kind": "present",
-   "check_in": "09:02",
-   "check_out": "18:04"
+   "check_in": "08:53",
+   "check_out": "18:01"
   },
   {
    "round": 4,
    "ti": 16,
    "kind": "present",
-   "check_in": "09:03",
-   "check_out": "18:11"
+   "check_in": "08:46",
+   "check_out": "16:45"
   },
   {
    "round": 4,
    "ti": 17,
    "kind": "present",
    "check_in": "08:40",
-   "check_out": "17:58"
+   "check_out": "18:00"
   },
   {
    "round": 4,
    "ti": 18,
    "kind": "present",
-   "check_in": "08:56",
-   "check_out": "18:03"
+   "check_in": "08:49",
+   "check_out": "18:07"
   },
   {
    "round": 4,
    "ti": 19,
    "kind": "present",
-   "check_in": "08:34",
-   "check_out": "18:06"
+   "check_in": "09:06",
+   "check_out": "18:08"
   },
   {
    "round": 4,
    "ti": 20,
    "kind": "present",
-   "check_in": "08:43",
-   "check_out": "16:12"
+   "check_in": "09:02",
+   "check_out": "18:06"
   },
   {
    "round": 4,
    "ti": 21,
-   "kind": "present",
-   "check_in": "08:51",
-   "check_out": "18:01"
+   "kind": "absent"
   },
   {
    "round": 4,
    "ti": 22,
-   "kind": "absent"
+   "kind": "present",
+   "check_in": "09:02",
+   "check_out": "18:08"
   },
   {
    "round": 4,
    "ti": 23,
    "kind": "present",
-   "check_in": "08:54",
-   "check_out": "18:03"
+   "check_in": "08:59",
+   "check_out": "18:10"
   },
   {
    "round": 4,
    "ti": 24,
    "kind": "present",
-   "check_in": "08:52",
-   "check_out": "18:14"
+   "check_in": "08:50",
+   "check_out": "18:03"
   },
   {
    "round": 4,
    "ti": 25,
    "kind": "present",
-   "check_in": "08:37",
-   "check_out": "18:13"
+   "check_in": "08:38",
+   "check_out": "18:11"
   },
   {
    "round": 4,
    "ti": 26,
    "kind": "present",
-   "check_in": "09:03",
-   "check_out": "18:03"
+   "check_in": "09:06",
+   "check_out": "17:59"
   },
   {
    "round": 4,
    "ti": 27,
    "kind": "present",
-   "check_in": "08:48",
-   "check_out": "17:59"
+   "check_in": "09:06",
+   "check_out": null
   },
   {
    "round": 4,
    "ti": 28,
    "kind": "present",
-   "check_in": "09:06",
-   "check_out": "18:14"
+   "check_in": "08:51",
+   "check_out": "18:05"
   },
   {
    "round": 4,
    "ti": 29,
    "kind": "present",
-   "check_in": "08:53",
-   "check_out": "18:06"
+   "check_in": "09:05",
+   "check_out": "18:03"
   },
   {
    "round": 5,
    "ti": 0,
    "kind": "present",
-   "check_in": "09:27",
-   "check_out": "18:05"
+   "check_in": "09:31",
+   "check_out": "18:11"
   },
   {
    "round": 5,
    "ti": 1,
    "kind": "present",
-   "check_in": "08:57",
-   "check_out": "18:10"
+   "check_in": "08:56",
+   "check_out": "18:09"
   },
   {
    "round": 5,
    "ti": 2,
    "kind": "present",
-   "check_in": "08:39",
-   "check_out": "18:09"
+   "check_in": "08:36",
+   "check_out": "18:08"
   },
   {
    "round": 5,
    "ti": 3,
+   "kind": "present",
+   "check_in": "08:41",
+   "check_out": "18:08"
+  },
+  {
+   "round": 5,
+   "ti": 4,
+   "kind": "absent"
+  },
+  {
+   "round": 5,
+   "ti": 5,
+   "kind": "present",
+   "check_in": "09:24",
+   "check_out": "17:57"
+  },
+  {
+   "round": 5,
+   "ti": 6,
+   "kind": "present",
+   "check_in": "08:59",
+   "check_out": "18:06"
+  },
+  {
+   "round": 5,
+   "ti": 7,
+   "kind": "present",
+   "check_in": "09:12",
+   "check_out": "18:00"
+  },
+  {
+   "round": 5,
+   "ti": 8,
+   "kind": "present",
+   "check_in": "08:36",
+   "check_out": "18:14"
+  },
+  {
+   "round": 5,
+   "ti": 9,
+   "kind": "present",
+   "check_in": "08:52",
+   "check_out": "18:07"
+  },
+  {
+   "round": 5,
+   "ti": 10,
    "kind": "present",
    "check_in": "08:42",
    "check_out": "18:11"
   },
   {
    "round": 5,
-   "ti": 4,
-   "kind": "present",
-   "check_in": "08:49",
-   "check_out": "18:07"
-  },
-  {
-   "round": 5,
-   "ti": 5,
-   "kind": "present",
-   "check_in": "08:59",
-   "check_out": "18:01"
-  },
-  {
-   "round": 5,
-   "ti": 7,
-   "kind": "present",
-   "check_in": "08:58",
-   "check_out": "18:09"
-  },
-  {
-   "round": 5,
-   "ti": 8,
-   "kind": "present",
-   "check_in": "08:50",
-   "check_out": "18:09"
-  },
-  {
-   "round": 5,
-   "ti": 9,
-   "kind": "present",
-   "check_in": "09:29",
-   "check_out": "18:05"
-  },
-  {
-   "round": 5,
-   "ti": 10,
-   "kind": "present",
-   "check_in": "09:20",
-   "check_out": "18:07"
-  },
-  {
-   "round": 5,
    "ti": 11,
    "kind": "present",
-   "check_in": "08:56",
-   "check_out": "17:57"
-  },
-  {
-   "round": 5,
-   "ti": 12,
-   "kind": "present",
-   "check_in": "08:33",
-   "check_out": "18:07"
+   "check_in": "09:00",
+   "check_out": "18:03"
   },
   {
    "round": 5,
    "ti": 13,
-   "kind": "present",
-   "check_in": "08:58",
-   "check_out": "18:05"
+   "kind": "absent"
   },
   {
    "round": 5,
    "ti": 14,
    "kind": "present",
-   "check_in": "08:57",
+   "check_in": "08:48",
    "check_out": "18:04"
   },
   {
    "round": 5,
    "ti": 15,
    "kind": "present",
-   "check_in": "08:56",
-   "check_out": "18:05"
+   "check_in": "08:55",
+   "check_out": "18:15"
   },
   {
    "round": 5,
    "ti": 16,
    "kind": "present",
-   "check_in": "08:43",
-   "check_out": "18:09"
+   "check_in": "09:04",
+   "check_out": "17:59"
   },
   {
    "round": 5,
    "ti": 17,
    "kind": "present",
-   "check_in": "09:10",
-   "check_out": "18:06"
+   "check_in": "08:44",
+   "check_out": "18:00"
+  },
+  {
+   "round": 5,
+   "ti": 18,
+   "kind": "present",
+   "check_in": "08:39",
+   "check_out": "18:02"
   },
   {
    "round": 5,
    "ti": 19,
    "kind": "present",
-   "check_in": "09:03",
+   "check_in": "08:46",
    "check_out": "18:03"
   },
   {
    "round": 5,
    "ti": 20,
    "kind": "present",
-   "check_in": "09:33",
-   "check_out": "18:11"
+   "check_in": "08:59",
+   "check_out": "18:09"
   },
   {
    "round": 5,
    "ti": 21,
    "kind": "present",
-   "check_in": "08:58",
-   "check_out": "18:12"
+   "check_in": "09:32",
+   "check_out": "18:09"
   },
   {
    "round": 5,
    "ti": 22,
    "kind": "present",
-   "check_in": "09:01",
-   "check_out": "18:07"
+   "check_in": "09:04",
+   "check_out": "18:00"
   },
   {
    "round": 5,
    "ti": 23,
    "kind": "present",
-   "check_in": "08:54",
-   "check_out": "18:05"
+   "check_in": "08:42",
+   "check_out": "18:11"
   },
   {
    "round": 5,
    "ti": 24,
    "kind": "present",
-   "check_in": "09:01",
-   "check_out": "18:01"
+   "check_in": "09:07",
+   "check_out": "18:04"
   },
   {
    "round": 5,
    "ti": 25,
    "kind": "present",
-   "check_in": "08:38",
-   "check_out": "18:01"
+   "check_in": "08:56",
+   "check_out": "18:04"
   },
   {
    "round": 5,
    "ti": 26,
    "kind": "present",
-   "check_in": "08:41",
-   "check_out": "18:10"
+   "check_in": "08:50",
+   "check_out": "18:07"
   },
   {
    "round": 5,
    "ti": 27,
    "kind": "present",
-   "check_in": "08:56",
-   "check_out": "17:59"
+   "check_in": "09:05",
+   "check_out": "17:58"
   },
   {
    "round": 5,
    "ti": 28,
    "kind": "present",
-   "check_in": "08:45",
-   "check_out": "18:09"
+   "check_in": "08:38",
+   "check_out": "18:11"
   },
   {
    "round": 5,
    "ti": 29,
    "kind": "present",
-   "check_in": "09:26",
-   "check_out": "18:06"
+   "check_in": "08:54",
+   "check_out": "18:11"
+  }
+ ],
+ "excuses": [
+  {
+   "ti": 21,
+   "round": 1,
+   "reason": "MEDICAL",
+   "note": "급성 장염으로 통원 치료",
+   "evidence": "excuse_01_medical_certificate.png",
+   "kind": "medical_certificate.png",
+   "decision": "PENDING"
+  },
+  {
+   "ti": 23,
+   "round": 1,
+   "reason": "MILITARY",
+   "note": "동원 예비군 훈련 소집",
+   "evidence": "excuse_02_reserve_forces_notice.pdf",
+   "kind": "reserve_forces_notice.pdf",
+   "decision": "PENDING"
+  },
+  {
+   "ti": 13,
+   "round": 3,
+   "reason": "INTERVIEW",
+   "note": "채용 면접 응시",
+   "evidence": "excuse_03_interview_confirmation.png",
+   "kind": "interview_confirmation.png",
+   "decision": "PENDING"
+  },
+  {
+   "ti": 13,
+   "round": 1,
+   "reason": "MEDICAL",
+   "note": "진료 후 지각",
+   "evidence": "excuse_04_medical_certificate.png",
+   "kind": "medical_certificate.png",
+   "decision": "REJECT",
+   "decision_note": "진료 시각이 지각 시각과 맞지 않아 반려"
   }
  ]
 }

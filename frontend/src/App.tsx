@@ -13,6 +13,7 @@ import { RequireAuth, RequirePermission } from './routing/guards'
 import { AttendanceChangeLogPage } from './pages/attendance/AttendanceChangeLogPage'
 import { CourseAttendancePage } from './pages/attendance/CourseAttendancePage'
 import { DailyAttendancePage } from './pages/attendance/DailyAttendancePage'
+import { ExcuseRequestPage } from './pages/attendance/ExcuseRequestPage'
 import { OfficialAttendancePage } from './pages/attendance/OfficialAttendancePage'
 import { CourseCreatePage } from './pages/course/CourseCreatePage'
 import { CourseDetailPage } from './pages/course/CourseDetailPage'
@@ -87,6 +88,14 @@ export function AppRoutes() {
           element={
             <RequirePermission screenId="S29">
               <OfficialAttendancePage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="/excuse-requests"
+          element={
+            <RequirePermission screenId="S30">
+              <ExcuseRequestPage />
             </RequirePermission>
           }
         />

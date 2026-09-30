@@ -256,6 +256,8 @@
 | 탐지규칙(S28, Phase 5) | 파라미터 조회·수정, 활성/비활성 | O | — | — | — |
 | 공식 출결 대사(S29) | 업로드·반영 | — | O | — | — |
 | | 업로드 이력 조회 | R | R | — | R |
+| 공결 신청·승인(S30) | 조회 | R | R | R(본인 회차) | R |
+| | 신청 등록·증빙·승인·반려 | — | O | O(본인 회차) | — |
 
 ### 4-3. 서버/API 필수 검증 (UI 숨김으로 대체 불가)
 
@@ -372,6 +374,7 @@
 | S26 권한 | 역할 목록 | GET | /roles | — | 역할(role_id·role_code·role_name, 4개 고정 — D-18) | SYS | 없음 |
 | | 권한 조회 | GET | /roles/permissions | role_id | 화면×기능 매트릭스 | SYS | 없음 |
 | | 권한 저장 | PUT | /roles/{id}/permissions | 매트릭스 | 저장 결과. SYS_ADMIN 역할에서 S26 R·U 를 빼면 409 SELF_LOCKOUT(잠금 방지) | SYS | UPDATE / role_permission / USER (before/after) |
+| S30 공결 신청·승인 | 목록·상세·등록·증빙 업로드·증빙 보기·승인·반려 | GET/POST | /excuse-requests, /excuse-requests/{id}, /excuse-requests/{id}/evidence[/{evidenceId}], /excuse-requests/{id}/approve·reject | reason_type, schedule_id, trainee_id, file(PDF·이미지), decision_note | 신청·증빙·결과 | OPS·INSTRUCTOR(본인 회차)·조회 SYS·EXEC | CREATE·UPDATE / excuse_request, CREATE / excuse_evidence, 승인 시 attendance CREATE·UPDATE + attendance_change_log. 증빙 열람 VIEW_SENSITIVE. decisions.md 14절 |
 | S29 공식 출결 대사 | 파일 업로드·반영 | POST | /courses/{id}/official-attendance | file(공식 출석부 xlsx 또는 CSV, multipart) | batchId, 행별 결과(CREATED·UPDATED·CONVERTED·UNCHANGED·CASE·MISMATCH·ERROR), 결과별 건수 | OPS | CREATE / attendance_source_raw / SYSTEM_BATCH + 반영된 attendance CREATE·UPDATE + attendance_change_log(SYSTEM_BATCH). 종료·중단 과정 409 COURSE_LOCKED |
 | | 업로드 이력 | GET | /official-attendance-imports | course_id, page, size | 배치별 건수 요약 | OPS·SYS·EXEC | 없음 |
 | | 업로드 상세 | GET | /official-attendance-imports/{batchId} | — | 행별 원본·결과·attendance_id·case_id | OPS·SYS·EXEC | 없음 |

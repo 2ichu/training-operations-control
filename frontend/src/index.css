@@ -1337,3 +1337,200 @@ label.checkbox-inline {
     min-height: 32px;
   }
 }
+
+/* ── 공결 신청·승인(Split View) ────────────────────────────── */
+.split {
+  display: grid;
+  grid-template-columns: minmax(360px, 5fr) minmax(0, 6fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.split-detail {
+  position: sticky;
+  top: calc(var(--header-h) + 12px);
+  max-height: calc(100vh - var(--header-h) - 24px);
+  overflow: auto;
+}
+
+@media (max-width: 1100px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .split-detail {
+    position: static;
+    max-height: none;
+  }
+}
+
+tr.selected,
+tr.selected:hover {
+  background: var(--row-selected);
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.excuse-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.excuse-detail h2 {
+  margin: 0;
+}
+
+.excuse-detail h3 {
+  margin: 4px 0 0;
+}
+
+.summary-grid .wide {
+  grid-column: 1 / -1;
+}
+
+.empty-text.left {
+  padding: 8px 0;
+  text-align: left;
+}
+
+.evidence-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.evidence-tabs .tab {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.preview {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-alt);
+  height: 360px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.preview iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+
+.file-add {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.decision {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.decision label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.decision textarea {
+  color: var(--text);
+}
+
+/* ── 강의실 출석 전광판(요약 카드) ─────────────────────────── */
+.board {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
+  gap: 8px;
+  align-items: stretch;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.board-card button {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 12px;
+  text-align: left;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  background: var(--surface);
+}
+
+.board-card button[aria-pressed='true'] {
+  background: var(--row-selected);
+  border-color: var(--primary);
+}
+
+.board-ok button {
+  border-left-color: var(--done-text);
+}
+
+.board-warn button {
+  border-left-color: #d97706;
+}
+
+.board-bad button {
+  border-left-color: var(--error);
+}
+
+.board-info button {
+  border-left-color: var(--primary);
+}
+
+.board-none button {
+  border-left-color: var(--border-strong);
+}
+
+.board-label {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.board-value {
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.board-total {
+  align-self: center;
+  padding: 0 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .board {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .board-total {
+    grid-column: 1 / -1;
+  }
+}

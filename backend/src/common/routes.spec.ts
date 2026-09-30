@@ -8,6 +8,7 @@ import { AuditLogViewController } from '../audit-log/audit-log-view.controller.j
 import { CourseIssueController } from '../course-issue/course-issue.controller.js';
 import { CourseController } from '../course/course.controller.js';
 import { DashboardController } from '../dashboard/dashboard.controller.js';
+import { ExcuseController } from '../excuse/excuse.controller.js';
 import { InstructorController } from '../instructor/instructor.controller.js';
 import { OperationLogController } from '../operation-log/operation-log.controller.js';
 import { REQUIRE_PERMISSION_KEY } from '../rbac/rbac.types.js';
@@ -96,6 +97,13 @@ const EXPECTED: Record<string, string> = {
   'POST /courses/:courseId/official-attendance': 'S29:C',
   'GET /official-attendance-imports': 'S29:R',
   'GET /official-attendance-imports/:batchId': 'S29:R',
+  'GET /excuse-requests': 'S30:R',
+  'GET /excuse-requests/:id': 'S30:R',
+  'POST /excuse-requests': 'S30:C',
+  'POST /excuse-requests/:id/evidence': 'S30:C',
+  'GET /excuse-requests/:id/evidence/:evidenceId': 'S30:R',
+  'POST /excuse-requests/:id/approve': 'S30:U',
+  'POST /excuse-requests/:id/reject': 'S30:U',
 
   'GET /users': 'S25:R',
   'GET /users/:id': 'S25:R',
@@ -162,6 +170,7 @@ describe('도메인 API 라우트 권한 메타데이터', () => {
     ...routes(DetectionRuleController),
     ...routes(AttendanceSettingController),
     ...routes(OfficialAttendanceController),
+    ...routes(ExcuseController),
     ...routes(SubmissionController),
     ...routes(AttachmentController),
     ...routes(DashboardController),

@@ -41,9 +41,19 @@ def hm(minutes):
     return f'{minutes // 60:02d}:{minutes % 60:02d}'
 
 
-def beacon_day():
+# 이수 위험군 시험용: 결석·지각이 잦은 훈련생 3명(전체 30명 중)
+AT_RISK = {4, 13, 21}
+
+
+def beacon_day(ti=-1):
     """한 사람의 하루 비콘 기록 → (status, check_in, check_out)"""
     p = rng.random()
+    if ti in AT_RISK:  # 결석 35%, 지각 30%, 나머지는 보통
+        if p < 0.35:
+            return ('ABSENT', None, None)
+        if p < 0.65:
+            return ('LATE', 9 * 60 + rng.randint(11, 45), 18 * 60 + rng.randint(0, 8))
+        p = 0.65 + rng.random() * 0.35
     if p < 0.02:
         return ('ABSENT', None, None)
     if p < 0.04:
@@ -61,7 +71,7 @@ def beacon_day():
 records = {}  # (trainee_idx, day_idx) → (status, cin, cout)
 for ti in range(len(TRAINEES)):
     for di in range(len(DATES)):
-        records[(ti, di)] = beacon_day()
+        records[(ti, di)] = beacon_day(ti)
 
 # 내부 기록(1~5회차): 대부분 공식과 같고(±3분), 일부는 15분 넘게 다르거나 상태가 다르다 → 대사 때 "확인 필요"가 생긴다
 internal = []  # {round, trainee, status, check_in, check_out}
@@ -81,9 +91,22 @@ for di in range(INTERNAL_ROUNDS):
             mismatch += 1
         internal.append({'round': di + 1, 'ti': ti, 'kind': 'present', 'check_in': hm(icin), 'check_out': None if icout is None else hm(icout)})
 
+# 공결(사유결석) 신청 시나리오: 공식 기록이 결석인 사람 3명(병원·예비군·면접)과 지각 1명(반려 예시)
+absent = [(ti, di) for di in range(len(DATES)) for ti in range(len(TRAINEES)) if records[(ti, di)][0] == 'ABSENT']
+late = [(ti, di) for di in range(len(DATES)) for ti in range(len(TRAINEES)) if records[(ti, di)][0] == 'LATE']
+EXCUSE_PLAN = [('MEDICAL', '급성 장염으로 통원 치료', 'medical_certificate.png', 'PENDING'),
+               ('MILITARY', '동원 예비군 훈련 소집', 'reserve_forces_notice.pdf', 'PENDING'),
+               ('INTERVIEW', '채용 면접 응시', 'interview_confirmation.png', 'PENDING')]
+excuses = []
+for (ti, di), (reason, note, evidence, decision) in zip(absent, EXCUSE_PLAN):
+    excuses.append({'ti': ti, 'round': di + 1, 'reason': reason, 'note': note, 'evidence': f'excuse_{len(excuses) + 1:02d}_{evidence}', 'kind': evidence, 'decision': decision})
+if late:
+    ti, di = late[0]
+    excuses.append({'ti': ti, 'round': di + 1, 'reason': 'MEDICAL', 'note': '진료 후 지각', 'evidence': f'excuse_{len(excuses) + 1:02d}_medical_certificate.png', 'kind': 'medical_certificate.png', 'decision': 'REJECT', 'decision_note': '진료 시각이 지각 시각과 맞지 않아 반려'})
+
 # ── 시나리오 JSON(setup-beacon-sample-data.mjs 가 읽는다) ───────────────────────
 (ROOT / 'beacon-scenario.json').write_text(
-    json.dumps({'trainees': TRAINEES, 'dates': DATES, 'instructors': ['노현우', '송지혜'], 'internal': internal}, ensure_ascii=False, indent=1), encoding='utf-8')
+    json.dumps({'trainees': TRAINEES, 'dates': DATES, 'instructors': ['노현우', '송지혜'], 'internal': internal, 'excuses': excuses}, ensure_ascii=False, indent=1), encoding='utf-8')
 
 # ── 공식 출결 CSV(비콘 로그 형식) ───────────────────────────────────────────────
 KOR = {'PRESENT': '출석', 'LATE': '지각', 'EARLY_LEAVE': '조퇴', 'ABSENT': '결석', 'EXCUSED': '인정결석'}

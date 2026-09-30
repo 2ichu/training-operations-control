@@ -1,4 +1,4 @@
-import { ATTENDANCE_SHORT_LABELS, ATTENDANCE_STATUS_LABELS, CASE_STATUS_LABELS, COURSE_STATUS_LABELS, INSTRUCTOR_STATUS_LABELS, label, REVIEW_STATUS_LABELS, SCHEDULE_STATUS_LABELS, SUBMIT_STATUS_LABELS } from '../labels'
+import { ATTENDANCE_SHORT_LABELS, EXCUSE_STATUS_LABELS, ATTENDANCE_STATUS_LABELS, CASE_STATUS_LABELS, COURSE_STATUS_LABELS, INSTRUCTOR_STATUS_LABELS, label, REVIEW_STATUS_LABELS, SCHEDULE_STATUS_LABELS, SUBMIT_STATUS_LABELS } from '../labels'
 
 // 상태 색 의미: 확인 필요=노랑, 조치 필요·우선·추가 확인=주황, 확인 중=파랑, 완료=초록. 색만으로 구분하지 않고 항상 텍스트를 함께 표시한다.
 const TONE: Record<string, 'attention' | 'action' | 'info' | 'done' | 'muted' | 'neutral'> = {
@@ -53,4 +53,10 @@ export function SubmitStatusBadge({ status }: { status: string }) {
 export function ReviewStatusBadge({ status }: { status: string }) {
   const tone = status === 'APPROVED' ? 'done' : status === 'PENDING' ? 'neutral' : 'muted'
   return <span className={`badge badge-${tone}`}>{label(REVIEW_STATUS_LABELS, status)}</span>
+}
+
+// 공결 신청 상태: 승인 대기=노랑(확인 필요), 승인=초록, 반려=회색
+export function ExcuseStatusBadge({ status }: { status: string }) {
+  const tone = status === 'PENDING' ? 'attention' : status === 'APPROVED' ? 'done' : 'muted'
+  return <span className={`badge badge-${tone}`}>{label(EXCUSE_STATUS_LABELS, status)}</span>
 }

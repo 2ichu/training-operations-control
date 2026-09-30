@@ -41,6 +41,13 @@ export function DashboardPage() {
     String(canListCourses),
   )
 
+  // 공결 승인 대기 건수(S30 조회 권한이 있을 때만). 실패해도 대시보드는 그대로 보여 준다.
+  const canExcuse = can('S30', 'R')
+  const excusePending = useApi(
+    (signal) => (canExcuse ? api.get<{ total: number }>('/excuse-requests', { status: 'PENDING', size: 1 }, signal).catch(() => null) : Promise.resolve(null)),
+    String(canExcuse),
+  )
+
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(params)
     if (value) next.set(key, value)
@@ -59,6 +66,7 @@ export function DashboardPage() {
     ? [
         { key: 'needs', text: '확인 필요 사항', count: needsCheck, to: can('S22', 'R') ? '/verification-cases?status=NEEDS_CHECK,PRIORITY_CHECK' : null, tone: 'attention' },
         { key: 'action', text: '조치 필요·추가 확인 사항', count: actionRequired, to: can('S22', 'R') ? '/verification-cases?status=ACTION_REQUIRED,FOLLOW_UP' : null, tone: 'action' },
+        { key: 'excuse', text: '공결 승인 대기', count: excusePending.data?.total ?? 0, to: canExcuse ? '/excuse-requests' : null, tone: 'attention' },
         { key: 'att', text: '출결 미입력 훈련생', count: data.counts.notCheckedIn, to: can('S07', 'R') ? `/attendance/daily?date=${dayParam}` : null, tone: 'muted' },
         { key: 'out', text: '퇴실 미확인', count: data.counts.checkoutMissing, to: can('S07', 'R') ? `/attendance/daily?date=${dayParam}` : null, tone: 'muted' },
         { key: 'log', text: '운영일지 미작성 회차', count: data.counts.operationLogMissing, to: can('S17', 'R') ? '/operation-logs' : null, tone: 'muted' },
@@ -70,8 +78,8 @@ export function DashboardPage() {
     ? [
         { key: 'today', text: '오늘 수업', value: data.todaySchedules.length, to: null, tone: '' },
         { key: 'needs', text: '확인 필요', value: needsCheck, to: todo[0].to, tone: needsCheck > 0 ? 'attention' : '' },
-        { key: 'att', text: '미출결', value: data.counts.notCheckedIn, to: todo[2].to, tone: '' },
-        { key: 'log', text: '운영일지 미작성', value: data.counts.operationLogMissing, to: todo[4].to, tone: '' },
+        { key: 'att', text: '미출결', value: data.counts.notCheckedIn, to: todo[3].to, tone: '' },
+        { key: 'log', text: '운영일지 미작성', value: data.counts.operationLogMissing, to: todo[5].to, tone: '' },
       ]
     : []
 

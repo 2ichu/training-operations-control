@@ -118,3 +118,6 @@ export const api = {
 }
 
 export const attachmentUrl = (attachmentId: number): string => `${API_BASE}/attachments/${attachmentId}/download`
+
+/** 공결 증빙 파일 주소. 미리보기는 blob 으로 받아 화면 안에서 보여 준다(nginx 의 X-Frame-Options 때문에 iframe 직접 연결 불가). */
+export const excuseEvidenceUrl = (requestId: number, evidenceId: number): string => `${API_BASE}/excuse-requests/${requestId}/evidence/${evidenceId}`

@@ -1074,6 +1074,115 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
     });
   });
 
+  // ── 공결(사유결석) 신청·승인 (S30) ───────────────────────────────────────
+  describe('공결 신청·승인 (S30)', () => {
+    const PNG = Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.alloc(32, 1)]);
+    const create = async (who: 'ops' | 'exec' | 'sys' | 'ins1' | 'ins2', trainee = tConfirmed1, schedule = s1) =>
+      (await as(who)).post('/api/v1/excuse-requests').send({ trainee_id: trainee, schedule_id: schedule, reason_type: 'MEDICAL', reason_note: '병원 진료' });
+    const evidence = async (who: 'ops' | 'ins1' | 'exec', id: number, buf: Buffer = PNG, name = '진단서.png') =>
+      (await as(who)).post(`/api/v1/excuse-requests/${id}/evidence`).attach('file', buf, { filename: name });
+    const attRow = async () => (await rows(`SELECT * FROM attendance WHERE schedule_id = $1 AND trainee_id = $2`, [s1, tConfirmed1]))[0];
+
+    it('등록 → 증빙 첨부 → 승인: 출결이 인정결석이 되고 정정 이력·감사로그가 남으며, 증빙 없는 승인·중복 처리는 거부된다', async () => {
+      const made = await create('ops');
+      expect(made.status, JSON.stringify(made.body)).toBe(201);
+      const id = made.body.requestId as number;
+      expect(made.body).toMatchObject({ status: 'PENDING', reasonType: 'MEDICAL' });
+      // 같은 훈련생·회차의 대기 신청 중복은 거부
+      expect((await create('ops')).status).toBe(409);
+      // 증빙 없이 승인 불가
+      const noEvidence = await (await as('ops')).post(`/api/v1/excuse-requests/${id}/approve`).send({});
+      expect(noEvidence.status).toBe(409);
+      expect(noEvidence.body.code).toBe('EVIDENCE_REQUIRED');
+      // 이미지·PDF 만: 확장자가 맞아도 내용이 다르면 거부
+      expect((await evidence('ops', id, Buffer.from('not an image'))).status).toBe(400);
+      expect((await evidence('ops', id, PNG, '악성.exe')).status).toBe(400);
+      expect((await evidence('ops', id)).status).toBe(201);
+
+      const detail = (await (await as('ops')).get(`/api/v1/excuse-requests/${id}`).expect(200)).body;
+      expect(detail.evidence).toHaveLength(1);
+      expect(detail).toMatchObject({ currentAttendanceStatus: null, traineeName: '확정1' });
+      const file = await (await as('ops')).get(`/api/v1/excuse-requests/${id}/evidence/${detail.evidence[0].evidenceId}`).expect(200);
+      expect(file.headers['content-type']).toContain('image/png');
+      expect(file.headers['content-disposition']).toContain('inline');
+
+      const since = await maxAudit();
+      const approved = await (await as('ops')).post(`/api/v1/excuse-requests/${id}/approve`).send({ decision_note: '진단서 확인' });
+      expect(approved.status, JSON.stringify(approved.body)).toBe(201);
+      expect(approved.body).toMatchObject({ status: 'APPROVED', decisionNote: '진단서 확인' });
+      expect(await attRow()).toMatchObject({ attendance_status: 'EXCUSED', source_type: 'MANUAL' });
+      const audits = await auditSince(since);
+      expect(audits.map((a) => `${a.target_table}:${a.action}`)).toEqual(expect.arrayContaining(['attendance:CREATE', 'excuse_request:UPDATE']));
+      expect(await auditSince(since).then((r) => r.filter((a) => a.action === 'VIEW_SENSITIVE'))).toHaveLength(0);
+      // 이미 처리된 신청은 다시 처리할 수 없고, 승인된 회차에는 새 신청을 만들 수 없다
+      expect((await (await as('ops')).post(`/api/v1/excuse-requests/${id}/reject`).send({ decision_note: 'x' })).status).toBe(409);
+      expect((await create('ops')).status).toBe(409);
+      // 증빙 원본은 수정·삭제할 수 없다(append-only)
+      await expect(client.query(`DELETE FROM excuse_evidence`)).rejects.toThrow();
+    });
+
+    it('기존 결석·지각 기록은 인정결석으로 바뀌며 출결 정정 이력에 사유가 남고, 이미 출석인 회차는 거부한다', async () => {
+      const ops1 = await as('ops');
+      await ops1.post(`/api/v1/schedules/${s1}/attendance/confirm-absence`).send({ trainee_ids: [tConfirmed1] }).expect(201);
+      const id = (await create('ops')).body.requestId as number;
+      await evidence('ops', id);
+      await ops1.post(`/api/v1/excuse-requests/${id}/approve`).send({}).expect(201);
+      const att = await attRow();
+      expect(att.attendance_status).toBe('EXCUSED');
+      const log = await rows(`SELECT * FROM attendance_change_log WHERE attendance_id = $1`, [att.attendance_id]);
+      expect(log).toHaveLength(1);
+      expect(log[0].reason).toContain(`신청 #${id}`);
+      expect(log[0].before_value).toMatchObject({ attendance_status: 'ABSENT' });
+
+      // 출석으로 기록된 회차는 공결로 바꿀 수 없다(정정 화면을 이용)
+      await client.query(`UPDATE attendance SET attendance_status = 'PRESENT' WHERE attendance_id = $1`, [att.attendance_id]);
+      await client.query(`UPDATE excuse_request SET status = 'REJECTED', decided_by = $2, decided_at = now() WHERE request_id = $1`, [id, ops]);
+      const id2 = (await create('ops')).body.requestId as number;
+      await evidence('ops', id2);
+      const res = await ops1.post(`/api/v1/excuse-requests/${id2}/approve`).send({});
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe('ALREADY_PRESENT');
+    });
+
+    it('반려는 사유가 필수이고 출결을 바꾸지 않으며, 반려 뒤에는 다시 신청할 수 있다', async () => {
+      const id = (await create('ops')).body.requestId as number;
+      expect((await (await as('ops')).post(`/api/v1/excuse-requests/${id}/reject`).send({})).status).toBe(400);
+      const rejected = await (await as('ops')).post(`/api/v1/excuse-requests/${id}/reject`).send({ decision_note: '증빙 불충분' });
+      expect(rejected.status).toBe(201);
+      expect(rejected.body).toMatchObject({ status: 'REJECTED', decisionNote: '증빙 불충분' });
+      expect(await attRow()).toBeUndefined();
+      expect((await create('ops')).status).toBe(201);
+      const list = (await (await as('ops')).get('/api/v1/excuse-requests?status=PENDING,REJECTED').expect(200)).body;
+      expect(list.total).toBe(2);
+      expect(list.items[0].status).toBe('PENDING'); // 대기 건이 먼저
+    });
+
+    it('권한·범위: SYS·EXEC 는 조회만, 강사는 본인 회차만 등록·승인하고 다른 강사 회차는 존재를 숨긴다', async () => {
+      const id = (await create('ops')).body.requestId as number;
+      await evidence('ops', id);
+      for (const who of ['sys', 'exec'] as const) {
+        expect((await (await as(who)).get('/api/v1/excuse-requests').expect(200)).body.total).toBe(1);
+        expect((await create(who)).status).toBe(403);
+        expect((await (await as(who)).post(`/api/v1/excuse-requests/${id}/approve`).send({})).status).toBe(403);
+      }
+      // ins2(다른 강사)는 목록에 안 보이고 상세는 404
+      expect((await (await as('ins2')).get('/api/v1/excuse-requests').expect(200)).body.total).toBe(0);
+      expect((await (await as('ins2')).get(`/api/v1/excuse-requests/${id}`)).status).toBe(404);
+      expect((await create('ins2')).status).toBe(404);
+      expect((await (await as('ins2')).post(`/api/v1/excuse-requests/${id}/approve`).send({})).status).toBe(404);
+      // ins1(본인 회차)은 조회·승인 가능
+      expect((await (await as('ins1')).get('/api/v1/excuse-requests').expect(200)).body.total).toBe(1);
+      expect((await (await as('ins1')).post(`/api/v1/excuse-requests/${id}/approve`).send({})).status).toBe(201);
+      expect(await attRow()).toMatchObject({ attendance_status: 'EXCUSED' });
+    });
+
+    it('확정 등록되지 않은 훈련생·휴강 회차는 신청할 수 없다', async () => {
+      expect((await create('ops', tApplied1)).status).toBe(409);
+      await (await as('ops')).post(`/api/v1/schedules/${s1}/cancel-class`).send({ reason: '휴강' });
+      expect((await create('ops')).status).toBe(409);
+    });
+  });
+
   // ── 공식 출결 대사 (S29, D-12 확정: CSV 업로드) ───────────────────────────
   describe('공식 출결 대사 (S29)', () => {
     const HEADER = 'round_no,trainee_name,birth_date,status,check_in,check_out\n';

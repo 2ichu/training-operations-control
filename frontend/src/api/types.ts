@@ -640,3 +640,38 @@ export interface DetectionRule {
   /** 도입하지 않은 규칙(RULE_01·02) — 옛 배포에 남은 행. 사용 안 함이며 수정·활성화할 수 없다 */
   retired: boolean
 }
+
+// S30 공결(사유결석) 신청·승인: /excuse-requests
+export type ExcuseStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+export interface ExcuseRequestSummary {
+  requestId: number
+  traineeId: number
+  traineeName: string
+  courseId: number
+  courseName: string
+  scheduleId: number
+  roundNo: number
+  classDate: string
+  reasonType: string
+  status: ExcuseStatus
+  requestedAt: string
+  decidedAt: string | null
+  evidenceCount: number
+}
+export interface ExcuseEvidence {
+  evidenceId: number
+  fileName: string
+  fileSize: number | string
+  mimeType: string
+  uploadedAt: string
+}
+export interface ExcuseRequestDetail extends Omit<ExcuseRequestSummary, 'evidenceCount'> {
+  reasonNote: string | null
+  requestedByName: string
+  decidedByName: string | null
+  decisionNote: string | null
+  attendanceId: number | null
+  /** 신청 시점 현재 출결 상태(기록 없으면 null) */
+  currentAttendanceStatus: string | null
+  evidence: ExcuseEvidence[]
+}

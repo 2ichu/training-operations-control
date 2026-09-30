@@ -84,4 +84,7 @@ export const AUDITABLE_TABLES: Record<string, AuditableTable> = {
   submission: { pk: ['submission_id'], auditColumns: 'none' },
   submission_review_log: { pk: ['log_id'], auditColumns: 'none' },
   attachment: { pk: ['attachment_id'], auditColumns: 'none' },
+  // 공결 신청(S30). 상태 변경은 audit_log before/after 로 추적하고, 증빙 원본은 append-only 다.
+  excuse_request: { pk: ['request_id'], auditColumns: 'none' },
+  excuse_evidence: { pk: ['evidence_id'], auditColumns: 'none' },
 };

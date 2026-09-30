@@ -6,6 +6,7 @@ import { useApi } from '../../api/useApi'
 import { useCourseOptions } from '../../api/useCourseOptions'
 import { useAuth } from '../../auth/auth-context'
 import { EmptyText, ErrorText, Loading } from '../../components/Feedback'
+import { Modal } from '../../components/Modal'
 import { AttendanceBadge } from '../../components/StatusBadge'
 import { formatTime, formatTimeOn, kstIso, todayKst } from '../../format'
 import { ATTENDANCE_STATUS_LABELS, label, SOURCE_TYPE_LABELS } from '../../labels'
@@ -13,6 +14,22 @@ import { useUrlFilters } from '../../routing/useUrlFilters'
 import { AttendanceCorrectDialog } from './AttendanceCorrectDialog'
 
 type BatchAction = 'check-in' | 'check-out' | 'absence'
+
+// 강의실 출석 전광판 카드(상태별 인원). 색은 의미만: 출석=초록, 지각·조퇴=주황, 결석=빨강, 인정결석=파랑, 미출결=회색
+const BOARD = [
+  { status: 'PRESENT', tone: 'ok' },
+  { status: 'LATE', tone: 'warn' },
+  { status: 'EARLY_LEAVE', tone: 'warn' },
+  { status: 'ABSENT', tone: 'bad' },
+  { status: 'EXCUSED', tone: 'info' },
+  { status: 'NOT_CHECKED', tone: 'none' },
+] as const
+
+function countStatuses(items: RosterItem[]): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const r of items) if (r.displayStatus) out[r.displayStatus] = (out[r.displayStatus] ?? 0) + 1
+  return out
+}
 
 // S07 일일 출결(system-design 7-A, C1): 조회일·회차를 고르면 확정 훈련생 전체를 출결과 LEFT JOIN 한 명단을 보여준다.
 // 기록이 없는 훈련생은 저장되지 않은 계산값 "미출결"이고, 여기서 최초 입실 확인·결석 확정(INSERT)을 한다.
@@ -80,30 +97,34 @@ export function DailyAttendancePage() {
 function Roster({ schedule, canCheckIn, canCheckOut, canAbsence }: { schedule: ScheduleListItem; canCheckIn: boolean; canCheckOut: boolean; canAbsence: boolean }) {
   const { can } = useAuth()
   const [statusFilter, setStatusFilter] = useState('')
-  const roster = useApi(
-    (signal) => api.get<{ items: RosterItem[] }>(`/schedules/${schedule.scheduleId}/attendance-roster`, { status: statusFilter }, signal).then((r) => r.items),
-    `${schedule.scheduleId}:${statusFilter}`,
-  )
+  // 요약 카드(출석·지각·결석…)는 항상 전체 명단 기준이라 상태 필터는 받은 뒤 화면에서 건다
+  const roster = useApi((signal) => api.get<{ items: RosterItem[] }>(`/schedules/${schedule.scheduleId}/attendance-roster`, undefined, signal).then((r) => r.items), String(schedule.scheduleId))
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [time, setTime] = useState('')
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState<RosterItem | null>(null)
-  const items = roster.data ?? []
+  const all = roster.data ?? []
+  const items = statusFilter ? all.filter((r) => r.displayStatus === statusFilter) : all
+  const counts = countStatuses(all)
   const picked = items.filter((r) => selected.has(r.traineeId))
   const notChecked = picked.filter((r) => r.attendanceId === null)
   // 퇴실 확인: 기록이 있고 퇴실 시각이 비어 있으며 공식 출결이 아닌 행(공식 값은 읽기전용 — S07 예외 상황)
   const checkOutTargets = picked.filter((r) => r.attendanceId !== null && r.checkOutTime === null && r.sourceType !== 'OFFICIAL')
   const selectable = canCheckIn || canCheckOut || canAbsence
 
-  const run = async (action: BatchAction) => {
+  // 1-Click 일괄: 기록이 없는 훈련생 전원을 한 번에 입실 확인(출석) 처리한다. 이후 결석·지각 등 예외만 개별 수정한다.
+  const unchecked = all.filter((r) => r.attendanceId === null)
+  const [confirmAll, setConfirmAll] = useState(false)
+
+  const run = async (action: BatchAction, targets: RosterItem[] = notChecked) => {
     setBusy(true)
     setMessage(null)
     const at = time ? kstIso(`${schedule.classDate}T${time}`) : undefined
     try {
       let result: AttendanceBatchResult
-      if (action === 'check-in') result = await api.post(`/schedules/${schedule.scheduleId}/attendance/check-in`, { trainee_ids: notChecked.map((r) => r.traineeId), ...(at ? { check_in_time: at } : {}) })
-      else if (action === 'absence') result = await api.post(`/schedules/${schedule.scheduleId}/attendance/confirm-absence`, { trainee_ids: notChecked.map((r) => r.traineeId) })
+      if (action === 'check-in') result = await api.post(`/schedules/${schedule.scheduleId}/attendance/check-in`, { trainee_ids: targets.map((r) => r.traineeId), ...(at ? { check_in_time: at } : {}) })
+      else if (action === 'absence') result = await api.post(`/schedules/${schedule.scheduleId}/attendance/confirm-absence`, { trainee_ids: targets.map((r) => r.traineeId) })
       else result = await api.post('/attendance/check-out', { attendance_ids: checkOutTargets.map((r) => r.attendanceId), ...(at ? { check_out_time: at } : {}) })
       const done = (result.created ?? result.updated ?? []).length
       const skipped = result.alreadyExists.length + (result.notEligible?.length ?? 0) + (result.notFound?.length ?? 0)
@@ -121,6 +142,19 @@ function Roster({ schedule, canCheckIn, canCheckOut, canAbsence }: { schedule: S
 
   return (
     <>
+      {roster.data && (
+        <ul className="board" aria-label="출결 현황 요약">
+          {BOARD.map((b) => (
+            <li key={b.status} className={`board-card board-${b.tone}`}>
+              <button type="button" aria-pressed={statusFilter === b.status} onClick={() => setStatusFilter(statusFilter === b.status ? '' : b.status)}>
+                <span className="board-label">{label(ATTENDANCE_STATUS_LABELS, b.status)}</span>{' '}
+                <span className="board-value">{counts[b.status] ?? 0}명</span>
+              </button>
+            </li>
+          ))}
+          <li className="board-total">전체 {all.length}명</li>
+        </ul>
+      )}
       <div className="filters">
         <label>
           출결상태
@@ -154,6 +188,11 @@ function Roster({ schedule, canCheckIn, canCheckOut, canAbsence }: { schedule: S
           {canCheckOut && (
             <button type="button" onClick={() => void run('check-out')} disabled={busy || checkOutTargets.length === 0}>
               퇴실 확인 ({checkOutTargets.length})
+            </button>
+          )}
+          {canCheckIn && (
+            <button type="button" className="button-primary" onClick={() => setConfirmAll(true)} disabled={busy || unchecked.length === 0}>
+              미입력 전체 출석 처리 ({unchecked.length})
             </button>
           )}
           {canAbsence && (
@@ -237,6 +276,31 @@ function Roster({ schedule, canCheckIn, canCheckOut, canAbsence }: { schedule: S
           </table>
         )}
       </div>
+
+      {confirmAll && (
+        <Modal title="전체 출석 처리" onClose={() => setConfirmAll(false)}>
+          <p>
+            아직 출결이 기록되지 않은 {unchecked.length}명을 모두 입실 확인(출석) 처리합니다. 처리 시각은 {time ? `${time}` : '현재 시각'}이며, 지각·조퇴는 시각으로 자동 판정됩니다.
+            결석·지각 등 예외는 처리 후 개별로 수정하세요.
+          </p>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="button-primary"
+              disabled={busy}
+              onClick={() => {
+                setConfirmAll(false)
+                void run('check-in', unchecked)
+              }}
+            >
+              전체 출석 처리
+            </button>
+            <button type="button" onClick={() => setConfirmAll(false)}>
+              취소
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {editing && editing.attendanceId !== null && (
         <AttendanceCorrectDialog
