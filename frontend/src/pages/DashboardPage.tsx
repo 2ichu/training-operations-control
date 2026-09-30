@@ -3,23 +3,14 @@ import { api } from '../api/client'
 import type { CourseSummary, DashboardSummary, RosterItem } from '../api/types'
 import { useApi } from '../api/useApi'
 import { useAuth, useCurrentUser } from '../auth/auth-context'
-import { Bar, Donut, type Segment, TimeSpan } from '../components/Charts'
+import { Bar, Donut, type Segment } from '../components/Charts'
 import { EmptyText, ErrorText, Loading } from '../components/Feedback'
 import { CaseStatusBadge } from '../components/StatusBadge'
 import { formatDateTime, formatTime, formatTrainees } from '../format'
-import { ATTENDANCE_STATUS_LABELS, CASE_STATUS_LABELS, CASE_STATUS_ORDER, label, RULE_LABELS, SCHEDULE_STATUS_LABELS } from '../labels'
+import { ATTENDANCE_STATUS_LABELS, label, RULE_LABELS, SCHEDULE_STATUS_LABELS } from '../labels'
 
 // 도식 색: 색만으로 구분하지 않도록 항상 텍스트(범례·표)를 함께 표시한다. 채도를 낮춰 쓰고, 노랑=확인 필요, 주황=조치·지각·조퇴, 빨강=결석, 파랑=확인 중·인정결석, 초록=정상·완료
 const ATTENDANCE_COLORS: Record<string, string> = { PRESENT: '#5a9a6e', LATE: '#c98a3a', EARLY_LEAVE: '#d9ac66', ABSENT: '#c0524a', EXCUSED: '#5b7db1', NOT_CHECKED: '#a8afba' }
-const CASE_COLORS: Record<string, string> = {
-  NEEDS_CHECK: '#d1a63a',
-  PRIORITY_CHECK: '#c98a3a',
-  FOLLOW_UP: '#bf7a35',
-  ACTION_REQUIRED: '#a8622e',
-  IN_REVIEW: '#5b7db1',
-  CONFIRMED: '#5a9a6e',
-  ACTION_DONE: '#457d58',
-}
 
 // S01 대시보드(system-design 7.1). 조회 전용이며 역할별 범위는 서버가 정한다(INSTRUCTOR 는 본인 과정만).
 // 필터(날짜·과정·담당)는 URL 쿼리에 두어 새로고침·공유 시에도 유지된다.
@@ -184,97 +175,54 @@ export function DashboardPage() {
             {data.todaySchedules.length === 0 ? (
               <EmptyText>{date ? '해당 날짜에 예정된 교육이 없습니다.' : '오늘 예정된 교육이 없습니다.'}</EmptyText>
             ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>과정</th>
-                    <th>회차</th>
-                    <th>시간</th>
-                    <th className="bar-col">시간대</th>
-                    <th>강사</th>
-                    <th>상태</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.todaySchedules.map((s) => (
-                    <tr key={s.scheduleId} className={canOpenCourse ? 'clickable' : undefined} onClick={canOpenCourse ? () => navigate(`/courses/${s.courseId}`) : undefined}>
-                      <td>{canOpenCourse ? <Link to={`/courses/${s.courseId}`}>{s.courseName}</Link> : s.courseName}</td>
-                      <td>{s.roundNo}회차</td>
-                      <td>
-                        {formatTime(s.startTime)}~{formatTime(s.endTime)}
-                      </td>
-                      <td className="bar-col">
-                        <TimeSpan start={s.startTime} end={s.endTime} />
-                      </td>
-                      <td>{s.instructorName ?? '-'}</td>
-                      <td>{label(SCHEDULE_STATUS_LABELS, s.displayStatus)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <ul className="session-list">
+                {data.todaySchedules.map((s) => (
+                  <li key={s.scheduleId}>
+                    {canOpenCourse ? <Link to={`/courses/${s.courseId}`}>{s.courseName}</Link> : <span className="session-name">{s.courseName}</span>}
+                    <span className="session-meta">
+                      <strong>{s.roundNo}회차</strong> {formatTime(s.startTime)}~{formatTime(s.endTime)} · {s.instructorName ?? '-'} · {label(SCHEDULE_STATUS_LABELS, s.displayStatus)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             )}
             {attendanceToday.data && attendanceToday.data.length > 0 && <AttendanceToday roster={attendanceToday.data} />}
           </section>
 
           <section className="dash-cases" aria-labelledby="case-title">
             <h2 id="case-title">확인 필요 사항</h2>
-            <div className="case-overview">
-              <div className="case-donut">
-                <Donut
-                  size={148}
-                  segments={CASE_STATUS_ORDER.map((status): Segment => ({ key: status, label: label(CASE_STATUS_LABELS, status), value: byStatus.get(status) ?? 0, color: CASE_COLORS[status] ?? '#a8afba' }))}
-                  centerValue={CASE_STATUS_ORDER.reduce((sum, status) => sum + (byStatus.get(status) ?? 0), 0)}
-                  centerLabel="전체 건"
-                />
-              <table className="compact legend">
-                <tbody>
-                  {CASE_STATUS_ORDER.map((status) => (
-                    <tr key={status}>
-                      <td>
-                        <span className="swatch" aria-hidden="true" style={{ background: CASE_COLORS[status] }} />
-                        {label(CASE_STATUS_LABELS, status)}
-                      </td>
-                      <td className="num">{byStatus.get(status) ?? 0}</td>
+            <div className="case-recent">
+              {data.verificationSummary.recent.length === 0 ? (
+                <EmptyText>확인이 필요한 건이 없습니다.</EmptyText>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>발생일시</th>
+                      <th>과정</th>
+                      <th>대상</th>
+                      <th>탐지유형</th>
+                      <th>상태</th>
+                      <th>담당자</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              </div>
-
-              <div className="case-recent">
-                <h3>최근 발생 건</h3>
-                {data.verificationSummary.recent.length === 0 ? (
-                  <EmptyText>확인이 필요한 건이 없습니다.</EmptyText>
-                ) : (
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>발생일시</th>
-                        <th>과정</th>
-                        <th>대상</th>
-                        <th>탐지유형</th>
-                        <th>상태</th>
-                        <th>담당자</th>
+                  </thead>
+                  <tbody>
+                    {data.verificationSummary.recent.map((c) => (
+                      <tr key={c.caseId} className={canOpenCase ? 'clickable' : undefined} onClick={canOpenCase ? () => navigate(`/verification-cases/${c.caseId}`) : undefined}>
+                        <td>{canOpenCase ? <Link to={`/verification-cases/${c.caseId}`}>{formatDateTime(c.detectedAt)}</Link> : formatDateTime(c.detectedAt)}</td>
+                        <td>{c.courseName}</td>
+                        <td>{formatTrainees(c.trainees.map((t) => t.name))}</td>
+                        <td>{label(RULE_LABELS, c.ruleCode)}</td>
+                        <td>
+                          <CaseStatusBadge status={c.status} />
+                        </td>
+                        <td>{c.assigneeName ?? '미지정'}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {data.verificationSummary.recent.map((c) => (
-                        <tr key={c.caseId} className={canOpenCase ? 'clickable' : undefined} onClick={canOpenCase ? () => navigate(`/verification-cases/${c.caseId}`) : undefined}>
-                          <td>{canOpenCase ? <Link to={`/verification-cases/${c.caseId}`}>{formatDateTime(c.detectedAt)}</Link> : formatDateTime(c.detectedAt)}</td>
-                          <td>{c.courseName}</td>
-                          <td>{formatTrainees(c.trainees.map((t) => t.name))}</td>
-                          <td>{label(RULE_LABELS, c.ruleCode)}</td>
-                          <td>
-                            <CaseStatusBadge status={c.status} />
-                          </td>
-                          <td>{c.assigneeName ?? '미지정'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
+                    ))}
+                  </tbody>
+                </table>
+              )}
               </div>
-            </div>
           </section>
         </div>
       )}

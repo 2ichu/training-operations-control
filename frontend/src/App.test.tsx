@@ -102,11 +102,9 @@ describe('대시보드 (S01)', () => {
 
     const today = await screen.findByRole('region', { name: '2026-09-28 회차' })
     expect(within(today).getByRole('link', { name: '웹개발 1기' })).toHaveAttribute('href', '/courses/3')
-    expect(within(today).getByText('09:00~18:00')).toBeInTheDocument()
+    expect(within(today).getByText(/09:00~18:00/)).toBeInTheDocument()
 
     const cases = screen.getByRole('region', { name: '확인 필요 사항' })
-    expect(within(cases).getByRole('row', { name: '확인필요 2' })).toBeInTheDocument()
-    expect(within(cases).getByRole('row', { name: '조치완료 0' })).toBeInTheDocument()
     expect(within(cases).getByRole('link', { name: '2026-09-28 10:05' })).toHaveAttribute('href', '/verification-cases/91')
     expect(within(cases).getByText('가 외 2명')).toBeInTheDocument()
     expect(within(cases).getByText('동일 환경 복수 출결')).toBeInTheDocument()

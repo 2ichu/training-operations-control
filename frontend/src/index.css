@@ -2361,3 +2361,63 @@ table.legend th {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   대시보드 간소화: 표·카드를 줄이고 필요한 정보만(요약 줄 · 처리할 업무 · 오늘 출결 · 최근 발생 건)
+   ════════════════════════════════════════════════════════════ */
+.dash-todo,
+.dash-today,
+.dash-cases {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.dashboard {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 26px 40px;
+}
+
+.session-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.session-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line-row);
+}
+
+.session-list a,
+.session-name {
+  font-weight: 600;
+}
+
+.session-meta {
+  color: #374151;
+}
+
+.session-meta strong {
+  color: var(--text-strong);
+}
+
+.att-today {
+  margin-top: 22px;
+}
+
+.att-today h3 {
+  border-bottom: 0;
+  padding: 0 0 2px;
+}
+
+.att-donut {
+  justify-content: flex-start;
+  gap: 40px;
+}
