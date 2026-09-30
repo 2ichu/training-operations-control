@@ -57,26 +57,3 @@ export function Bar({ value, max, color }: { value: number; max: number; color: 
     </div>
   )
 }
-
-/** 하루 시간축(기본 08:00~19:00) 위의 구간 막대 */
-export function TimeSpan({ start, end, from = 8, to = 19 }: { start: string; end: string; from?: number; to?: number }) {
-  const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
-  const span = (to - from) * 60
-  const left = Math.max(0, ((minutes(start) - from * 60) / span) * 100)
-  const width = Math.max(2, Math.min(100 - left, ((minutes(end) - minutes(start)) / span) * 100))
-  return (
-    <div className="timespan" aria-hidden="true">
-      <div className="timespan-fill" style={{ left: `${left}%`, width: `${width}%` }} />
-    </div>
-  )
-}
-
-/** 한 줄 누적 막대(구성비). 값이 0인 구간은 그리지 않는다. */
-export function StackBar({ segments }: { segments: Segment[] }) {
-  const total = segments.reduce((sum, x) => sum + x.value, 0)
-  return (
-    <div className="stackbar" aria-hidden="true">
-      {total === 0 ? <span className="stackbar-empty" /> : segments.filter((x) => x.value > 0).map((x) => <span key={x.key} style={{ flex: x.value, background: x.color }} />)}
-    </div>
-  )
-}

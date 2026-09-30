@@ -2771,3 +2771,60 @@ table.legend th {
 .kpi-ring strong {
   color: var(--text-strong);
 }
+
+/* ── 상단 카드: 가로로 긴 카드의 빈 공간을 줄이기 위해 왼쪽 숫자 + 오른쪽 링 도식 ─── */
+.kpi-strip {
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.kpi > a,
+.kpi > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'label ring'
+    'value ring';
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 2px;
+  padding: 12px 16px;
+  min-height: 86px;
+}
+
+.kpi-label {
+  grid-area: label;
+  align-self: end;
+  justify-content: flex-start;
+  gap: 4px;
+  width: auto;
+}
+
+.kpi-value {
+  grid-area: value;
+  align-self: start;
+  font-size: 32px;
+}
+
+.kpi-alert .kpi-value {
+  font-size: 36px;
+}
+
+.kpi-ring {
+  grid-area: ring;
+  width: auto;
+  margin: 0;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11.5px;
+  text-align: center;
+  color: #4b5563;
+}
+
+.kpi-ring .donut {
+  display: block;
+}
+
+.kpi-go {
+  margin-left: 2px;
+}

@@ -4,24 +4,14 @@ import { api } from '../api/client'
 import type { CourseSummary, DashboardSummary, RosterItem } from '../api/types'
 import { useApi } from '../api/useApi'
 import { useAuth, useCurrentUser } from '../auth/auth-context'
-import { Bar, Donut, type Segment, StackBar, TimeSpan } from '../components/Charts'
+import { Bar, Donut, type Segment } from '../components/Charts'
 import { EmptyText, ErrorText, Loading } from '../components/Feedback'
 import { CaseStatusBadge } from '../components/StatusBadge'
 import { formatDateTime, formatTime, formatTrainees } from '../format'
-import { ATTENDANCE_STATUS_LABELS, CASE_STATUS_LABELS, CASE_STATUS_ORDER, label, RULE_LABELS, SCHEDULE_STATUS_LABELS } from '../labels'
+import { ATTENDANCE_STATUS_LABELS, CASE_STATUS_ORDER, label, RULE_LABELS, SCHEDULE_STATUS_LABELS } from '../labels'
 
 // 도식 색: 색만으로 구분하지 않도록 항상 텍스트(범례·표)를 함께 표시한다. 채도를 낮춰 쓰고, 노랑=확인 필요, 주황=조치·지각·조퇴, 빨강=결석, 파랑=확인 중·인정결석, 초록=정상·완료
 const ATTENDANCE_COLORS: Record<string, string> = { PRESENT: '#5a9a6e', LATE: '#c98a3a', EARLY_LEAVE: '#d9ac66', ABSENT: '#c0524a', EXCUSED: '#5b7db1', NOT_CHECKED: '#a8afba' }
-
-const CASE_COLORS: Record<string, string> = {
-  NEEDS_CHECK: '#d1a63a',
-  PRIORITY_CHECK: '#c98a3a',
-  FOLLOW_UP: '#bf7a35',
-  ACTION_REQUIRED: '#a8622e',
-  IN_REVIEW: '#5b7db1',
-  CONFIRMED: '#5a9a6e',
-  ACTION_DONE: '#457d58',
-}
 
 // S01 대시보드(system-design 7.1). 조회 전용이며 역할별 범위는 서버가 정한다(INSTRUCTOR 는 본인 과정만).
 // 필터(날짜·과정·담당)는 URL 쿼리에 두어 새로고침·공유 시에도 유지된다.
@@ -92,41 +82,63 @@ export function DashboardPage() {
         { key: 'rev', group: '결과물', text: '결과물 미검토', count: data.counts.reviewPending, to: to('S19', '/submissions'), emphasis: false },
       ]
     : []
-  // 상단 요약 카드의 작은 도식: 수업 시간대 / 확인 필요 상태 구성 / 출결 입력률 / 미처리 업무 구성
+  // 상단 요약 카드 오른쪽의 링 도식(각 항목의 "얼마나 진행/처리됐는가"): 수업 진행률 / 확인 건 처리율 / 출결 입력률 / 미처리 구성
   const rosterAll = attendanceToday.data ?? []
   const rosterTotal = rosterAll.filter((r) => r.displayStatus).length
   const rosterDone = rosterAll.filter((r) => r.displayStatus && r.displayStatus !== 'NOT_CHECKED').length
-  const vizToday = data ? (
-    <div className="kpi-timeline">
-      {data.todaySchedules.slice(0, 3).map((x) => (
-        <TimeSpan key={x.scheduleId} start={x.startTime} end={x.endTime} />
-      ))}
-      <span className="kpi-axis" aria-hidden="true">
-        <i>08</i>
-        <i>13</i>
-        <i>19</i>
-      </span>
+  const ring = (segments: Segment[], text: string): ReactNode => (
+    <div className="kpi-ring">
+      <Donut size={58} segments={segments} centerValue="" centerLabel="" />
+      <span>{text}</span>
     </div>
-  ) : null
-  const vizCases = data ? <StackBar segments={CASE_STATUS_ORDER.map((st): Segment => ({ key: st, label: label(CASE_STATUS_LABELS, st), value: byStatus.get(st) ?? 0, color: CASE_COLORS[st] ?? '#a8afba' }))} /> : null
+  )
+  const pct = (n: number, d: number) => (d === 0 ? '-' : `${Math.round((n / d) * 100)}%`)
+  const lessons = data?.todaySchedules.filter((x) => x.displayStatus !== 'CANCELLED') ?? []
+  const lessonsDone = lessons.filter((x) => x.displayStatus === 'COMPLETED').length
+  const caseTotal = CASE_STATUS_ORDER.reduce((sum, st) => sum + (byStatus.get(st) ?? 0), 0)
+  const caseDone = (byStatus.get('CONFIRMED') ?? 0) + (byStatus.get('ACTION_DONE') ?? 0)
+  const vizToday =
+    data && lessons.length > 0
+      ? ring(
+          [
+            { key: 'd', label: '진행완료', value: lessonsDone, color: '#3f6fb5' },
+            { key: 'r', label: '예정', value: lessons.length - lessonsDone, color: '#cfe0f8' },
+          ],
+          `진행 ${lessonsDone}/${lessons.length}`,
+        )
+      : null
+  const vizCases =
+    data && caseTotal > 0
+      ? ring(
+          [
+            { key: 'd', label: '처리', value: caseDone, color: '#5a9a6e' },
+            { key: 'r', label: '진행 중', value: caseTotal - caseDone, color: '#e3b64a' },
+          ],
+          `처리율 ${pct(caseDone, caseTotal)}`,
+        )
+      : null
   const vizAtt =
-    data && rosterTotal > 0 ? (
-      <div className="kpi-ring">
-        <Donut size={40} segments={[{ key: 'done', label: '입력', value: rosterDone, color: '#5a9a6e' }, { key: 'todo', label: '미입력', value: rosterTotal - rosterDone, color: '#d9902f' }]} centerValue="" centerLabel="" />
-        <span>
-          출결 입력 <strong>{rosterDone}/{rosterTotal}명</strong>
-        </span>
-      </div>
-    ) : null
-  const vizLog = data ? (
-    <StackBar
-      segments={[
-        { key: 'a', label: '미출결', value: data.counts.notCheckedIn + data.counts.checkoutMissing, color: '#c9683a' },
-        { key: 'b', label: '운영일지', value: data.counts.operationLogMissing, color: '#6b7f9e' },
-        { key: 'c', label: '결과물', value: data.counts.submissionMissing + data.counts.reviewPending, color: '#a8afba' },
-      ]}
-    />
-  ) : null
+    data && rosterTotal > 0
+      ? ring(
+          [
+            { key: 'd', label: '입력', value: rosterDone, color: '#5a9a6e' },
+            { key: 'r', label: '미입력', value: rosterTotal - rosterDone, color: '#e3a06a' },
+          ],
+          `입력 ${rosterDone}/${rosterTotal}명`,
+        )
+      : null
+  const missing = data ? [data.counts.notCheckedIn + data.counts.checkoutMissing, data.counts.operationLogMissing, data.counts.submissionMissing + data.counts.reviewPending] : [0, 0, 0]
+  const vizLog =
+    missing.some((n) => n > 0)
+      ? ring(
+          [
+            { key: 'a', label: '출결', value: missing[0], color: '#c9683a' },
+            { key: 'b', label: '운영일지', value: missing[1], color: '#6b7f9e' },
+            { key: 'c', label: '결과물', value: missing[2], color: '#b3bac6' },
+          ],
+          '미처리 구성',
+        )
+      : null
   const kpis: { key: string; text: string; value: number; to: string | null; tone: 'info' | 'alert' | 'warn' | 'plain'; viz: ReactNode }[] = data
     ? [
         { key: 'today', text: '오늘 수업', value: data.todaySchedules.length, to: null, tone: 'info', viz: vizToday },
