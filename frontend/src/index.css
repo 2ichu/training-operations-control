@@ -1735,3 +1735,243 @@ table.legend td:first-child {
 .dash-todo .hint {
   max-width: 60ch;
 }
+
+/* ════════════════════════════════════════════════════════════
+   시각 다듬기(정보 구조·배치는 그대로): 선 3단계, 링크·강조색 절제, 조밀한 도식
+   ════════════════════════════════════════════════════════════ */
+:root {
+  --line-section: #8f99a8; /* 구역 경계: 가장 진함 */
+  --line-head: #c5cad3; /* 표 머리글 */
+  --line-row: #eceef2; /* 일반 행: 매우 연함 */
+  --link: #3f5f92;
+  --text: #1f2937;
+  --text-muted: #667085;
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* 상단 사용자 영역의 링크는 강조하지 않는다 */
+.app-user a,
+.app-user .button-link {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.app-user a:hover,
+.app-user .button-link:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.app-user-name {
+  color: var(--text);
+}
+
+/* 표: 선 3단계 */
+th,
+td {
+  border-bottom: 1px solid var(--line-row);
+}
+
+thead th {
+  border-top: 1px solid var(--line-head);
+  border-bottom: 1px solid var(--line-head);
+  background: #f4f5f7;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+tbody tr:last-child td,
+tbody tr:last-child th {
+  border-bottom-color: var(--line-row);
+}
+
+tbody tr:hover {
+  background: #f7f8fa;
+}
+
+.panel > h2:first-child,
+.dashboard h2 {
+  border-bottom: 1px solid var(--line-section);
+  font-weight: 600;
+  color: #1f2a3d;
+}
+
+.page-header {
+  border-bottom: 1px solid var(--line-section);
+}
+
+.page-header h1 {
+  font-weight: 600;
+}
+
+/* 표 안의 링크는 데이터처럼 읽히게 밑줄 없이, 마우스를 올리면 밑줄 */
+td a,
+th a {
+  color: var(--link);
+}
+
+/* 상단 요약: 하나의 정보 영역(카드 4개가 아니라 한 줄) */
+.kpi-strip {
+  border: 0;
+  border-top: 1px solid var(--line-section);
+  border-bottom: 1px solid var(--line-head);
+  background: transparent;
+}
+
+.kpi + .kpi {
+  border-left: 1px solid var(--line-head);
+}
+
+.kpi > a,
+.kpi > div {
+  padding: 5px 14px;
+}
+
+.kpi > a:hover {
+  background: #f7f8fa;
+  text-decoration: none;
+}
+
+.kpi-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.kpi-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2b3548;
+}
+
+/* 업무상 확인이 필요한 항목만 절제해서 강조 */
+.kpi-alert {
+  box-shadow: none;
+}
+
+.kpi-alert .kpi-value {
+  color: #8a5a00;
+}
+
+.kpi-alert .kpi-label {
+  color: #6b5a2a;
+}
+
+/* 처리할 업무: 막대는 보조 정보 */
+.bar-col {
+  width: 18%;
+  min-width: 64px;
+}
+
+.bar,
+.timespan {
+  height: 4px;
+}
+
+.bar-fill {
+  opacity: 0.85;
+}
+
+table.todo td a {
+  color: var(--link);
+}
+
+table.todo td.num {
+  font-weight: 500;
+  color: #2b3548;
+}
+
+table.todo tr.zero td.num {
+  color: #a3aab6;
+  font-weight: 400;
+}
+
+table.todo td.group {
+  font-size: 11px;
+  color: #8a93a2;
+}
+
+/* 도식은 업무 정보를 보조: 작게, 숫자는 또렷하게 */
+.donut-value {
+  font-size: 14px;
+}
+
+.donut-label {
+  font-size: 9px;
+}
+
+.att-donut,
+.case-donut {
+  gap: 12px;
+  padding-top: 6px;
+}
+
+.legend-list {
+  gap: 2px 14px;
+}
+
+.legend-list strong {
+  font-weight: 600;
+  color: #1f2a3d;
+}
+
+.att-today {
+  margin-top: 16px;
+}
+
+.att-today h3 {
+  border-bottom: 1px solid var(--line-head);
+  font-weight: 600;
+}
+
+/* 하단: 왼쪽 상태 요약은 작게, 오른쪽 최근 발생 건이 주 정보 */
+.case-overview {
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 28px;
+}
+
+.case-overview .donut {
+  width: 84px;
+  height: 84px;
+}
+
+.case-overview h3 {
+  border-bottom: 1px solid var(--line-head);
+  font-weight: 600;
+  color: #4b5563;
+}
+
+table.legend td,
+table.legend th {
+  font-size: 12px;
+  color: #4b5563;
+}
+
+/* 섹션 간 여백은 넉넉히, 표 안 여백은 조밀하게 */
+.dashboard {
+  gap: 24px 32px;
+}
+
+.dashboard .hint {
+  color: #8a93a2;
+  font-size: 11px;
+}
+
+.badge {
+  font-size: 11.5px;
+}
+
+.badge-neutral {
+  color: #5b6472;
+}
+
+.filters label {
+  color: #6b7280;
+}
