@@ -21,13 +21,16 @@ export function CourseStatusBadge({ status }: { status: string }) {
   return <span className={`badge badge-${tone}`}>{label(COURSE_STATUS_LABELS, status)}</span>
 }
 
+// 출결 상태: 정상(출석)은 절제된 외곽선, 지각·조퇴=주황, 결석=빨강, 인정결석=파랑, 미출결=점선(계산값)
+const ATTENDANCE_TONE: Record<string, string> = { PRESENT: 'badge-neutral', LATE: 'badge-action', EARLY_LEAVE: 'badge-action', ABSENT: 'badge-danger', EXCUSED: 'badge-info', NOT_CHECKED: 'badge-computed' }
+
 // 출결 상태. "미출결"은 저장값이 아닌 계산값이라 점선 테두리로 구분한다(system-design S07). 휴강 회차(null)는 표시만.
 export function AttendanceBadge({ status, short = false }: { status: string | null; short?: boolean }) {
   if (status === null) return <span className="muted">{short ? '휴' : '휴강'}</span>
   const text = short ? label(ATTENDANCE_SHORT_LABELS, status) : label(ATTENDANCE_STATUS_LABELS, status)
   const title = short ? label(ATTENDANCE_STATUS_LABELS, status) : undefined
   return (
-    <span className={status === 'NOT_CHECKED' ? 'badge badge-computed' : status === 'PRESENT' ? 'badge badge-neutral' : 'badge badge-muted'} title={title}>
+    <span className={`badge ${ATTENDANCE_TONE[status] ?? 'badge-muted'}`} title={title}>
       {text}
     </span>
   )

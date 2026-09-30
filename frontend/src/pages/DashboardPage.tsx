@@ -166,7 +166,7 @@ export function DashboardPage() {
               </thead>
               <tbody>
                 {todo.map((t, i) => (
-                  <tr key={t.key} className={t.count > 0 ? undefined : 'zero'}>
+                  <tr key={t.key} className={[t.count > 0 ? '' : 'zero', i === 0 || todo[i - 1].group !== t.group ? 'group-start' : ''].filter(Boolean).join(' ') || undefined}>
                     <td className="group">{i === 0 || todo[i - 1].group !== t.group ? t.group : ''}</td>
                     <th scope="row">{t.text}</th>
                     <td className="num">{t.count}</td>
@@ -294,7 +294,7 @@ function AttendanceToday({ roster }: { roster: RosterItem[] }) {
       <h3>오늘 출결 현황 <span className="muted">(입력 {done}/{total}명)</span></h3>
       <div className="att-donut">
         <Donut
-          size={92}
+          size={104}
           segments={order.map((k): Segment => ({ key: k, label: label(ATTENDANCE_STATUS_LABELS, k), value: counts.get(k) ?? 0, color: ATTENDANCE_COLORS[k] }))}
           centerValue={total === 0 ? '-' : `${Math.round((done / total) * 100)}%`}
           centerLabel="입력률"
