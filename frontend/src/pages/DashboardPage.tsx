@@ -82,22 +82,14 @@ export function DashboardPage() {
         { key: 'rev', group: '결과물', text: '결과물 미검토', count: data.counts.reviewPending, to: to('S19', '/submissions'), emphasis: false },
       ]
     : []
-  // 상단 요약은 "구분(그룹)" 단위로만 보여 주고, 개별 업무 건수는 아래 처리할 업무 표에서 본다(중복 제거).
-  const GROUP_COLORS: Record<string, string> = { '확인·승인': '#d99a00', 출결: '#c9683a', 운영: '#5f7396', 결과물: '#8d99ad' }
-  const groups = [...new Set(todo.map((t) => t.group))].map((name, index) => {
-    const items = todo.filter((t) => t.group === name)
-    return { name, index, count: items.reduce((sum, t) => sum + t.count, 0), main: items.find((t) => t.to) ?? items[0], color: GROUP_COLORS[name] ?? '#a8afba' }
-  })
-  const openTotal = groups.reduce((sum, g) => sum + g.count, 0)
-  // 그룹을 누르면 아래 표의 해당 구분으로 이동하고 잠시 강조한다
-  const goToGroup = (index: number) => {
-    const el = document.getElementById(`todo-group-${index}`)
-    if (!el) return
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    const rows = document.querySelectorAll(`[data-group-index="${index}"]`)
-    rows.forEach((r) => r.classList.add('flash'))
-    window.setTimeout(() => rows.forEach((r) => r.classList.remove('flash')), 1600)
-  }
+  // 상단 "오늘 운영 상태" 밴드: 수업 진행 / 출결 입력 / 확인 필요(업무 수치는 아래 처리할 업무 표에서 본다)
+  const rosterAll = attendanceToday.data ?? []
+  const rosterTotal = rosterAll.filter((r) => r.displayStatus).length
+  const rosterDone = rosterAll.filter((r) => r.displayStatus && r.displayStatus !== 'NOT_CHECKED').length
+  const lessons = data?.todaySchedules.filter((x) => x.displayStatus !== 'CANCELLED') ?? []
+  const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
+  const AXIS_FROM = 8
+  const AXIS_TO = 19
 
   return (
     <section className="page">
@@ -132,46 +124,59 @@ export function DashboardPage() {
 
       {data && (
         <div className={summary.status === 'loading' ? 'dashboard is-refreshing' : 'dashboard'}>
-          <section className="brief" aria-label="주요 현황">
-            <div className="brief-head">
-              <div className="brief-total">
-                <span className="brief-caption">오늘 처리할 업무</span>
-                <span className="brief-number">
-                  {openTotal}
-                  <span className="brief-unit">건</span>
-                </span>
-              </div>
-              {openTotal > 0 && (
-                <div className="brief-bar" role="group" aria-label="업무 구분별 비율">
-                  {groups
-                    .filter((g) => g.count > 0)
-                    .map((g) => (
-                      <button key={g.name} type="button" className="brief-seg" style={{ flex: g.count, background: g.color }} title={`${g.name} ${g.count}건 (${Math.round((g.count / openTotal) * 100)}%)`} aria-label={`${g.name} ${g.count}건 — 아래 표에서 보기`} onClick={() => goToGroup(g.index)}>
-                        <span>{g.name} {g.count}</span>
-                      </button>
-                    ))}
+          <section className="ops-band" aria-label="오늘 운영 상태">
+            <div className="ops-item">
+              <span className="ops-label">오늘 수업</span>
+              <span className="ops-value">
+                {lessons.length}
+                <small>건</small>
+              </span>
+              {lessons.length > 0 ? (
+                <div className="ops-axis" aria-hidden="true">
+                  {lessons.slice(0, 3).map((x) => (
+                    <span
+                      key={x.scheduleId}
+                      className="ops-block"
+                      style={{ left: `${((minutes(x.startTime) - AXIS_FROM * 60) / ((AXIS_TO - AXIS_FROM) * 60)) * 100}%`, width: `${((minutes(x.endTime) - minutes(x.startTime)) / ((AXIS_TO - AXIS_FROM) * 60)) * 100}%` }}
+                    />
+                  ))}
+                  <i className="ops-tick" style={{ left: '0%' }}>08</i>
+                  <i className="ops-tick" style={{ left: '45%' }}>13</i>
+                  <i className="ops-tick" style={{ left: '92%' }}>19</i>
                 </div>
+              ) : (
+                <span className="ops-sub">예정된 수업 없음</span>
               )}
             </div>
-            <ul className="brief-groups">
-              {groups.map((g) => (
-                <li key={g.name} style={{ borderTopColor: g.color }} className={g.count === 0 ? 'zero' : undefined}>
-                  <button type="button" className="brief-group-main" onClick={() => goToGroup(g.index)} aria-label={`${g.name} ${g.count}건 — 아래 표에서 보기`}>
-                    <span className="brief-group-name">{g.name}</span>
-                    <span className="brief-group-num">
-                      {g.count}
-                      <small>건</small>
-                    </span>
-                    <span className="brief-group-pct">{openTotal > 0 ? `${Math.round((g.count / openTotal) * 100)}%` : '-'}</span>
-                  </button>
-                  {g.main?.to && g.count > 0 && (
-                    <Link className="brief-group-go" to={g.main.to}>
-                      화면으로 ›
-                    </Link>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <div className="ops-item">
+              <span className="ops-label">출결 입력</span>
+              <span className="ops-value">
+                {rosterTotal > 0 ? `${rosterDone}/${rosterTotal}` : '-'}
+                {rosterTotal > 0 && <small>명</small>}
+              </span>
+              {rosterTotal > 0 ? (
+                <div className="ops-progress" aria-hidden="true">
+                  <span style={{ width: `${(rosterDone / rosterTotal) * 100}%` }} />
+                  <em>{Math.round((rosterDone / rosterTotal) * 100)}%</em>
+                </div>
+              ) : (
+                <span className="ops-sub">오늘 출결 명단 없음</span>
+              )}
+            </div>
+            <div className={needsCheck > 0 ? 'ops-item ops-alert' : 'ops-item'}>
+              <span className="ops-label">확인 필요</span>
+              <span className="ops-value">
+                {needsCheck}
+                <small>건</small>
+              </span>
+              {todo[0]?.to && needsCheck > 0 ? (
+                <Link className="ops-go" to={todo[0].to}>
+                  확인하기 ›
+                </Link>
+              ) : (
+                <span className="ops-sub">처리할 건 없음</span>
+              )}
+            </div>
           </section>
 
           <section className="dash-todo" aria-labelledby="todo-title">
@@ -189,7 +194,7 @@ export function DashboardPage() {
               </thead>
               <tbody>
                 {todo.map((t, i) => (
-                  <tr key={t.key} data-group-index={groups.findIndex((g) => g.name === t.group)} id={i === 0 || todo[i - 1].group !== t.group ? `todo-group-${groups.findIndex((g) => g.name === t.group)}` : undefined} className={[t.count > 0 ? '' : 'zero', i === 0 || todo[i - 1].group !== t.group ? 'group-start' : ''].filter(Boolean).join(' ') || undefined}>
+                  <tr key={t.key} className={[t.count > 0 ? '' : 'zero', i === 0 || todo[i - 1].group !== t.group ? 'group-start' : ''].filter(Boolean).join(' ') || undefined}>
                     <td className="group">{i === 0 || todo[i - 1].group !== t.group ? t.group : ''}</td>
                     <th scope="row">{t.text}</th>
                     <td className="num">{t.count}</td>

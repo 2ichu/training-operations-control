@@ -2830,181 +2830,169 @@ table.legend th {
 }
 
 /* ════════════════════════════════════════════════════════════
-   상단 브리핑: 총건수 + 구분별 누적 막대(구간을 누르면 표로 이동) + 구분별 요약 4칸
+   상단 "오늘 운영 상태" 밴드: 카드 없이 한 줄(세로 구분선), 수업 진행 · 출결 입력 · 확인 필요
    ════════════════════════════════════════════════════════════ */
-.brief {
+.ops-band {
   grid-column: 1 / -1;
-  padding: 16px 20px 16px;
-  border: 1px solid #dfe4ec;
-  border-radius: 10px;
-  background: linear-gradient(180deg, #f7f9fc 0%, #ffffff 100%);
+  display: grid;
+  grid-template-columns: 1.3fr 1.3fr 1fr;
+  border-top: 2px solid var(--line-section);
+  border-bottom: 1px solid var(--line-head);
+  background: #f7f9fc;
 }
 
-.brief-head {
-  display: flex;
+.ops-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    'label label'
+    'value extra';
   align-items: center;
-  gap: 28px;
+  column-gap: 18px;
+  row-gap: 2px;
+  padding: 12px 22px 14px;
 }
 
-.brief-total {
-  display: flex;
-  flex: none;
-  flex-direction: column;
+.ops-item + .ops-item {
+  border-left: 1px solid var(--line-head);
 }
 
-.brief-caption {
+.ops-label {
+  grid-area: label;
   font-size: 13.5px;
   font-weight: 600;
   color: #4b5563;
 }
 
-.brief-number {
-  font-size: 44px;
+.ops-value {
+  grid-area: value;
+  font-size: 34px;
   font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.05;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
   color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
 }
 
-.brief-unit {
-  margin-left: 4px;
-  font-size: 17px;
+.ops-value small {
+  margin-left: 3px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0;
   color: #6b7280;
 }
 
-/* 누적 막대: 구간 안에 건수를 직접 표시, 구간 색 = 아래 구분 카드의 윗선 색 */
-.brief-bar {
-  flex: 1;
-  display: flex;
-  gap: 3px;
-  height: 34px;
+.ops-sub,
+.ops-go {
+  grid-area: extra;
+  font-size: 13px;
+  color: #5b6474;
 }
 
-.brief-seg {
-  min-width: 34px;
-  overflow: hidden;
-  white-space: nowrap;
-  min-height: 0;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 4px;
-  color: #fff;
-  font-size: 14px;
+.ops-go {
   font-weight: 700;
-  text-align: left;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.18);
-  transition: filter 0.12s, transform 0.12s;
 }
 
-button.brief-seg:hover:not(:disabled) {
-  filter: brightness(1.08);
-  transform: translateY(-1px);
+.ops-alert {
+  background: #fff8e1;
+  box-shadow: inset 0 -3px 0 #d99a00;
 }
 
-.brief-groups {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin: 14px 0 0;
-  padding: 0;
-  list-style: none;
+.ops-alert .ops-label {
+  color: #7a4300;
 }
 
-.brief-groups li {
+.ops-alert .ops-value {
+  color: #8a4b00;
+}
+
+/* 수업 시간축: 08~19시 위에 수업 구간 */
+.ops-axis {
+  grid-area: extra;
   position: relative;
-  border: 1px solid #dfe4ec;
-  border-top: 4px solid #a8afba;
-  border-radius: 6px;
-  background: #fff;
+  height: 28px;
+  border-bottom: 1px solid var(--line-head);
 }
 
-.brief-groups li.zero {
-  opacity: 0.6;
+.ops-axis::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 6px;
+  height: 10px;
+  border-radius: 2px;
+  background: #e1e7f0;
 }
 
-.brief-group-main {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas:
-    'name pct'
-    'num pct';
-  align-items: end;
-  width: 100%;
-  padding: 8px 12px 6px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  text-align: left;
+.ops-block {
+  position: absolute;
+  top: 6px;
+  height: 10px;
+  min-width: 6px;
+  border-radius: 2px;
+  background: #3f6fb5;
 }
 
-button.brief-group-main:hover:not(:disabled) {
-  background: #f4f7fb;
+.ops-tick {
+  position: absolute;
+  top: 17px;
+  font-size: 10.5px;
+  font-style: normal;
+  color: #7b8798;
 }
 
-.brief-group-name {
-  grid-area: name;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: #4b5563;
+/* 출결 입력 진행 막대 */
+.ops-progress {
+  grid-area: extra;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.brief-group-num {
-  grid-area: num;
-  font-size: 28px;
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  color: var(--text-strong);
-}
-
-.brief-group-num small {
-  margin-left: 3px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #6b7280;
-}
-
-.brief-group-pct {
-  grid-area: pct;
-  align-self: end;
-  font-size: 13px;
-  font-weight: 600;
-  color: #6b7280;
-}
-
-.brief-group-go {
+.ops-progress span {
   display: block;
-  padding: 0 12px 8px;
-  font-size: 12.5px;
-  font-weight: 600;
+  height: 10px;
+  border-radius: 2px;
+  background: #5a9a6e;
+  flex: none;
 }
 
-/* 표의 구분으로 이동했을 때 잠깐 강조 */
-tr.flash td,
-tr.flash th {
-  animation: flash-row 1.6s ease-out;
+.ops-progress {
+  position: relative;
 }
 
-@keyframes flash-row {
-  0%,
-  40% {
-    background: #fff3c4;
-  }
-  100% {
-    background: transparent;
-  }
+.ops-progress::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 44px;
+  height: 10px;
+  border-radius: 2px;
+  background: #e1e7f0;
+}
+
+.ops-progress span {
+  position: relative;
+  max-width: calc(100% - 44px);
+}
+
+.ops-progress em {
+  margin-left: auto;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 700;
+  color: #374151;
 }
 
 @media (max-width: 900px) {
-  .brief-head {
-    flex-direction: column;
-    align-items: stretch;
+  .ops-band {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .brief-groups {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .ops-item + .ops-item {
+    border-left: 0;
+    border-top: 1px solid var(--line-head);
   }
 }
 
