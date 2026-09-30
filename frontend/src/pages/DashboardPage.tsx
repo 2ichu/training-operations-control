@@ -81,20 +81,12 @@ export function DashboardPage() {
         { key: 'rev', group: '결과물', text: '결과물 미검토', count: data.counts.reviewPending, to: to('S19', '/submissions'), emphasis: false },
       ]
     : []
-  const first = data?.todaySchedules[0]
-  const kpis: { key: string; text: string; value: number; sub: string; to: string | null; tone: 'info' | 'alert' | 'warn' | 'plain' }[] = data
+  const kpis: { key: string; text: string; value: number; to: string | null; tone: 'info' | 'alert' | 'warn' | 'plain' }[] = data
     ? [
-        {
-          key: 'today',
-          text: '오늘 수업',
-          value: data.todaySchedules.length,
-          sub: first ? `${first.courseName} ${first.roundNo}회차 ${formatTime(first.startTime)}~${formatTime(first.endTime)}${data.todaySchedules.length > 1 ? ` 외 ${data.todaySchedules.length - 1}건` : ''}` : '예정된 수업 없음',
-          to: null,
-          tone: 'info',
-        },
-        { key: 'needs', text: '확인 필요', value: needsCheck, sub: `조치 필요·추가 확인 ${actionRequired}건 · 공결 승인 대기 ${excusePending.data?.total ?? 0}건`, to: todo[0].to, tone: needsCheck > 0 ? 'alert' : 'plain' },
-        { key: 'att', text: '미출결', value: data.counts.notCheckedIn, sub: `퇴실 미확인 ${data.counts.checkoutMissing}건`, to: todo[3].to, tone: data.counts.notCheckedIn > 0 ? 'warn' : 'plain' },
-        { key: 'log', text: '운영일지 미작성', value: data.counts.operationLogMissing, sub: `결과물 미제출 ${data.counts.submissionMissing}건 · 미검토 ${data.counts.reviewPending}건`, to: todo[5].to, tone: 'plain' },
+        { key: 'today', text: '오늘 수업', value: data.todaySchedules.length, to: null, tone: 'info' },
+        { key: 'needs', text: '확인 필요', value: needsCheck, to: todo[0].to, tone: needsCheck > 0 ? 'alert' : 'plain' },
+        { key: 'att', text: '미출결', value: data.counts.notCheckedIn, to: todo[3].to, tone: data.counts.notCheckedIn > 0 ? 'warn' : 'plain' },
+        { key: 'log', text: '운영일지 미작성', value: data.counts.operationLogMissing, to: todo[5].to, tone: 'plain' },
       ]
     : []
 
@@ -137,7 +129,6 @@ export function DashboardPage() {
                 <>
                   <span className="kpi-label">{k.text}</span>
                   <span className="kpi-value">{k.value}건</span>
-                  <span className="kpi-sub">{k.sub}</span>
                 </>
               )
               return (
@@ -150,7 +141,6 @@ export function DashboardPage() {
 
           <section className="dash-todo" aria-labelledby="todo-title">
             <h2 id="todo-title">처리할 업무</h2>
-            <p className="hint">종료되지 않은 과정 전체 기준, 현재 시점 집계(날짜 필터 미적용). 확인 필요 건은 기간과 무관하게 진행 중인 전체입니다.</p>
             <table className="todo">
               <thead>
                 <tr>
