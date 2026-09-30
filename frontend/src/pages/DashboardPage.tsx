@@ -3,7 +3,7 @@ import { api } from '../api/client'
 import type { CourseSummary, DashboardSummary } from '../api/types'
 import { useApi } from '../api/useApi'
 import { useAuth, useCurrentUser } from '../auth/auth-context'
-import { EmptyText, ErrorText } from '../components/Feedback'
+import { EmptyText, ErrorText, Loading } from '../components/Feedback'
 import { CaseStatusBadge } from '../components/StatusBadge'
 import { formatDateTime, formatTime, formatTrainees } from '../format'
 import { CASE_STATUS_LABELS, CASE_STATUS_ORDER, label, RULE_LABELS, SCHEDULE_STATUS_LABELS } from '../labels'
@@ -50,6 +50,30 @@ export function DashboardPage() {
 
   const data = summary.data
   const byStatus = new Map(data?.verificationSummary.byStatus.map((s) => [s.status, s.count]) ?? [])
+  const needsCheck = (byStatus.get('NEEDS_CHECK') ?? 0) + (byStatus.get('PRIORITY_CHECK') ?? 0)
+  const actionRequired = (byStatus.get('ACTION_REQUIRED') ?? 0) + (byStatus.get('FOLLOW_UP') ?? 0)
+  const dayParam = date || data?.date || ''
+
+  // 처리할 일: 화면 접근 권한이 있는 항목만 링크로 연결한다. 확인/조치 사항을 맨 앞에 둔다.
+  const todo: { key: string; text: string; count: number; to: string | null; tone: 'attention' | 'action' | 'muted' }[] = data
+    ? [
+        { key: 'needs', text: '확인 필요 사항', count: needsCheck, to: can('S22', 'R') ? '/verification-cases?status=NEEDS_CHECK,PRIORITY_CHECK' : null, tone: 'attention' },
+        { key: 'action', text: '조치 필요·추가 확인 사항', count: actionRequired, to: can('S22', 'R') ? '/verification-cases?status=ACTION_REQUIRED,FOLLOW_UP' : null, tone: 'action' },
+        { key: 'att', text: '출결 미입력 훈련생', count: data.counts.notCheckedIn, to: can('S07', 'R') ? `/attendance/daily?date=${dayParam}` : null, tone: 'muted' },
+        { key: 'out', text: '퇴실 미확인', count: data.counts.checkoutMissing, to: can('S07', 'R') ? `/attendance/daily?date=${dayParam}` : null, tone: 'muted' },
+        { key: 'log', text: '운영일지 미작성 회차', count: data.counts.operationLogMissing, to: can('S17', 'R') ? '/operation-logs' : null, tone: 'muted' },
+        { key: 'sub', text: '결과물 미제출', count: data.counts.submissionMissing, to: can('S19', 'R') ? '/submissions/missing' : null, tone: 'muted' },
+        { key: 'rev', text: '결과물 미검토', count: data.counts.reviewPending, to: can('S19', 'R') ? '/submissions' : null, tone: 'muted' },
+      ]
+    : []
+  const kpis: { key: string; text: string; value: number; to: string | null; tone: string }[] = data
+    ? [
+        { key: 'today', text: '오늘 수업', value: data.todaySchedules.length, to: null, tone: '' },
+        { key: 'needs', text: '확인 필요', value: needsCheck, to: todo[0].to, tone: needsCheck > 0 ? 'attention' : '' },
+        { key: 'att', text: '미출결', value: data.counts.notCheckedIn, to: todo[2].to, tone: '' },
+        { key: 'log', text: '운영일지 미작성', value: data.counts.operationLogMissing, to: todo[4].to, tone: '' },
+      ]
+    : []
 
   return (
     <section className="page">
@@ -80,10 +104,58 @@ export function DashboardPage() {
       </div>
 
       {summary.status === 'error' && <ErrorText error={summary.error} onRetry={summary.reload} />}
-      {!data && summary.status === 'loading' && <p className="muted">불러오는 중…</p>}
+      {!data && summary.status === 'loading' && <Loading />}
 
       {data && (
         <div className={summary.status === 'loading' ? 'dashboard is-refreshing' : 'dashboard'}>
+          <ul className="kpi-strip panel-wide" aria-label="주요 현황">
+            {kpis.map((k) => (
+              <li key={k.key} className={k.tone ? `kpi kpi-${k.tone}` : 'kpi'}>
+                {k.to ? (
+                  <Link to={k.to}>
+                    <span className="kpi-label">{k.text}</span>
+                    <span className="kpi-value">{k.value}건</span>
+                  </Link>
+                ) : (
+                  <div>
+                    <span className="kpi-label">{k.text}</span>
+                    <span className="kpi-value">{k.value}건</span>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+
+          <section className="panel panel-wide" aria-labelledby="todo-title">
+            <h2 id="todo-title">처리할 일</h2>
+            {todo.every((t) => t.count === 0) ? (
+              <EmptyText>처리할 일이 없습니다.</EmptyText>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>구분</th>
+                    <th className="num">건수</th>
+                    <th>처리</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {todo
+                    .filter((t) => t.count > 0)
+                    .map((t) => (
+                      <tr key={t.key}>
+                        <td>
+                          <span className={`badge badge-${t.tone}`}>{t.text}</span>
+                        </td>
+                        <td className="num">{t.count}건</td>
+                        <td>{t.to ? <Link to={t.to}>[확인하기]</Link> : <span className="muted">-</span>}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+
           <section className="panel panel-wide" aria-labelledby="today-title">
             <h2 id="today-title">{data.date} 회차</h2>
             {data.todaySchedules.length === 0 ? (

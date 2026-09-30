@@ -5,7 +5,7 @@ import type { OfficialImportBatch, OfficialImportResult, OfficialImportRow } fro
 import { useApi } from '../../api/useApi'
 import { useCourseOptions } from '../../api/useCourseOptions'
 import { useAuth } from '../../auth/auth-context'
-import { EmptyText, ErrorText } from '../../components/Feedback'
+import { EmptyText, ErrorText, Loading } from '../../components/Feedback'
 import { Modal } from '../../components/Modal'
 import { OFFICIAL_IMPORT_RESULT_LABELS, label } from '../../labels'
 import { useUrlFilters } from '../../routing/useUrlFilters'
@@ -116,7 +116,7 @@ export function OfficialAttendancePage() {
       {history.status === 'error' && <ErrorText error={history.error} onRetry={history.reload} />}
       <div className="panel">
         {!history.data && history.status === 'loading' ? (
-          <p className="muted">불러오는 중…</p>
+          <Loading />
         ) : (history.data ?? []).length === 0 ? (
           <EmptyText>업로드 이력이 없습니다.</EmptyText>
         ) : (
@@ -212,7 +212,7 @@ function BatchDialog({ batch, onClose }: { batch: OfficialImportBatch; onClose: 
   return (
     <Modal title={`${batch.fileName} 처리 내역`} onClose={onClose}>
       {rows.status === 'error' && <ErrorText error={rows.error} onRetry={rows.reload} />}
-      {!rows.data ? <p className="muted">불러오는 중…</p> : <RowTable rows={rows.data} />}
+      {!rows.data ? <Loading /> : <RowTable rows={rows.data} />}
       <div className="form-actions">
         <button type="button" onClick={onClose}>
           닫기

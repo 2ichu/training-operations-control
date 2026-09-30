@@ -4,7 +4,7 @@ import type { AttendanceSetting, DetectionRule } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { useAuth } from '../../auth/auth-context'
 import { CaseStatusBadge } from '../../components/StatusBadge'
-import { EmptyText, ErrorText } from '../../components/Feedback'
+import { EmptyText, ErrorText, Loading } from '../../components/Feedback'
 import { Modal } from '../../components/Modal'
 import { label, RULE_PARAM_LABELS } from '../../labels'
 
@@ -37,7 +37,7 @@ export function DetectionRulePage() {
       {rules.status === 'error' && <ErrorText error={rules.error} onRetry={rules.reload} />}
       <div className={rules.status === 'loading' && rules.data ? 'panel is-refreshing' : 'panel'}>
         {!rules.data && rules.status === 'loading' ? (
-          <p className="muted">불러오는 중…</p>
+          <Loading />
         ) : items.length === 0 ? (
           <EmptyText>탐지규칙이 없습니다.</EmptyText>
         ) : (
@@ -136,7 +136,7 @@ function AttendanceGraceSection() {
       {setting.status === 'error' && <ErrorText error={setting.error} onRetry={setting.reload} />}
       <div className="panel">
         {!data ? (
-          <p className="muted">불러오는 중…</p>
+          <Loading />
         ) : (
           <dl className="summary-grid">
             <dt>지각 유예</dt>

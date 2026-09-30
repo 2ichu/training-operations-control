@@ -5,7 +5,7 @@ import type { CourseIssue, Paged } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { useCourseOptions } from '../../api/useCourseOptions'
 import { useAuth } from '../../auth/auth-context'
-import { EmptyText, ErrorText } from '../../components/Feedback'
+import { EmptyText, ErrorText, Loading } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
 import { CaseStatusBadge } from '../../components/StatusBadge'
 import { formatDateTime } from '../../format'
@@ -95,7 +95,7 @@ export function CourseIssuePage() {
       {list.status === 'error' && <ErrorText error={list.error} onRetry={list.reload} />}
       <div className={list.status === 'loading' && list.data ? 'panel is-refreshing' : 'panel'}>
         {!list.data && list.status === 'loading' ? (
-          <p className="muted">불러오는 중…</p>
+          <Loading />
         ) : items.length === 0 ? (
           <EmptyText>조건에 맞는 특이사항이 없습니다.</EmptyText>
         ) : (

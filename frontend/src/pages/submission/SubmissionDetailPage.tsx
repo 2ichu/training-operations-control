@@ -4,7 +4,7 @@ import { ApiError, api, attachmentUrl } from '../../api/client'
 import type { SubmissionDetail } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { useAuth } from '../../auth/auth-context'
-import { EmptyText, ErrorText } from '../../components/Feedback'
+import { EmptyText, ErrorText, Loading } from '../../components/Feedback'
 import { ReviewStatusBadge, SubmitStatusBadge } from '../../components/StatusBadge'
 import { formatBytes, formatDateTime } from '../../format'
 import { label, REVIEW_STATUS_LABELS } from '../../labels'
@@ -33,7 +33,7 @@ export function SubmissionDetailPage() {
         {s && can('S19', 'R') && <Link to={`/submissions?course_id=${s.courseId}`}>제출현황으로</Link>}
       </div>
       {detail.status === 'error' && <ErrorText error={detail.error} onRetry={detail.reload} />}
-      {!s && detail.status === 'loading' && <p className="muted">불러오는 중…</p>}
+      {!s && detail.status === 'loading' && <Loading />}
       {notice && (
         <p className="notice" role="status">
           {notice}

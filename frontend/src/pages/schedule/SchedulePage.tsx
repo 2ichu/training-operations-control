@@ -5,7 +5,7 @@ import type { CourseDetail, InstructorListItem, Paged, ScheduleListItem } from '
 import { useApi } from '../../api/useApi'
 import { useCourseOptions } from '../../api/useCourseOptions'
 import { useAuth } from '../../auth/auth-context'
-import { EmptyText, ErrorText } from '../../components/Feedback'
+import { EmptyText, ErrorText, Loading } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
 import { ScheduleStatusBadge } from '../../components/StatusBadge'
 import { formatTime, todayKst } from '../../format'
@@ -163,7 +163,7 @@ export function SchedulePage() {
       ) : (
         <div className={schedules.status === 'loading' && schedules.data ? 'panel is-refreshing' : 'panel'}>
           {!schedules.data && schedules.status === 'loading' ? (
-            <p className="muted">불러오는 중…</p>
+            <Loading />
           ) : items.length === 0 ? (
             <EmptyText>조건에 맞는 회차가 없습니다.</EmptyText>
           ) : (

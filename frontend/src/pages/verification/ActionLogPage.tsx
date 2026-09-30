@@ -3,7 +3,7 @@ import { api } from '../../api/client'
 import type { ActionLogEntry, CourseSummary, Paged } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { useAuth, useCurrentUser } from '../../auth/auth-context'
-import { EmptyText, ErrorText } from '../../components/Feedback'
+import { EmptyText, ErrorText, Loading } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
 import { formatDateTime } from '../../format'
 import { ACTION_TYPE_LABELS, CASE_STATUS_LABELS, label } from '../../labels'
@@ -74,7 +74,7 @@ export function ActionLogPage() {
       {logs.status === 'error' && <ErrorText error={logs.error} onRetry={logs.reload} />}
       <div className={logs.status === 'loading' && logs.data ? 'panel is-refreshing' : 'panel'}>
         {!logs.data && logs.status === 'loading' ? (
-          <p className="muted">불러오는 중…</p>
+          <Loading />
         ) : items.length === 0 ? (
           <EmptyText>조건에 맞는 조치이력이 없습니다.</EmptyText>
         ) : (

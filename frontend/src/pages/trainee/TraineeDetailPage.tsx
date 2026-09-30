@@ -4,7 +4,7 @@ import { ApiError, api } from '../../api/client'
 import type { AttendanceSummaryItem, TraineeCase, TraineeDetail, TraineeSubmission } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { useAuth } from '../../auth/auth-context'
-import { EmptyText, ErrorText } from '../../components/Feedback'
+import { EmptyText, ErrorText, Loading } from '../../components/Feedback'
 import { CaseStatusBadge } from '../../components/StatusBadge'
 import { formatDateTime } from '../../format'
 import { ATTENDANCE_STATUS_LABELS, ENROLLMENT_STATUS_LABELS, label, REVIEW_STATUS_LABELS, RULE_LABELS, SUBMIT_STATUS_LABELS } from '../../labels'
@@ -54,7 +54,7 @@ export function TraineeDetailPage() {
         </div>
       </div>
       {detail.status === 'error' && <ErrorText error={detail.error} onRetry={detail.reload} />}
-      {!trainee && detail.status === 'loading' && <p className="muted">불러오는 중…</p>}
+      {!trainee && detail.status === 'loading' && <Loading />}
 
       {trainee && (
         <>
@@ -153,7 +153,7 @@ function AttendanceTab({ traineeId, courseId }: { traineeId: number; courseId: n
     `${traineeId}:${courseId}`,
   )
   if (result.status === 'error') return <ErrorText error={result.error} onRetry={result.reload} />
-  if (!result.data) return <p className="muted">불러오는 중…</p>
+  if (!result.data) return <Loading />
   if (result.data.items.length === 0) return <EmptyText>등록된 회차가 없습니다.</EmptyText>
   return (
     <>
@@ -198,7 +198,7 @@ function SubmissionTab({ traineeId, courseId }: { traineeId: number; courseId: n
   const { can } = useAuth()
   const result = useApi((signal) => api.get<{ items: TraineeSubmission[] }>(`/trainees/${traineeId}/submissions`, { course_id: courseId }, signal), `${traineeId}:${courseId}`)
   if (result.status === 'error') return <ErrorText error={result.error} onRetry={result.reload} />
-  if (!result.data) return <p className="muted">불러오는 중…</p>
+  if (!result.data) return <Loading />
   if (result.data.items.length === 0) return <EmptyText>이 과정에 등록된 결과물이 없습니다.</EmptyText>
   return (
     <table>
@@ -231,7 +231,7 @@ function CaseTab({ traineeId }: { traineeId: number }) {
   const { can } = useAuth()
   const result = useApi((signal) => api.get<{ items: TraineeCase[] }>(`/trainees/${traineeId}/verification-cases`, undefined, signal), String(traineeId))
   if (result.status === 'error') return <ErrorText error={result.error} onRetry={result.reload} />
-  if (!result.data) return <p className="muted">불러오는 중…</p>
+  if (!result.data) return <Loading />
   if (result.data.items.length === 0) return <EmptyText>이 훈련생과 관련된 확인 필요 건이 없습니다.</EmptyText>
   return (
     <table>

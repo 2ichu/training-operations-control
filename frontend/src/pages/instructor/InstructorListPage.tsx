@@ -4,7 +4,7 @@ import { api } from '../../api/client'
 import type { InstructorListItem, Paged } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { useAuth } from '../../auth/auth-context'
-import { EmptyText, ErrorText } from '../../components/Feedback'
+import { EmptyText, ErrorText, Loading } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
 import { InstructorStatusBadge } from '../../components/StatusBadge'
 import { INSTRUCTOR_STATUS_LABELS } from '../../labels'
@@ -69,7 +69,7 @@ export function InstructorListPage() {
       {list.status === 'error' && <ErrorText error={list.error} onRetry={list.reload} />}
       <div className={list.status === 'loading' && list.data ? 'panel is-refreshing' : 'panel'}>
         {!list.data && list.status === 'loading' ? (
-          <p className="muted">불러오는 중…</p>
+          <Loading />
         ) : items.length === 0 ? (
           <EmptyText>조건에 맞는 강사가 없습니다.</EmptyText>
         ) : (

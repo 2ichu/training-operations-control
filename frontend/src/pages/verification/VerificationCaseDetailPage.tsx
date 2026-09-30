@@ -4,7 +4,7 @@ import { ApiError, api } from '../../api/client'
 import type { VerificationCaseDetail } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { useAuth } from '../../auth/auth-context'
-import { EmptyText, ErrorText } from '../../components/Feedback'
+import { EmptyText, ErrorText, Loading } from '../../components/Feedback'
 import { CaseStatusBadge } from '../../components/StatusBadge'
 import { formatDateTime } from '../../format'
 import { ACTION_TYPE_LABELS, CASE_STATUS_LABELS, ISSUE_CATEGORY_LABELS, label } from '../../labels'
@@ -29,7 +29,7 @@ export function VerificationCaseDetailPage() {
         <Link to="/verification-cases">목록으로</Link>
       </div>
       {detail.status === 'error' && <ErrorText error={detail.error} onRetry={detail.reload} />}
-      {!data && detail.status === 'loading' && <p className="muted">불러오는 중…</p>}
+      {!data && detail.status === 'loading' && <Loading />}
       {data && (
         <div className={detail.status === 'loading' ? 'case-detail is-refreshing' : 'case-detail'}>
           <section className="panel" aria-label="요약">

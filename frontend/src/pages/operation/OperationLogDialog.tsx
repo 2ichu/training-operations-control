@@ -4,7 +4,7 @@ import { ApiError, api } from '../../api/client'
 import type { OperationLogDetail, OperationLogRow } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { useAuth } from '../../auth/auth-context'
-import { ErrorText } from '../../components/Feedback'
+import { ErrorText, Loading } from '../../components/Feedback'
 import { Modal } from '../../components/Modal'
 import { formatDateTime, formatTime } from '../../format'
 import { Attachments } from './Attachments'
@@ -60,7 +60,7 @@ export function OperationLogDialog({ courseId, row, onClose, onSaved }: { course
       ) : (
         <>
           {detail.status === 'error' && <ErrorText error={detail.error} onRetry={detail.reload} />}
-          {!log && detail.status === 'loading' && <p className="muted">불러오는 중…</p>}
+          {!log && detail.status === 'loading' && <Loading />}
           {log && editing && (
             <LogForm
               submitLabel="저장"

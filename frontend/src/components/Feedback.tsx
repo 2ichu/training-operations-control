@@ -5,6 +5,18 @@ export function EmptyText({ children }: { children: ReactNode }) {
   return <p className="empty-text">{children}</p>
 }
 
+/** 로딩 표시: 표 모양 스켈레톤 + 화면낭독/테스트용 텍스트. */
+export function Loading() {
+  return (
+    <div className="loading" role="status" aria-live="polite">
+      <span className="loading-text">불러오는 중…</span>
+      <span className="skeleton" aria-hidden="true" />
+      <span className="skeleton" aria-hidden="true" />
+      <span className="skeleton short" aria-hidden="true" />
+    </div>
+  )
+}
+
 export function ErrorText({ error, onRetry }: { error: Error; onRetry?: () => void }) {
   return (
     <div className="error-text" role="alert">

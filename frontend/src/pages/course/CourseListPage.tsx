@@ -4,7 +4,7 @@ import { api } from '../../api/client'
 import type { CourseListItem, ManagerCandidate, Paged } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { useAuth } from '../../auth/auth-context'
-import { EmptyText, ErrorText } from '../../components/Feedback'
+import { EmptyText, ErrorText, Loading } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
 import { CourseStatusBadge } from '../../components/StatusBadge'
 import { COURSE_STATUS_LABELS } from '../../labels'
@@ -89,7 +89,7 @@ export function CourseListPage() {
       {list.status === 'error' && <ErrorText error={list.error} onRetry={list.reload} />}
       <div className={list.status === 'loading' && list.data ? 'panel is-refreshing' : 'panel'}>
         {!list.data && list.status === 'loading' ? (
-          <p className="muted">불러오는 중…</p>
+          <Loading />
         ) : items.length === 0 ? (
           <EmptyText>조건에 맞는 과정이 없습니다.</EmptyText>
         ) : (

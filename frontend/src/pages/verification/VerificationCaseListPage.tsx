@@ -4,7 +4,7 @@ import { ApiError, api } from '../../api/client'
 import type { CourseSummary, Paged, VerificationCaseListItem } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { useAuth, useCurrentUser } from '../../auth/auth-context'
-import { EmptyText, ErrorText } from '../../components/Feedback'
+import { EmptyText, ErrorText, Loading } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
 import { CaseStatusBadge } from '../../components/StatusBadge'
 import { formatDateTime, formatTrainees } from '../../format'
@@ -148,7 +148,7 @@ export function VerificationCaseListPage() {
       {list.status === 'error' && <ErrorText error={list.error} onRetry={list.reload} />}
       <div className={list.status === 'loading' && list.data ? 'panel is-refreshing' : 'panel'}>
         {!list.data && list.status === 'loading' ? (
-          <p className="muted">불러오는 중…</p>
+          <Loading />
         ) : items.length === 0 ? (
           <EmptyText>조건에 맞는 확인 필요 건이 없습니다.</EmptyText>
         ) : (

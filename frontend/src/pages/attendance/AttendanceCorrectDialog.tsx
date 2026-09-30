@@ -3,7 +3,7 @@ import { ApiError, api } from '../../api/client'
 import type { AttendanceRecord } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { useAuth } from '../../auth/auth-context'
-import { ErrorText } from '../../components/Feedback'
+import { ErrorText, Loading } from '../../components/Feedback'
 import { Modal } from '../../components/Modal'
 import { AttendanceBadge } from '../../components/StatusBadge'
 import { formatDateTime, kstIso, toKstInput } from '../../format'
@@ -24,7 +24,7 @@ export function AttendanceCorrectDialog({ attendanceId, traineeName, onClose, on
     <Modal title={canCorrect ? '출결 수정' : '출결 상세'} onClose={onClose}>
       <p>{traineeName}</p>
       {record.status === 'error' && <ErrorText error={record.error} onRetry={record.reload} />}
-      {!data && record.status === 'loading' && <p className="muted">불러오는 중…</p>}
+      {!data && record.status === 'loading' && <Loading />}
       {data && (
         <>
           <dl className="summary-grid">

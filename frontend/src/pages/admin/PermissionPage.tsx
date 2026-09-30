@@ -3,7 +3,7 @@ import { ApiError, api } from '../../api/client'
 import type { PermissionAction, RoleGrant, RoleInfo } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { useAuth } from '../../auth/auth-context'
-import { EmptyText, ErrorText } from '../../components/Feedback'
+import { EmptyText, ErrorText, Loading } from '../../components/Feedback'
 import { label, PERMISSION_ACTION_LABELS, ROLE_LABELS, SCOPE_LABELS, SCREEN_NAMES } from '../../labels'
 import { useUrlFilters } from '../../routing/useUrlFilters'
 
@@ -53,7 +53,7 @@ function Matrix({ role, canSave }: { role: RoleInfo; canSave: boolean }) {
   const defaultScope: Scope = role.roleCode === 'INSTRUCTOR' ? 'OWN_ASSIGNED' : 'ALL'
 
   if (grants.status === 'error') return <ErrorText error={grants.error} onRetry={grants.reload} />
-  if (!grants.data) return <p className="muted">불러오는 중…</p>
+  if (!grants.data) return <Loading />
 
   // 서버 값 → 화면 상태(편집 전에는 서버 값을 그대로 보여 준다)
   const saved = new Map<string, Set<PermissionAction>>()

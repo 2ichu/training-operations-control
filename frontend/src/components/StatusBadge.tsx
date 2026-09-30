@@ -1,10 +1,12 @@
 import { ATTENDANCE_SHORT_LABELS, ATTENDANCE_STATUS_LABELS, CASE_STATUS_LABELS, COURSE_STATUS_LABELS, INSTRUCTOR_STATUS_LABELS, label, REVIEW_STATUS_LABELS, SCHEDULE_STATUS_LABELS, SUBMIT_STATUS_LABELS } from '../labels'
 
-// system-design 7.1·7.2: 확인필요 계열만 강조색 1개, 종결은 연녹색, 확인중은 회색, 나머지는 무채색.
-const TONE: Record<string, 'attention' | 'done' | 'muted' | 'neutral'> = {
+// 상태 색 의미: 확인 필요=노랑, 조치 필요·우선·추가 확인=주황, 확인 중=파랑, 완료=초록. 색만으로 구분하지 않고 항상 텍스트를 함께 표시한다.
+const TONE: Record<string, 'attention' | 'action' | 'info' | 'done' | 'muted' | 'neutral'> = {
   NEEDS_CHECK: 'attention',
-  PRIORITY_CHECK: 'attention',
-  IN_REVIEW: 'muted',
+  PRIORITY_CHECK: 'action',
+  FOLLOW_UP: 'action',
+  ACTION_REQUIRED: 'action',
+  IN_REVIEW: 'info',
   CONFIRMED: 'done',
   ACTION_DONE: 'done',
 }

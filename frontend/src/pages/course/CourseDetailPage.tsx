@@ -4,7 +4,7 @@ import { ApiError, api } from '../../api/client'
 import type { ClosureItem, CourseDetail } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { useAuth } from '../../auth/auth-context'
-import { EmptyText, ErrorText } from '../../components/Feedback'
+import { EmptyText, ErrorText, Loading } from '../../components/Feedback'
 import { CourseStatusBadge } from '../../components/StatusBadge'
 import { formatDateTime, formatTime } from '../../format'
 import { ASSIGNMENT_STATUS_LABELS, ENROLLMENT_STATUS_LABELS, ENROLLMENT_STATUS_ORDER, label, SCHEDULE_STATUS_LABELS } from '../../labels'
@@ -47,7 +47,7 @@ export function CourseDetailPage() {
         <Link to="/courses">목록으로</Link>
       </div>
       {detail.status === 'error' && <ErrorText error={detail.error} onRetry={detail.reload} />}
-      {!course && detail.status === 'loading' && <p className="muted">불러오는 중…</p>}
+      {!course && detail.status === 'loading' && <Loading />}
       {notice && (
         <p className="notice" role="status">
           {notice}
@@ -285,7 +285,7 @@ function ScheduleTab({ course }: { course: CourseDetail }) {
 function ClosureTab({ courseId }: { courseId: number }) {
   const checklist = useApi((signal) => api.get<{ items: ClosureItem[] }>(`/courses/${courseId}/closure-checklist`, undefined, signal), String(courseId))
   if (checklist.status === 'error') return <ErrorText error={checklist.error} onRetry={checklist.reload} />
-  if (!checklist.data) return <p className="muted">불러오는 중…</p>
+  if (!checklist.data) return <Loading />
   return (
     <>
       <p className="hint">현재 시점 기준입니다. 종료 처리 시 다시 검사합니다.</p>

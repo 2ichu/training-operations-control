@@ -5,7 +5,7 @@ import type { CompletionCandidates, EnrollmentListItem, Paged } from '../../api/
 import { useApi } from '../../api/useApi'
 import { useCourseOptions } from '../../api/useCourseOptions'
 import { useAuth } from '../../auth/auth-context'
-import { EmptyText, ErrorText } from '../../components/Feedback'
+import { EmptyText, ErrorText, Loading } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
 import { formatDateTime } from '../../format'
 import { ENROLLMENT_STATUS_LABELS, label } from '../../labels'
@@ -97,7 +97,7 @@ export function EnrollmentReviewPage() {
       {list.status === 'error' && <ErrorText error={list.error} onRetry={list.reload} />}
       <div className={list.status === 'loading' && list.data ? 'panel is-refreshing' : 'panel'}>
         {!list.data && list.status === 'loading' ? (
-          <p className="muted">불러오는 중…</p>
+          <Loading />
         ) : items.length === 0 ? (
           <EmptyText>조건에 맞는 등록 건이 없습니다.</EmptyText>
         ) : (

@@ -5,7 +5,7 @@ import type { AttendanceBatchResult, RosterItem, ScheduleListItem } from '../../
 import { useApi } from '../../api/useApi'
 import { useCourseOptions } from '../../api/useCourseOptions'
 import { useAuth } from '../../auth/auth-context'
-import { EmptyText, ErrorText } from '../../components/Feedback'
+import { EmptyText, ErrorText, Loading } from '../../components/Feedback'
 import { AttendanceBadge } from '../../components/StatusBadge'
 import { formatTime, formatTimeOn, kstIso, todayKst } from '../../format'
 import { ATTENDANCE_STATUS_LABELS, label, SOURCE_TYPE_LABELS } from '../../labels'
@@ -172,7 +172,7 @@ function Roster({ schedule, canCheckIn, canCheckOut, canAbsence }: { schedule: S
       {roster.status === 'error' && <ErrorText error={roster.error} onRetry={roster.reload} />}
       <div className={roster.status === 'loading' && roster.data ? 'panel is-refreshing' : 'panel'}>
         {!roster.data && roster.status === 'loading' ? (
-          <p className="muted">불러오는 중…</p>
+          <Loading />
         ) : items.length === 0 ? (
           <EmptyText>{statusFilter ? '조건에 맞는 훈련생이 없습니다.' : '이 과정에 확정된 훈련생이 없습니다.'}</EmptyText>
         ) : (

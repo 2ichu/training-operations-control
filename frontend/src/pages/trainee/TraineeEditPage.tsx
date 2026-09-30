@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { ApiError, api } from '../../api/client'
 import type { TraineeDetail } from '../../api/types'
 import { useApi } from '../../api/useApi'
-import { ErrorText } from '../../components/Feedback'
+import { ErrorText, Loading } from '../../components/Feedback'
 import { NotFoundPage } from '../PlaceholderPages'
 
 // S04 인적정보 수정. 서버는 연락처·생년월일을 마스킹해서만 주므로(원문 열람 미도입, P1-08) 기존 값을 채워 두지 않고,
@@ -55,7 +55,7 @@ export function TraineeEditPage() {
         <Link to={`/trainees/${traineeId}`}>상세로</Link>
       </div>
       {detail.status === 'error' && <ErrorText error={detail.error} onRetry={detail.reload} />}
-      {!trainee && detail.status === 'loading' && <p className="muted">불러오는 중…</p>}
+      {!trainee && detail.status === 'loading' && <Loading />}
       {trainee && (
         <form className="panel course-form" onSubmit={submit} noValidate>
           <div className="field">

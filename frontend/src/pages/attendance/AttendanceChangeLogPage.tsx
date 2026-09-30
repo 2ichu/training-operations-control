@@ -5,7 +5,7 @@ import type { AttendanceChangeLog, Paged } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { useCourseOptions } from '../../api/useCourseOptions'
 import { useAuth } from '../../auth/auth-context'
-import { EmptyText, ErrorText } from '../../components/Feedback'
+import { EmptyText, ErrorText, Loading } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
 import { diffFields } from '../../diff'
 import { formatDateTime } from '../../format'
@@ -68,7 +68,7 @@ export function AttendanceChangeLogPage() {
       {logs.status === 'error' && <ErrorText error={logs.error} onRetry={logs.reload} />}
       <div className={logs.status === 'loading' && logs.data ? 'panel is-refreshing' : 'panel'}>
         {!logs.data && logs.status === 'loading' ? (
-          <p className="muted">불러오는 중…</p>
+          <Loading />
         ) : items.length === 0 ? (
           <EmptyText>조건에 맞는 수정이력이 없습니다.</EmptyText>
         ) : (

@@ -3,7 +3,7 @@ import { api } from '../../api/client'
 import type { AuditLogDetail, AuditLogEntry, Paged, UserAccount } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { useAuth } from '../../auth/auth-context'
-import { EmptyText, ErrorText } from '../../components/Feedback'
+import { EmptyText, ErrorText, Loading } from '../../components/Feedback'
 import { Modal } from '../../components/Modal'
 import { Pagination } from '../../components/Pagination'
 import { formatDateTime, todayKst } from '../../format'
@@ -110,7 +110,7 @@ export function AuditLogPage() {
       {logs.status === 'error' && <ErrorText error={logs.error} onRetry={logs.reload} />}
       <div className={logs.status === 'loading' && logs.data ? 'panel is-refreshing' : 'panel'}>
         {!logs.data && logs.status === 'loading' ? (
-          <p className="muted">불러오는 중…</p>
+          <Loading />
         ) : items.length === 0 ? (
           <EmptyText>조건에 맞는 기록이 없습니다.</EmptyText>
         ) : (
@@ -162,7 +162,7 @@ function AuditDetailDialog({ logId, onClose }: { logId: number; onClose: () => v
   return (
     <Modal title={`감사로그 #${logId}`} onClose={onClose}>
       {detail.status === 'error' && <ErrorText error={detail.error} onRetry={detail.reload} />}
-      {!d && detail.status === 'loading' && <p className="muted">불러오는 중…</p>}
+      {!d && detail.status === 'loading' && <Loading />}
       {d && (
         <>
           <p className="muted">
