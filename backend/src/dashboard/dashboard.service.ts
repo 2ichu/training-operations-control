@@ -32,7 +32,7 @@ export class DashboardService {
     const openCourseIds = await this.accessibleCourseIds(access, courseIdFilter, true);
     const todaySchedules = await this.todaySchedules(access, date, courseIdFilter);
     const counts = await this.aggregateCounts(openCourseIds);
-    const verificationSummary = await this.verificationSummary(openCourseIds, assigneeIdFilter, date);
+    const verificationSummary = await this.verificationSummary(openCourseIds, assigneeIdFilter);
 
     return { date, todaySchedules, counts, verificationSummary };
   }
@@ -70,13 +70,11 @@ export class DashboardService {
     return { notCheckedIn: c[1], checkoutMissing: c[2], operationLogMissing: c[4], submissionMissing: c[5], reviewPending: c[6] };
   }
 
-  // 선택한 날짜 기준: 그 날 끝(회차 시간대)까지 발생한 건만 집계·표시한다(상단 날짜 필터가 하단 확인 필요 목록에도 적용).
-  private async verificationSummary(courseIds: number[], assigneeIdFilter: number | undefined, date: string) {
+  private async verificationSummary(courseIds: number[], assigneeIdFilter: number | undefined) {
     if (courseIds.length === 0) return { byStatus: [], recent: [] };
     const where = new Where();
     where.add((p) => `vc.course_id = ANY(${p}::bigint[])`, courseIds);
     if (assigneeIdFilter) where.add((p) => `vc.assignee_id = ${p}`, assigneeIdFilter);
-    where.add((p) => `vc.detected_at < ((${p}::date + 1)::timestamp AT TIME ZONE '${SCHEDULE_TIMEZONE}')`, date);
 
     const { rows: statusRows } = await this.db.query(`SELECT vc.status, count(*) n FROM verification_case vc WHERE ${where.sql} GROUP BY vc.status`, where.params);
     const byStatus = statusRows.map((r) => ({ status: r.status as string, count: Number(r.n) }));

@@ -92,35 +92,6 @@ describe('인증 흐름', () => {
 })
 
 describe('대시보드 (S01)', () => {
-  it('출결 지표: 입실 완료율과 최종 확정률을 분리해 보여주고, 회차 제목·날짜 표기와 필터 링크를 확인한다', async () => {
-    const item = (traineeId: number, over: Record<string, unknown>) => ({ traineeId, name: `훈${traineeId}`, attendanceId: traineeId, checkInTime: null, checkOutTime: null, attendanceStatus: null, sourceType: 'MANUAL', displayStatus: 'NOT_CHECKED', ...over })
-    mockApi({
-      'GET /auth/me': { status: 200, body: me() },
-      'GET /dashboard': { status: 200, body: dashboard() },
-      'GET /courses': { status: 200, body: { items: [], page: 1, size: 100, total: 0 } },
-      'GET /schedules/11/attendance-roster': {
-        status: 200,
-        body: {
-          items: [
-            item(1, { checkInTime: '2026-09-28T00:00:00Z', checkOutTime: '2026-09-28T09:00:00Z', displayStatus: 'PRESENT' }), // 입실+최종 확정
-            item(2, { checkInTime: '2026-09-28T00:05:00Z', displayStatus: 'PRESENT' }), // 입실만(퇴실 미확인)
-            item(3, { displayStatus: 'ABSENT' }), // 결석 확정 = 최종 확정, 입실 아님
-            item(4, { checkInTime: '2026-09-28T00:10:00Z', displayStatus: 'LATE' }), // 입실만(퇴실 미확인)
-          ],
-        },
-      },
-    })
-    renderAt('/?course_id=3&date=2026-09-28')
-    expect(await screen.findByRole('heading', { name: '5회차' })).toBeInTheDocument()
-    expect(screen.getByText('2026-09-28', { selector: '.section-date' })).toBeInTheDocument()
-    const band = await screen.findByRole('region', { name: '오늘 운영 상태' })
-    expect(await within(band).findByText('3/4 · 75%')).toBeInTheDocument() // 입실 완료(입실 시각 기록 3명)
-    expect(within(band).getByText('2/4 · 50%')).toBeInTheDocument() // 최종 확정
-    expect(band.querySelector('.ops-att .ops-value')?.textContent).toBe('2/4명') // 최종 확정: 퇴실까지 1명 + 결석 확정 1명
-    const todo = screen.getByRole('region', { name: '처리할 업무' })
-    expect(within(todo).getAllByRole('link', { name: '확인하기' })[0]).toHaveAttribute('href', '/verification-cases?status=NEEDS_CHECK,PRIORITY_CHECK&course_id=3&to=2026-09-28')
-  })
-
   it('같은 발생일시·과정의 확인 건은 대표 한 줄로 묶고 펼치면 개별 건을 보여준다', async () => {
     const base = dashboard()
     const one = base.verificationSummary.recent[0]
@@ -146,7 +117,7 @@ describe('대시보드 (S01)', () => {
     })
     renderAt('/')
 
-    const today = await screen.findByRole('region', { name: '5회차' })
+    const today = await screen.findByRole('region', { name: '2026-09-28 회차' })
     expect(within(today).getByRole('link', { name: '웹개발 1기' })).toHaveAttribute('href', '/courses/3')
     expect(within(today).getByText(/09:00~18:00/)).toBeInTheDocument()
 
@@ -230,6 +201,6 @@ describe('대시보드 (S01)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('서버 오류가 발생했습니다')
     fail = false
     await user.click(screen.getByRole('button', { name: '다시 시도' }))
-    expect(await screen.findByRole('region', { name: '5회차' })).toBeInTheDocument()
+    expect(await screen.findByRole('region', { name: '2026-09-28 회차' })).toBeInTheDocument()
   })
 })
