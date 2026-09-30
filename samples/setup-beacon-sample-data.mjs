@@ -29,8 +29,8 @@ if (!ADMIN_ID || !ADMIN_PW) {
 // ── 가상 데이터(generate_beacon_samples.py 가 만든 beacon-scenario.json) ───────────────
 import { readFileSync } from 'node:fs'
 const scenario = JSON.parse(readFileSync(new URL('./beacon-scenario.json', import.meta.url), 'utf8'))
-const COURSE_NAME = '샘플 과정 B (비콘 규모·가상)'
-const INSTRUCTOR_NAME = '샘플강사B'
+const COURSE_NAME = 'AI 활용 데이터 분석 실무 1기'
+const INSTRUCTOR_NAMES = scenario.instructors
 const TRAINEES = scenario.trainees
 const ROUNDS = scenario.dates.map((date, i) => ({ round: i + 1, date }))
 const KST = (date, hhmm) => new Date(`${date}T${hhmm}:00+09:00`).toISOString()
@@ -95,17 +95,21 @@ async function main() {
   }
 
   // 강사 정보는 운영담당자만 만들 수 있다(시스템 관리자는 업무 데이터를 만들 수 없음) → 운영담당자 계정을 먼저 만든다
-  const opsAcct = await ensureUser(admin, 'sample_ops', '샘플운영담당자', 'OPS_MANAGER')
+  const opsAcct = await ensureUser(admin, 'sample_ops', '문정아', 'OPS_MANAGER')
   const ops = new Session()
   await ops.login('sample_ops', opsAcct.tempPassword)
   step('시험 계정 sample_ops(운영담당자) 준비')
 
-  const instructor = (await findAll(ops, `/instructors?name=${encodeURIComponent(INSTRUCTOR_NAME)}`, 'items', (i) => i.name === INSTRUCTOR_NAME))
-    ?? (await ops.call('POST', '/instructors', { name: INSTRUCTOR_NAME, contact: '000-0000-0000' }))
-  const instructorId = instructor.instructorId
-  step(`가상 강사 '${INSTRUCTOR_NAME}' (ID ${instructorId})`)
+  const instructorIds = []
+  for (const name of INSTRUCTOR_NAMES) {
+    const ins = (await findAll(ops, `/instructors?name=${encodeURIComponent(name)}`, 'items', (i) => i.name === name))
+      ?? (await ops.call('POST', '/instructors', { name, contact: '000-0000-0000' }))
+    instructorIds.push(ins.instructorId)
+  }
+  const instructorId = instructorIds[0]
+  step(`가상 강사 ${INSTRUCTOR_NAMES.join(', ')}`)
 
-  const insAcct = await ensureUser(admin, 'sample_ins', '샘플강사계정', 'INSTRUCTOR', instructorId)
+  const insAcct = await ensureUser(admin, 'sample_ins', '노현우', 'INSTRUCTOR', instructorId)
   step('시험 계정 sample_ins(강사, 위 강사에 연결) 준비')
 
   const course = await ops.call('POST', '/courses', {
@@ -113,18 +117,19 @@ async function main() {
     start_date: '2026-09-14',
     end_date: '2026-10-30',
     total_hours: 80,
-    training_site: '가상 교육장(테스트)',
+    training_site: '본관 302호',
     manager_user_id: opsAcct.userId,
     submission_due_date: '2026-10-09',
   })
   const courseId = course.courseId
   step(`가상 과정 (ID ${courseId})`)
 
-  await ops.call('POST', `/courses/${courseId}/instructor-assignments`, { instructor_id: instructorId })
   const schedules = {}
   for (const r of ROUNDS) {
+    // 강사가 2명이라 회차별로 배정한다(과정 전체 담당은 1명만 가능)
+    await ops.call('POST', `/courses/${courseId}/instructor-assignments`, { instructor_id: instructorIds[(r.round - 1) % instructorIds.length], round_no: r.round })
     const s = await ops.call('POST', `/courses/${courseId}/schedules`, {
-      round_no: r.round, class_date: r.date, start_time: '09:00', end_time: '18:00', instructor_id: instructorId, content: `가상 수업 ${r.round}회차`,
+      round_no: r.round, class_date: r.date, start_time: '09:00', end_time: '18:00', instructor_id: instructorIds[(r.round - 1) % instructorIds.length], content: `가상 수업 ${r.round}회차`,
     })
     schedules[r.round] = s.scheduleId
   }

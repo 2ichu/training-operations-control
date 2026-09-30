@@ -27,15 +27,15 @@ if (!ADMIN_ID || !ADMIN_PW) {
 }
 
 // ── 가상 데이터(generate_samples.py·README 와 같은 값) ────────────────────────────
-const COURSE_NAME = '샘플 과정 (가상·테스트)'
-const INSTRUCTOR_NAME = '샘플강사'
+const COURSE_NAME = '웹 프로그래밍 기초 1기'
+const INSTRUCTOR_NAME = '한상우'
 const TRAINEES = [
-  { name: '샘플가온', birth: '1998-03-15' },
-  { name: '샘플나래', birth: '1999-07-21' },
-  { name: '샘플다솜', birth: '2000-01-09' },
-  { name: '샘플라온', birth: '1997-11-30' },
-  { name: '샘플마루', birth: '2001-05-05' },
-  { name: '샘플바다', birth: '1996-09-12' },
+  { name: '서주원', birth: '1998-03-15' },
+  { name: '박민재', birth: '1999-07-21' },
+  { name: '이하은', birth: '2000-01-09' },
+  { name: '정도윤', birth: '1997-11-30' },
+  { name: '최지우', birth: '2001-05-05' },
+  { name: '강예준', birth: '1996-09-12' },
 ]
 const ROUNDS = [
   { round: 1, date: '2026-09-21' },
@@ -105,7 +105,7 @@ async function main() {
   }
 
   // 강사 정보는 운영담당자만 만들 수 있다(시스템 관리자는 업무 데이터를 만들 수 없음) → 운영담당자 계정을 먼저 만든다
-  const opsAcct = await ensureUser(admin, 'sample_ops', '샘플운영담당자', 'OPS_MANAGER')
+  const opsAcct = await ensureUser(admin, 'sample_ops', '문정아', 'OPS_MANAGER')
   const ops = new Session()
   await ops.login('sample_ops', opsAcct.tempPassword)
   step('시험 계정 sample_ops(운영담당자) 준비')
@@ -115,7 +115,7 @@ async function main() {
   const instructorId = instructor.instructorId
   step(`가상 강사 '${INSTRUCTOR_NAME}' (ID ${instructorId})`)
 
-  const insAcct = await ensureUser(admin, 'sample_ins', '샘플강사계정', 'INSTRUCTOR', instructorId)
+  const insAcct = await ensureUser(admin, 'sample_ins', '한상우계정', 'INSTRUCTOR', instructorId)
   step('시험 계정 sample_ins(강사, 위 강사에 연결) 준비')
 
   const course = await ops.call('POST', '/courses', {
@@ -123,7 +123,7 @@ async function main() {
     start_date: '2026-09-07',
     end_date: '2026-10-30',
     total_hours: 160,
-    training_site: '가상 교육장(테스트)',
+    training_site: '본관 301호',
     manager_user_id: opsAcct.userId,
     submission_due_date: '2026-09-30',
   })
@@ -156,13 +156,13 @@ async function main() {
     })
     return r.created
   }
-  await checkIn(1, ['샘플가온', '샘플나래'], '09:00')
-  await checkIn(1, ['샘플다솜'], '09:20') // 지각 유예 10분을 넘어 자동으로 지각
-  await checkIn(1, ['샘플마루'], '08:55')
-  await ops.call('POST', `/schedules/${schedules[1]}/attendance/confirm-absence`, { trainee_ids: [ids['샘플라온']] })
-  const r3 = await checkIn(3, ['샘플가온'], '09:00')
+  await checkIn(1, ['서주원', '박민재'], '09:00')
+  await checkIn(1, ['이하은'], '09:20') // 지각 유예 10분을 넘어 자동으로 지각
+  await checkIn(1, ['최지우'], '08:55')
+  await ops.call('POST', `/schedules/${schedules[1]}/attendance/confirm-absence`, { trainee_ids: [ids['정도윤']] })
+  const r3 = await checkIn(3, ['서주원'], '09:00')
   await ops.call('POST', '/attendance/check-out', { attendance_ids: r3.map((a) => a.attendanceId), check_out_time: KST('2026-09-23', '18:00') })
-  await checkIn(3, ['샘플나래'], '09:00')
+  await checkIn(3, ['박민재'], '09:00')
   step('내부 출결: 1회차(가온·나래 출석, 다솜 지각, 마루 출석, 라온 결석) / 3회차(가온 09:00~18:00, 나래 09:00)')
 
   await ops.call('POST', `/courses/${courseId}/start`, { acknowledge_no_confirmed_trainees: false })

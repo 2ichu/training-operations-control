@@ -14,14 +14,22 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 ROOT = Path(__file__).resolve().parent
 rng = random.Random(20260914)
 
-GIVEN = ['가온', '나래', '다솜', '라온', '마루', '바다', '사랑', '아름', '자람', '차오', '카이', '타온', '하늘', '고운', '나빛',
-         '다온', '라희', '모아', '보람', '소담', '여울', '이든', '준서', '지안', '채원', '하율', '해솔', '휘온', '누리', '새봄']
+SURNAMES = ['김', '이', '박', '최', '정', '강', '조', '윤', '장', '임', '한', '오', '서', '신', '권', '황', '안', '송', '류', '전']
+GIVEN = ['민준', '서연', '지호', '하윤', '도현', '수아', '예준', '지우', '건우', '서윤', '현우', '지안', '우진', '하은', '선우',
+         '다은', '시우', '유진', '주원', '채원', '지훈', '나은', '승현', '소율', '태윤', '아린', '재윤', '가영', '동현', '보라']
+RESERVED = {'서주원', '박민재', '이하은', '정도윤', '최지우', '강예준', '윤태민'}  # 소규모 세트(A)의 이름과 겹치지 않게
 TRAINEES = []
-for i, g in enumerate(GIVEN, start=1):
+used = set()
+for g in GIVEN:
+    while True:
+        name = rng.choice(SURNAMES) + g
+        if name not in used and name not in RESERVED:
+            break
+    used.add(name)
     y = 1990 + rng.randint(0, 14)
     m = rng.randint(1, 12)
     d = rng.randint(1, 28)
-    TRAINEES.append({'name': f'샘플{g}', 'birth': f'{y}-{m:02d}-{d:02d}'})
+    TRAINEES.append({'name': name, 'birth': f'{y}-{m:02d}-{d:02d}'})
 
 DATES = ['2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17', '2026-09-18',
          '2026-09-21', '2026-09-22', '2026-09-23', '2026-09-24', '2026-09-25']
@@ -75,7 +83,7 @@ for di in range(INTERNAL_ROUNDS):
 
 # ── 시나리오 JSON(setup-beacon-sample-data.mjs 가 읽는다) ───────────────────────
 (ROOT / 'beacon-scenario.json').write_text(
-    json.dumps({'trainees': TRAINEES, 'dates': DATES, 'internal': internal}, ensure_ascii=False, indent=1), encoding='utf-8')
+    json.dumps({'trainees': TRAINEES, 'dates': DATES, 'instructors': ['노현우', '송지혜'], 'internal': internal}, ensure_ascii=False, indent=1), encoding='utf-8')
 
 # ── 공식 출결 CSV(비콘 로그 형식) ───────────────────────────────────────────────
 KOR = {'PRESENT': '출석', 'LATE': '지각', 'EARLY_LEAVE': '조퇴', 'ABSENT': '결석', 'EXCUSED': '인정결석'}
@@ -86,8 +94,8 @@ for di in range(len(DATES)):
         rows.append(f'{di + 1},{t["name"]},{t["birth"]},{KOR[st]},{"" if cin is None else hm(cin)},{"" if cout is None else hm(cout)}')
 # 오류 행(반영되지 않고 사유가 표시된다)
 rows += [
-    '11,샘플가온,1990-01-01,출석,08:50,18:00',   # 없는 회차
-    f'3,샘플없는사람,,출석,08:50,18:00',           # 과정에 없는 훈련생
+    f'11,{TRAINEES[0]["name"]},1990-01-01,출석,08:50,18:00',   # 없는 회차
+    f'3,윤태민,,출석,08:50,18:00',           # 과정에 없는 훈련생
     f'4,{TRAINEES[2]["name"]},1980-05-05,출석,08:55,18:00',  # 생년월일이 다른 사람
     f'5,{TRAINEES[3]["name"]},,출석,9시,18:00',   # 시각 형식 오류
     f'6,{TRAINEES[4]["name"]},,미확인,08:55,18:00',  # 알 수 없는 상태
