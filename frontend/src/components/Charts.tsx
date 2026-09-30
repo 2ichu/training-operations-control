@@ -70,3 +70,13 @@ export function TimeSpan({ start, end, from = 8, to = 19 }: { start: string; end
     </div>
   )
 }
+
+/** 한 줄 누적 막대(구성비). 값이 0인 구간은 그리지 않는다. */
+export function StackBar({ segments }: { segments: Segment[] }) {
+  const total = segments.reduce((sum, x) => sum + x.value, 0)
+  return (
+    <div className="stackbar" aria-hidden="true">
+      {total === 0 ? <span className="stackbar-empty" /> : segments.filter((x) => x.value > 0).map((x) => <span key={x.key} style={{ flex: x.value, background: x.color }} />)}
+    </div>
+  )
+}

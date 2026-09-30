@@ -2712,3 +2712,62 @@ table.legend th {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* ── 상단 카드 안의 작은 도식 ─────────────────────────────── */
+.kpi-timeline,
+.kpi-ring {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.kpi-timeline {
+  display: grid;
+  gap: 4px;
+}
+
+.kpi-timeline .timespan {
+  height: 6px;
+  background: #dfe8f6;
+}
+
+.kpi-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  font-style: normal;
+  color: #7b8798;
+}
+
+.kpi-axis i {
+  font-style: normal;
+}
+
+.stackbar {
+  display: flex;
+  width: 100%;
+  height: 8px;
+  margin-top: 6px;
+  gap: 2px;
+}
+
+.stackbar span {
+  border-radius: 2px;
+  min-width: 3px;
+}
+
+.stackbar-empty {
+  flex: 1;
+  background: #e5e8ee;
+}
+
+.kpi-ring {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #4b5563;
+}
+
+.kpi-ring strong {
+  color: var(--text-strong);
+}
