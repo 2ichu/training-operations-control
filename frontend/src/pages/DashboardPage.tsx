@@ -1,9 +1,10 @@
+import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { api } from '../api/client'
-import type { CourseSummary, DashboardSummary, RosterItem } from '../api/types'
+import type { CourseSummary, DashboardRecentCase, DashboardSummary, RosterItem } from '../api/types'
 import { useApi } from '../api/useApi'
 import { useAuth, useCurrentUser } from '../auth/auth-context'
-import { Bar, Donut, type Segment } from '../components/Charts'
+import { Bar, Gauge } from '../components/Charts'
 import { EmptyText, ErrorText, Loading } from '../components/Feedback'
 import { CaseStatusBadge } from '../components/StatusBadge'
 import { formatDateTime, formatTime, formatTrainees } from '../format'
@@ -239,32 +240,7 @@ export function DashboardPage() {
               {data.verificationSummary.recent.length === 0 ? (
                 <EmptyText>확인이 필요한 건이 없습니다.</EmptyText>
               ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>발생일시</th>
-                      <th>과정</th>
-                      <th>대상</th>
-                      <th>탐지유형</th>
-                      <th>상태</th>
-                      <th>담당자</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.verificationSummary.recent.map((c) => (
-                      <tr key={c.caseId} className={canOpenCase ? 'clickable' : undefined} onClick={canOpenCase ? () => navigate(`/verification-cases/${c.caseId}`) : undefined}>
-                        <td>{canOpenCase ? <Link to={`/verification-cases/${c.caseId}`}>{formatDateTime(c.detectedAt)}</Link> : formatDateTime(c.detectedAt)}</td>
-                        <td>{c.courseName}</td>
-                        <td>{formatTrainees(c.trainees.map((t) => t.name))}</td>
-                        <td>{label(RULE_LABELS, c.ruleCode)}</td>
-                        <td>
-                          <CaseStatusBadge status={c.status} />
-                        </td>
-                        <td>{c.assigneeName ?? '미지정'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <RecentCases cases={data.verificationSummary.recent} canOpenCase={canOpenCase} onOpen={(id) => navigate(`/verification-cases/${id}`)} />
               )}
               </div>
           </section>
@@ -285,12 +261,7 @@ function AttendanceToday({ roster }: { roster: RosterItem[] }) {
     <div className="att-today">
       <h3>오늘 출결 현황 <span className="muted">(입력 {done}/{total}명)</span></h3>
       <div className="att-donut">
-        <Donut
-          size={148}
-          segments={order.map((k): Segment => ({ key: k, label: label(ATTENDANCE_STATUS_LABELS, k), value: counts.get(k) ?? 0, color: ATTENDANCE_COLORS[k] }))}
-          centerValue={total === 0 ? '-' : `${Math.round((done / total) * 100)}%`}
-          centerLabel="입력률"
-        />
+        <Gauge value={total === 0 ? 0 : done / total} label="출결 입력률" width={210} />
         <ul className="att-legend">
           {order.map((k) => (
             <li key={k}>
@@ -306,5 +277,77 @@ function AttendanceToday({ roster }: { roster: RosterItem[] }) {
         </ul>
       </div>
     </div>
+  )
+}
+
+// 최근 발생 건: 같은 발생일시(분 단위)·같은 과정의 건은 대표 한 줄("과정명 외 N건")로 묶고, 눌러서 펼치면 개별 건을 보여 준다.
+function RecentCases({ cases, canOpenCase, onOpen }: { cases: DashboardRecentCase[]; canOpenCase: boolean; onOpen: (caseId: number) => void }) {
+  const [open, setOpen] = useState<Set<string>>(new Set())
+  const groups = new Map<string, DashboardRecentCase[]>()
+  for (const c of cases) {
+    const key = `${formatDateTime(c.detectedAt)}|${c.courseId}`
+    groups.set(key, [...(groups.get(key) ?? []), c])
+  }
+  const toggle = (key: string) =>
+    setOpen((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  const same = <T,>(values: T[]) => values.every((v) => v === values[0])
+
+  const caseRow = (c: DashboardRecentCase, child = false) => (
+    <tr key={c.caseId} className={[canOpenCase ? 'clickable' : '', child ? 'child-row' : ''].filter(Boolean).join(' ') || undefined} onClick={canOpenCase ? () => onOpen(c.caseId) : undefined}>
+      <td>{canOpenCase ? <Link to={`/verification-cases/${c.caseId}`}>{formatDateTime(c.detectedAt)}</Link> : formatDateTime(c.detectedAt)}</td>
+      <td>{c.courseName}</td>
+      <td>{formatTrainees(c.trainees.map((t) => t.name))}</td>
+      <td>{label(RULE_LABELS, c.ruleCode)}</td>
+      <td>
+        <CaseStatusBadge status={c.status} />
+      </td>
+      <td>{c.assigneeName ?? '미지정'}</td>
+    </tr>
+  )
+
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>발생일시</th>
+          <th>과정</th>
+          <th>대상</th>
+          <th>탐지유형</th>
+          <th>상태</th>
+          <th>담당자</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[...groups.entries()].map(([key, list]) => {
+          if (list.length === 1) return caseRow(list[0])
+          const expanded = open.has(key)
+          const head = list[0]
+          const trainees = new Set(list.flatMap((c) => c.trainees.map((t) => t.name)))
+          return [
+            <tr key={key} className="group-row clickable" onClick={() => toggle(key)}>
+              <td>
+                <button type="button" className="row-toggle" aria-expanded={expanded} aria-label={`${head.courseName} 외 ${list.length - 1}건 ${expanded ? '접기' : '펼치기'}`} onClick={(e) => { e.stopPropagation(); toggle(key) }}>
+                  <span className="row-chevron" aria-hidden="true" />
+                  {formatDateTime(head.detectedAt)}
+                </button>
+              </td>
+              <td>
+                <strong>{head.courseName}</strong> <span className="group-count">외 {list.length - 1}건</span>
+              </td>
+              <td>{trainees.size > 0 ? `${trainees.size}명` : '-'}</td>
+              <td>{same(list.map((c) => c.ruleCode)) ? label(RULE_LABELS, head.ruleCode) : `${new Set(list.map((c) => c.ruleCode)).size}개 유형`}</td>
+              <td>{same(list.map((c) => c.status)) ? <CaseStatusBadge status={head.status} /> : <span className="muted">복수</span>}</td>
+              <td>{same(list.map((c) => c.assigneeName ?? '')) ? (head.assigneeName ?? '미지정') : '복수'}</td>
+            </tr>,
+            ...(expanded ? list.map((c) => caseRow(c, true)) : []),
+          ]
+        })}
+      </tbody>
+    </table>
   )
 }

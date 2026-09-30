@@ -7,47 +7,6 @@ export interface Segment {
   color: string
 }
 
-export function Donut({ segments, centerValue, centerLabel, size = 132 }: { segments: Segment[]; centerValue: string | number; centerLabel: string; size?: number }) {
-  const total = segments.reduce((sum, s) => sum + s.value, 0)
-  const stroke = 16
-  const r = (size - stroke) / 2
-  const c = 2 * Math.PI * r
-  let offset = 0
-  return (
-    <svg className="donut" width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--muted-bg)" strokeWidth={stroke} />
-      {total > 0 &&
-        segments
-          .filter((s) => s.value > 0)
-          .map((s) => {
-            const len = (s.value / total) * c
-            const el = (
-              <circle
-                key={s.key}
-                cx={size / 2}
-                cy={size / 2}
-                r={r}
-                fill="none"
-                stroke={s.color}
-                strokeWidth={stroke}
-                strokeDasharray={`${Math.max(len - 1.5, 0.5)} ${c - Math.max(len - 1.5, 0.5)}`}
-                strokeDashoffset={-offset}
-                transform={`rotate(-90 ${size / 2} ${size / 2})`}
-              />
-            )
-            offset += len
-            return el
-          })}
-      <text x="50%" y="47%" textAnchor="middle" className="donut-value">
-        {centerValue}
-      </text>
-      <text x="50%" y="63%" textAnchor="middle" className="donut-label">
-        {centerLabel}
-      </text>
-    </svg>
-  )
-}
-
 /** 표 셀 안에 넣는 가로 막대(값/최대값 비율). 값 자체는 옆 셀에 텍스트로 있다. */
 export function Bar({ value, max, color }: { value: number; max: number; color: string }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0
@@ -55,5 +14,26 @@ export function Bar({ value, max, color }: { value: number; max: number; color: 
     <div className="bar" aria-hidden="true">
       <div className="bar-fill" style={{ width: `${pct}%`, background: color }} />
     </div>
+  )
+}
+
+/** 반원 게이지(0~100%). 값과 이름은 가운데 텍스트로 함께 표시한다. */
+export function Gauge({ value, label, color = '#5a9a6e', width = 200 }: { value: number; label: string; color?: string; width?: number }) {
+  const stroke = 16
+  const r = (width - stroke) / 2
+  const h = r + stroke
+  const clamped = Math.max(0, Math.min(1, value))
+  const arc = Math.PI * r
+  return (
+    <svg className="gauge" width={width} height={h + 6} viewBox={`0 0 ${width} ${h + 6}`} aria-hidden="true">
+      <path d={`M ${stroke / 2} ${h} A ${r} ${r} 0 0 1 ${width - stroke / 2} ${h}`} fill="none" stroke="var(--muted-bg)" strokeWidth={stroke} strokeLinecap="butt" />
+      {clamped > 0 && <path d={`M ${stroke / 2} ${h} A ${r} ${r} 0 0 1 ${width - stroke / 2} ${h}`} fill="none" stroke={color} strokeWidth={stroke} strokeDasharray={`${arc * clamped} ${arc}`} />}
+      <text x="50%" y={h - 26} textAnchor="middle" className="gauge-value">
+        {Math.round(clamped * 100)}%
+      </text>
+      <text x="50%" y={h - 6} textAnchor="middle" className="gauge-label">
+        {label}
+      </text>
+    </svg>
   )
 }

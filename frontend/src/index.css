@@ -2948,3 +2948,168 @@ table.legend th {
 .brief-note strong {
   color: var(--text-strong);
 }
+
+/* ── LNB 아코디언 ─────────────────────────────────────────── */
+.nav-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 14px 6px 16px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #c9d3e4;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.nav-group-toggle:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+}
+
+.nav-group-toggle:focus-visible {
+  outline-offset: -2px;
+}
+
+.nav-icon {
+  flex: none;
+  opacity: 0.85;
+}
+
+.nav-chevron {
+  margin-left: auto;
+  width: 7px;
+  height: 7px;
+  border-right: 1.6px solid currentColor;
+  border-bottom: 1.6px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s;
+  opacity: 0.7;
+}
+
+.nav-group-toggle[aria-expanded='true'] .nav-chevron {
+  transform: rotate(45deg);
+}
+
+.nav-group-toggle[aria-expanded='true'] {
+  color: #fff;
+}
+
+.nav-items {
+  display: none;
+}
+
+.nav-items.open {
+  display: block;
+}
+
+.app-nav .nav-items a {
+  padding: 4px 16px 4px 41px;
+  font-size: 13px;
+}
+
+.app-nav a.nav-top {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 16px 7px 13px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.nav-group + .nav-group {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+@media (max-width: 760px) {
+  .nav-group-toggle {
+    width: auto;
+  }
+
+  .nav-items {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .nav-chevron,
+  .nav-icon {
+    display: none;
+  }
+}
+
+/* ── 그룹 요약 행 ─────────────────────────────────────────── */
+tr.group-row {
+  background: #f8f9fc;
+}
+
+tr.group-row td {
+  font-weight: 500;
+}
+
+.group-count {
+  margin-left: 4px;
+  padding: 0 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #7a4300;
+  background: var(--accent-bg);
+  border-radius: 3px;
+}
+
+.row-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-weight: 600;
+  color: var(--link);
+}
+
+button.row-toggle:hover:not(:disabled) {
+  background: none;
+  text-decoration: underline;
+}
+
+.row-chevron {
+  width: 6px;
+  height: 6px;
+  border-right: 1.6px solid currentColor;
+  border-bottom: 1.6px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s;
+}
+
+.row-toggle[aria-expanded='true'] .row-chevron {
+  transform: rotate(45deg);
+}
+
+tr.child-row td {
+  background: #fcfcfd;
+  color: #374151;
+}
+
+tr.child-row td:first-child {
+  padding-left: 30px;
+}
+
+.gauge-value {
+  font-size: 30px;
+  font-weight: 800;
+  fill: var(--text-strong);
+}
+
+.gauge-label {
+  font-size: 12.5px;
+  fill: var(--text-muted);
+}
+
+.att-donut .gauge {
+  flex: none;
+}

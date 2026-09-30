@@ -92,6 +92,23 @@ describe('인증 흐름', () => {
 })
 
 describe('대시보드 (S01)', () => {
+  it('같은 발생일시·과정의 확인 건은 대표 한 줄로 묶고 펼치면 개별 건을 보여준다', async () => {
+    const base = dashboard()
+    const one = base.verificationSummary.recent[0]
+    mockApi({
+      'GET /auth/me': { status: 200, body: me() },
+      'GET /dashboard': { status: 200, body: dashboard({ verificationSummary: { byStatus: base.verificationSummary.byStatus, recent: [one, { ...one, caseId: 92 }, { ...one, caseId: 93 }] } }) },
+      'GET /courses': { status: 200, body: { items: [], page: 1, size: 100, total: 0 } },
+    })
+    const user = userEvent.setup()
+    renderAt('/')
+    const cases = await screen.findByRole('region', { name: '확인 필요 사항' })
+    const toggle = within(cases).getByRole('button', { name: /외 2건 펼치기/ })
+    expect(within(cases).queryByRole('link', { name: /2026-09-28/ })).not.toBeInTheDocument()
+    await user.click(toggle)
+    expect(within(cases).getAllByRole('link', { name: '2026-09-28 10:05' })).toHaveLength(3)
+  })
+
   it('오늘 회차·확인 필요 요약·미처리 건수를 표로 보여준다', async () => {
     mockApi({
       'GET /auth/me': { status: 200, body: me() },
@@ -151,6 +168,25 @@ describe('대시보드 (S01)', () => {
     expect(screen.queryByLabelText('내 담당 건만')).not.toBeInTheDocument()
     const cases = screen.getByRole('region', { name: '확인 필요 사항' })
     expect(within(cases).queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('좌측 메뉴는 그룹별로 접고 펼 수 있다(현재 화면이 속한 그룹은 항상 펼침)', async () => {
+    mockApi({
+      'GET /auth/me': { status: 200, body: me() },
+      'GET /dashboard': { status: 200, body: dashboard() },
+      'GET /courses': { status: 200, body: { items: [], page: 1, size: 100, total: 0 } },
+    })
+    window.localStorage.clear()
+    const user = userEvent.setup()
+    renderAt('/')
+    const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
+    const toggle = within(nav).getByRole('button', { name: '출결 관리' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(within(nav).getByRole('link', { name: '일일 출결' })).toBeInTheDocument()
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('조회 실패 시 오류와 다시 시도를 보여준다', async () => {
