@@ -157,7 +157,7 @@ export function DashboardPage() {
               )}
               {lessons.length > 0 && canOpenCourse && (
                 <Link className="ops-go" to={`/courses/${lessons[0].courseId}`}>
-                  과정 보기 ›
+                  과정 보기
                 </Link>
               )}
             </div>
@@ -179,7 +179,7 @@ export function DashboardPage() {
               )}
               {can('S07', 'R') && (
                 <Link className="ops-go" to={`/attendance/daily?date=${dayParam}`}>
-                  출결 입력 ›
+                  출결 입력
                 </Link>
               )}
             </div>
@@ -205,7 +205,7 @@ export function DashboardPage() {
               )}
               {todo[0]?.to && (
                 <Link className="ops-go" to={todo[0].to}>
-                  확인하기 ›
+                  확인하기
                 </Link>
               )}
             </div>

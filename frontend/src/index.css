@@ -3176,3 +3176,100 @@ tr.child-row td:first-child {
 .att-donut .gauge {
   flex: none;
 }
+
+/* ════════════════════════════════════════════════════════════
+   통일성·가독성 미세 조정: 바로가기 링크 형식, 보조 글자 크기·대비, 구역 간격 규칙
+   ════════════════════════════════════════════════════════════ */
+/* 바로가기(이동) 링크는 어디서나 같은 형태: 파란 굵은 글씨 + › */
+.ops-go,
+table.todo td a,
+.brief-group-go {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--link);
+  text-decoration: none;
+}
+
+table.todo td a::after,
+.ops-go::after {
+  content: ' ›';
+}
+
+.ops-go {
+  /* 텍스트에 이미 › 가 있어 중복 방지 */
+}
+
+table.todo td a:hover,
+.ops-go:hover {
+  text-decoration: underline;
+}
+
+/* 보조 글자: 최소 12.5px, 대비 확보 */
+.ops-pct,
+.ops-sub {
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.ops-tick {
+  font-size: 12px;
+  color: #4b5563;
+}
+
+.ops-stack span {
+  font-size: 13px;
+}
+
+.ops-label {
+  font-size: 14px;
+  color: #374151;
+}
+
+.ops-value {
+  font-size: 36px;
+}
+
+.ops-alert .ops-value {
+  font-size: 36px;
+}
+
+/* 구역 간격: 상단 영역과 본문 영역 사이, 본문 구역 사이를 같은 값으로 */
+.dashboard {
+  gap: 24px 36px;
+}
+
+.ops-band {
+  padding: 16px 18px 18px;
+  gap: 16px;
+}
+
+.ops-item {
+  padding: 12px 16px 12px;
+  gap: 6px;
+}
+
+/* 표 행 높이와 숫자 열 일관성 */
+th,
+td {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+table.todo td.num,
+.att-legend strong,
+.att-pct {
+  font-variant-numeric: tabular-nums;
+}
+
+.att-legend li {
+  font-size: 14px;
+}
+
+.att-pct {
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.dashboard h2 {
+  font-size: 17px;
+}
