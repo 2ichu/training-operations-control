@@ -81,12 +81,20 @@ export function DashboardPage() {
         { key: 'rev', group: '결과물', text: '결과물 미검토', count: data.counts.reviewPending, to: to('S19', '/submissions'), emphasis: false },
       ]
     : []
-  const kpis: { key: string; text: string; value: number; to: string | null; alert: boolean }[] = data
+  const first = data?.todaySchedules[0]
+  const kpis: { key: string; text: string; value: number; sub: string; to: string | null; tone: 'info' | 'alert' | 'warn' | 'plain' }[] = data
     ? [
-        { key: 'today', text: '오늘 수업', value: data.todaySchedules.length, to: null, alert: false },
-        { key: 'needs', text: '확인 필요', value: needsCheck, to: todo[0].to, alert: needsCheck > 0 },
-        { key: 'att', text: '미출결', value: data.counts.notCheckedIn, to: todo[3].to, alert: false },
-        { key: 'log', text: '운영일지 미작성', value: data.counts.operationLogMissing, to: todo[5].to, alert: false },
+        {
+          key: 'today',
+          text: '오늘 수업',
+          value: data.todaySchedules.length,
+          sub: first ? `${first.courseName} ${first.roundNo}회차 ${formatTime(first.startTime)}~${formatTime(first.endTime)}${data.todaySchedules.length > 1 ? ` 외 ${data.todaySchedules.length - 1}건` : ''}` : '예정된 수업 없음',
+          to: null,
+          tone: 'info',
+        },
+        { key: 'needs', text: '확인 필요', value: needsCheck, sub: `조치 필요·추가 확인 ${actionRequired}건 · 공결 승인 대기 ${excusePending.data?.total ?? 0}건`, to: todo[0].to, tone: needsCheck > 0 ? 'alert' : 'plain' },
+        { key: 'att', text: '미출결', value: data.counts.notCheckedIn, sub: `퇴실 미확인 ${data.counts.checkoutMissing}건`, to: todo[3].to, tone: data.counts.notCheckedIn > 0 ? 'warn' : 'plain' },
+        { key: 'log', text: '운영일지 미작성', value: data.counts.operationLogMissing, sub: `결과물 미제출 ${data.counts.submissionMissing}건 · 미검토 ${data.counts.reviewPending}건`, to: todo[5].to, tone: 'plain' },
       ]
     : []
 
@@ -124,21 +132,20 @@ export function DashboardPage() {
       {data && (
         <div className={summary.status === 'loading' ? 'dashboard is-refreshing' : 'dashboard'}>
           <ul className="kpi-strip" aria-label="주요 현황">
-            {kpis.map((k) => (
-              <li key={k.key} className={k.alert ? 'kpi kpi-alert' : 'kpi'}>
-                {k.to ? (
-                  <Link to={k.to}>
-                    <span className="kpi-label">{k.text}</span>
-                    <span className="kpi-value">{k.value}건</span>
-                  </Link>
-                ) : (
-                  <div>
-                    <span className="kpi-label">{k.text}</span>
-                    <span className="kpi-value">{k.value}건</span>
-                  </div>
-                )}
-              </li>
-            ))}
+            {kpis.map((k) => {
+              const body = (
+                <>
+                  <span className="kpi-label">{k.text}</span>
+                  <span className="kpi-value">{k.value}건</span>
+                  <span className="kpi-sub">{k.sub}</span>
+                </>
+              )
+              return (
+                <li key={k.key} className={`kpi kpi-${k.tone}`}>
+                  {k.to ? <Link to={k.to}>{body}</Link> : <div>{body}</div>}
+                </li>
+              )
+            })}
           </ul>
 
           <section className="dash-todo" aria-labelledby="todo-title">
@@ -247,11 +254,16 @@ function AttendanceToday({ roster }: { roster: RosterItem[] }) {
           centerValue={total === 0 ? '-' : `${Math.round((done / total) * 100)}%`}
           centerLabel="입력률"
         />
-        <ul className="legend-list">
+        <ul className="att-legend">
           {order.map((k) => (
             <li key={k}>
-              <span className="swatch" aria-hidden="true" style={{ background: ATTENDANCE_COLORS[k] }} />
-              {label(ATTENDANCE_STATUS_LABELS, k)} <strong>{counts.get(k) ?? 0}명</strong>
+              <span className="att-name">
+                <span className="swatch" aria-hidden="true" style={{ background: ATTENDANCE_COLORS[k] }} />
+                {label(ATTENDANCE_STATUS_LABELS, k)}
+              </span>
+              <Bar value={counts.get(k) ?? 0} max={Math.max(1, total)} color={ATTENDANCE_COLORS[k]} />
+              <strong>{counts.get(k) ?? 0}명</strong>
+              <span className="att-pct">{total === 0 ? '-' : `${Math.round(((counts.get(k) ?? 0) / total) * 100)}%`}</span>
             </li>
           ))}
         </ul>
