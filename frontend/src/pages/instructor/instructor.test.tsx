@@ -38,7 +38,7 @@ describe('S11 강사 목록', () => {
     const row = await screen.findByRole('row', { name: /박강사/ })
     expect(within(row).getByText('***-****-2222')).toBeInTheDocument()
     expect(within(row).getByRole('link', { name: '박강사' })).toHaveAttribute('href', '/instructors/2')
-    expect(within(row).getByRole('link', { name: '강의 일정' })).toHaveAttribute('href', '/schedules?instructor_id=2')
+    expect(within(row).getByRole('link', { name: '훈련일정' })).toHaveAttribute('href', '/schedules?instructor_id=2')
     expect(within(screen.getByRole('row', { name: /이강사/ })).getByText('비활동')).toHaveClass('badge-muted')
     expect(screen.getByRole('link', { name: '신규 등록' })).toHaveAttribute('href', '/instructors/new')
     expect(screen.getByRole('link', { name: '배정 관리' })).toHaveAttribute('href', '/schedules')
@@ -103,7 +103,7 @@ describe('S12 강사 등록/수정', () => {
     await screen.findByRole('heading', { name: '박강사' })
     expect(screen.queryByRole('button', { name: '수정' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: '변경이력 보기' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '강의 일정 보기' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '훈련일정 보기' })).toBeInTheDocument()
   })
 })
 

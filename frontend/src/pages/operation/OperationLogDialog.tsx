@@ -162,7 +162,7 @@ function LogForm({ initial, submitLabel, onSubmit, onCancel }: { initial: FormVa
         특이사항(선택)
         <textarea value={values.issueNote} onChange={set('issueNote')} maxLength={2000} rows={2} />
       </label>
-      <p className="hint">운영일지는 교육 종료 후 제때 작성해야 합니다. 늦어지면 확인 필요 사항(회차 운영기록 지연)으로 탐지될 수 있습니다.</p>
+      <p className="hint">운영일지는 훈련 종료 후 제때 작성해야 합니다. 늦어지면 확인 필요 사항(회차 운영기록 지연)으로 탐지될 수 있습니다.</p>
       {error && (
         <p className="form-error" role="alert">
           {error}

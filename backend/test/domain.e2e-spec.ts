@@ -2284,7 +2284,7 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
       const course = (await ops1.post('/api/v1/courses').send({ course_name: '통합흐름과정', start_date: '2020-01-01', end_date: '2020-01-31', total_hours: 10, training_site: '본원', manager_user_id: ops }).expect(201)).body;
       await ops1.post(`/api/v1/courses/${course.courseId}/open-recruitment`).expect(200);
 
-      // 2) 강사 배정 → 교육일정 생성(과거 날짜 — 종료된 회차 기준 항목들을 실제로 검증하기 위함)
+      // 2) 강사 배정 → 훈련일정 생성(과거 날짜 — 종료된 회차 기준 항목들을 실제로 검증하기 위함)
       await ops1.post(`/api/v1/courses/${course.courseId}/instructor-assignments`).send({ instructor_id: flowInstructorId }).expect(201);
       const schedule = (
         await ops1.post(`/api/v1/courses/${course.courseId}/schedules`).send({ round_no: 1, class_date: '2020-01-02', start_time: '09:00', end_time: '18:00', instructor_id: flowInstructorId, content: '이론' }).expect(201)

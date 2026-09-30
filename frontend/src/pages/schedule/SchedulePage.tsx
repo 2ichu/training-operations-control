@@ -19,9 +19,9 @@ const LIST_SIZE = 50
 
 type Dialog = { kind: 'create' } | { kind: 'edit' | 'cancel' | 'reassign'; schedule: ScheduleListItem }
 
-// S13 강의 일정/교육일정(system-design 3.4·7-A): 데이터·화면은 하나, 진입점은 둘.
-// - 강사 관리 > 강의 일정: 강사 기준, 캘린더 우선(강사 계정은 서버가 본인 회차만 준다)
-// - 과정 운영 > 과정 상세 > 교육일정: course_id 지정, 회차 순 목록 우선 + 강사 배정 관리
+// S13 훈련일정(system-design 3.4·7-A): 데이터·화면은 하나, 진입점은 둘.
+// - 강사 관리 > 훈련일정: 강사 기준, 캘린더 우선(강사 계정은 서버가 본인 회차만 준다)
+// - 과정 운영 > 과정 상세 > 훈련일정: course_id 지정, 회차 순 목록 우선 + 강사 배정 관리
 // 운영담당자는 회차 추가·수정·휴강·강사 재배정과 배정 추가·취소를 한다. 종료·중단 과정은 바꿀 수 없다(V7).
 // 회차를 누르면 그 회차의 운영일지(S17)로 간다.
 export function SchedulePage() {
@@ -68,7 +68,7 @@ export function SchedulePage() {
   return (
     <section className="page">
       <div className="page-header">
-        <h1>{courseData ? `교육일정 — ${courseData.courseName}` : '강의 일정'}</h1>
+        <h1>{courseData ? `훈련일정 — ${courseData.courseName}` : '훈련일정'}</h1>
         <div className="toolbar">
           {courseData && <Link to={`/courses/${courseData.courseId}`}>과정 상세로</Link>}
           {courseData && can('S13', 'C') && !locked && (

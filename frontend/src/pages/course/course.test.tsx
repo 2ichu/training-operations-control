@@ -133,7 +133,7 @@ describe('S16 과정 등록', () => {
 })
 
 describe('S16 과정 상세', () => {
-  it('탭으로 훈련생·강사배정·교육일정을 보여주고, 수정은 바뀐 필드와 사유만 보낸다', async () => {
+  it('탭으로 훈련생·강사배정·훈련일정을 보여주고, 수정은 바뀐 필드와 사유만 보낸다', async () => {
     let current = course()
     const { calls } = mockApi({
       'GET /auth/me': { status: 200, body: me() },
@@ -151,7 +151,7 @@ describe('S16 과정 상세', () => {
     expect(within(tabpanel).getByRole('row', { name: '신청 3명' })).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: '강사배정' }))
     expect(within(screen.getByRole('tabpanel')).getByRole('row', { name: /박강사 과정 전체 배정/ })).toBeInTheDocument()
-    await user.click(screen.getByRole('tab', { name: '교육일정' }))
+    await user.click(screen.getByRole('tab', { name: '훈련일정' }))
     expect(within(screen.getByRole('tabpanel')).getByRole('row', { name: /1회차 2026-09-01 09:00~18:00 박강사 진행완료/ })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '수정' }))
@@ -160,10 +160,10 @@ describe('S16 과정 상세', () => {
     expect(screen.getByText('변경한 내용이 없습니다.')).toBeInTheDocument()
     await user.clear(screen.getByLabelText('교육장'))
     await user.type(screen.getByLabelText('교육장'), '별관 3층')
-    await user.type(screen.getByLabelText('수정 사유(선택)'), '강의실 변경')
+    await user.type(screen.getByLabelText('수정 사유(선택)'), '훈련장 변경')
     await user.click(screen.getByRole('button', { name: '저장' }))
     expect(await screen.findByText('저장했습니다.')).toBeInTheDocument()
-    expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ training_site: '별관 3층', reason: '강의실 변경' })
+    expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ training_site: '별관 3층', reason: '훈련장 변경' })
     expect(screen.getByText('별관 3층')).toBeInTheDocument()
   })
 

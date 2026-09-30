@@ -199,7 +199,7 @@ describe('대시보드 (S01)', () => {
       'GET /courses': { status: 200, body: { items: [], page: 1, size: 100, total: 0 } },
     })
     renderAt('/')
-    expect(await screen.findByText('오늘 예정된 교육이 없습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('오늘 예정된 훈련이 없습니다.')).toBeInTheDocument()
     expect(screen.queryByLabelText('내 담당 건만')).not.toBeInTheDocument()
     const cases = screen.getByRole('region', { name: '확인 필요 사항' })
     expect(within(cases).queryByRole('link')).not.toBeInTheDocument()

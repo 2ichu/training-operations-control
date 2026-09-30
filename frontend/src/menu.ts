@@ -40,7 +40,7 @@ export const MENU: MenuGroup[] = [
     label: '강사 관리',
     items: [
       { screenId: 'S11', label: '강사 목록', path: '/instructors' },
-      { screenId: 'S13', label: '강의 일정', path: '/schedules' },
+      { screenId: 'S13', label: '훈련일정', path: '/schedules' },
       { screenId: 'S14', label: '강사 변경이력', path: '/instructor-change-logs' },
     ],
   },

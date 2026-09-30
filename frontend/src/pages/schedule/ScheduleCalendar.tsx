@@ -39,7 +39,7 @@ export function ScheduleCalendar({ month, items, today, linkToLog = false }: { m
                   {events.length > 0 && (
                     <ul>
                       {events.map((s) => (
-                        <li key={s.scheduleId} className={s.displayStatus === 'SCHEDULED' ? 'event' : 'event muted'}>
+                        <li key={s.scheduleId} className={s.displayStatus === 'SCHEDULED' ? 'event' : s.displayStatus === 'CANCELLED' ? 'event muted cancelled' : 'event muted'}>
                           {linkToLog && s.status !== 'CANCELLED' ? (
                             <Link to={`/operation-logs?course_id=${s.courseId}&schedule_id=${s.scheduleId}`}>{eventText(s)}</Link>
                           ) : (

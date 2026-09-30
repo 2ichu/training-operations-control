@@ -16,7 +16,7 @@ import type { CourseFormValues } from './course-model'
 
 type Tab = 'trainees' | 'assignments' | 'schedules' | 'closure'
 
-// S16 과정 상세(system-design 7-A): 기본정보 + 상태 전환 + 탭(훈련생 / 강사배정 / 교육일정 / 종료 체크리스트).
+// S16 과정 상세(system-design 7-A): 기본정보 + 상태 전환 + 탭(훈련생 / 강사배정 / 훈련일정 / 종료 체크리스트).
 // 강사에게는 서버가 본인 배정·본인 회차만 내려준다(V4). 종료·중단 과정은 수정할 수 없다(V7).
 export function CourseDetailPage() {
   const { id } = useParams()
@@ -36,7 +36,7 @@ export function CourseDetailPage() {
   const tabs: { key: Tab; label: string }[] = [
     { key: 'trainees', label: '훈련생' },
     { key: 'assignments', label: '강사배정' },
-    { key: 'schedules', label: '교육일정' },
+    { key: 'schedules', label: '훈련일정' },
     ...(can('S16', 'A') ? [{ key: 'closure' as const, label: '종료 체크리스트' }] : []),
   ]
 
@@ -196,13 +196,13 @@ function TraineeTab({ course }: { course: CourseDetail }) {
   )
 }
 
-// 배정 추가·취소와 회차 편성은 교육일정 화면(S13)에서 한다(system-design 3.3 — 별도 배정 메뉴 없음)
+// 배정 추가·취소와 회차 편성은 훈련일정 화면(S13)에서 한다(system-design 3.3 — 별도 배정 메뉴 없음)
 function ScheduleLink({ courseId }: { courseId: number }) {
   const { can } = useAuth()
   if (!can('S13', 'R')) return null
   return (
     <p className="toolbar">
-      <Link to={`/schedules?course_id=${courseId}`}>교육일정·강사 배정 관리</Link>
+      <Link to={`/schedules?course_id=${courseId}`}>훈련일정·강사 배정 관리</Link>
     </p>
   )
 }
@@ -247,7 +247,7 @@ function ScheduleTab({ course }: { course: CourseDetail }) {
     return (
       <>
         <ScheduleLink courseId={course.courseId} />
-        <EmptyText>등록된 교육일정이 없습니다.</EmptyText>
+        <EmptyText>등록된 훈련일정이 없습니다.</EmptyText>
       </>
     )
   const names = new Map(course.instructorAssignments.map((a) => [a.instructorId, a.instructorName]))

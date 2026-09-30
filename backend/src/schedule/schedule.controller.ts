@@ -4,7 +4,7 @@ import { Authorize } from '../rbac/authorize.decorator.js';
 import type { RbacRequest } from '../rbac/rbac.types.js';
 import { ScheduleService } from './schedule.service.js';
 
-// 화면: S13 강의 일정/교육일정 (회차·휴강·강사 배정) — baseline 5-2
+// 화면: S13 훈련일정 (회차·휴강·강사 배정) — baseline 5-2
 @Controller()
 export class ScheduleController {
   constructor(@Inject(ScheduleService) private readonly schedules: ScheduleService) {}

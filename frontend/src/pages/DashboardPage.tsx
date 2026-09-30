@@ -143,7 +143,7 @@ export function DashboardPage() {
               <div className="ops-head">
                 <span className="ops-label">
                   <i className="ops-dot" aria-hidden="true" />
-                  오늘 수업
+                  오늘 훈련
                 </span>
                 {lessons.length > 0 && canOpenCourse && (
                   <Link className="ops-go" to={`/courses/${lessons[0].courseId}`}>
@@ -178,7 +178,7 @@ export function DashboardPage() {
                       </span>
                     </>
                   ) : (
-                    <span className="ops-cap">예정된 수업 없음</span>
+                    <span className="ops-cap">예정된 훈련 없음</span>
                   )}
                 </div>
               </div>
@@ -313,7 +313,7 @@ export function DashboardPage() {
           <section className="dash-today" aria-labelledby="today-title">
             <h2 id="today-title">{data.date} 회차</h2>
             {data.todaySchedules.length === 0 ? (
-              <EmptyText>{date ? '해당 날짜에 예정된 교육이 없습니다.' : '오늘 예정된 교육이 없습니다.'}</EmptyText>
+              <EmptyText>{date ? '해당 날짜에 예정된 훈련이 없습니다.' : '오늘 예정된 훈련이 없습니다.'}</EmptyText>
             ) : (
               <ul className="session-list">
                 {data.todaySchedules.map((s) => (

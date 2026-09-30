@@ -70,7 +70,7 @@ describe('schedule-model', () => {
   })
 })
 
-describe('S13 교육일정(과정 진입)', () => {
+describe('S13 훈련일정(과정 진입)', () => {
   it('과정 지정 시 목록 우선·배정 패널, 신규 회차는 해당 회차에 유효 배정된 강사만 고르고 시간 겹침 경고를 보여준다', async () => {
     const { calls } = mockApi({
       'GET /auth/me': { status: 200, body: me() },
@@ -85,7 +85,7 @@ describe('S13 교육일정(과정 진입)', () => {
     })
     const user = userEvent.setup()
     renderAt('/schedules?course_id=3')
-    expect(await screen.findByRole('heading', { name: '교육일정 — 웹개발 1기' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '훈련일정 — 웹개발 1기' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '목록' })).toHaveAttribute('aria-pressed', 'true')
     const panel = screen.getByRole('region', { name: '강사 배정' })
     expect(within(panel).getByText('과정 전체')).toBeInTheDocument()
@@ -227,7 +227,7 @@ describe('S13 캘린더 — 한 달 전체', () => {
   })
 })
 
-describe('S13 강의 일정(강사 진입)', () => {
+describe('S13 훈련일정(강사 진입)', () => {
   it('강사 계정: 캘린더 우선, 달 단위로 조회, 변경 버튼 없음', async () => {
     const { calls } = mockApi({
       'GET /auth/me': { status: 200, body: me({ userId: 9, roles: ['INSTRUCTOR'], linkedInstructorId: 2 }, INSTRUCTOR_PERMISSIONS) },

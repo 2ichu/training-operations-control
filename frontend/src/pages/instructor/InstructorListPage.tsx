@@ -92,7 +92,7 @@ export function InstructorListPage() {
                     <InstructorStatusBadge status={i.status} />
                   </td>
                   <td className="num">{i.assignedCourseCount}</td>
-                  <td>{can('S13', 'R') && <Link to={`/schedules?instructor_id=${i.instructorId}`}>강의 일정</Link>}</td>
+                  <td>{can('S13', 'R') && <Link to={`/schedules?instructor_id=${i.instructorId}`}>훈련일정</Link>}</td>
                 </tr>
               ))}
             </tbody>

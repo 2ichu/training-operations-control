@@ -91,7 +91,7 @@ export function InstructorDetailPage() {
                 수정
               </button>
             )}
-            {can('S13', 'R') && <Link to={`/schedules?instructor_id=${instructorId}`}>강의 일정 보기</Link>}
+            {can('S13', 'R') && <Link to={`/schedules?instructor_id=${instructorId}`}>훈련일정 보기</Link>}
             {can('S14', 'R') && <Link to={`/instructor-change-logs?instructor_id=${instructorId}`}>변경이력 보기</Link>}
           </div>
         </section>

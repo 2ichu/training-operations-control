@@ -10,7 +10,7 @@ import { ASSIGNMENT_STATUS_LABELS, label } from '../../labels'
 
 type Assignment = CourseDetail['instructorAssignments'][number]
 
-// S13 강사 배정(별도 메뉴 없이 교육일정 화면에서 — system-design 3.3). 과정 전체 담당 또는 회차별 배정.
+// S13 강사 배정(별도 메뉴 없이 훈련일정 화면에서 — system-design 3.3). 과정 전체 담당 또는 회차별 배정.
 // 취소는 사유가 필수이며 instructor_change_log(ASSIGNMENT)에 남는다. 남은 예정 회차가 있으면 경고만 한다(P1-16).
 export function AssignmentPanel({ course, locked, onChanged }: { course: CourseDetail; locked: boolean; onChanged: (message: string) => void }) {
   const { can } = useAuth()

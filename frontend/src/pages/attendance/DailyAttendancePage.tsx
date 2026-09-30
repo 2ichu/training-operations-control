@@ -15,7 +15,7 @@ import { AttendanceCorrectDialog } from './AttendanceCorrectDialog'
 
 type BatchAction = 'check-in' | 'check-out' | 'absence'
 
-// 강의실 출석 전광판 카드(상태별 인원). 색은 의미만: 출석=초록, 지각·조퇴=주황, 결석=빨강, 인정결석=파랑, 미출결=회색
+// 훈련장 출석 전광판 카드(상태별 인원). 색은 의미만: 출석=초록, 지각·조퇴=주황, 결석=빨강, 인정결석=파랑, 미출결=회색
 const BOARD = [
   { status: 'PRESENT', tone: 'ok' },
   { status: 'LATE', tone: 'warn' },
@@ -48,7 +48,7 @@ export function DailyAttendancePage() {
   const selected = scheduleList.find((s) => String(s.scheduleId) === get('schedule_id')) ?? scheduleList[0]
 
   return (
-    <section className="page">
+    <section className="page list-page">
       <div className="page-header">
         <h1>일일 출결</h1>
       </div>
@@ -83,7 +83,7 @@ export function DailyAttendancePage() {
       </form>
 
       {schedules.status === 'error' && <ErrorText error={schedules.error} onRetry={schedules.reload} />}
-      {schedules.data && !selected && <EmptyText>{date} 에 예정된 교육이 없습니다.</EmptyText>}
+      {schedules.data && !selected && <EmptyText>{date} 에 예정된 훈련이 없습니다.</EmptyText>}
       {selected &&
         (selected.status === 'CANCELLED' ? (
           <p className="notice">휴강 처리된 회차입니다. 출결을 기록하지 않습니다.</p>

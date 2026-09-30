@@ -18,7 +18,7 @@ const SUMMARY_LENGTH = 40
 
 type Dialog = { kind: 'register'; initial?: RegisterInitial } | { kind: 'edit' | 'escalate' | 'resolve'; issue: CourseIssue }
 
-// S18 특이사항(system-design 7-A): 교육 중 발생한 사항 기록 → 필요하면 "확인 필요로 전환"(수동 생성 경로, STEP 8.3).
+// S18 특이사항(system-design 7-A): 훈련 중 발생한 사항 기록 → 필요하면 "확인 필요로 전환"(수동 생성 경로, STEP 8.3).
 // 전환하면 특이사항은 확인중이 되고, 이후 두 상태는 독립이다(H6) — 목록은 연결된 확인 건의 현재 상태를 참고 열로 보여준다.
 // 강사는 본인 등록 건만 보고(서버), 등록만 한다. 운영담당자는 수정·전환·조치완료, 관리자/책임자는 전환만.
 export function CourseIssuePage() {
