@@ -3273,3 +3273,109 @@ table.todo td.num,
 .dashboard h2 {
   font-size: 17px;
 }
+
+/* ── 회차 제목 아래 날짜 ───────────────────────────────────── */
+.section-date {
+  margin: 4px 0 6px;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.session-list li {
+  align-items: center;
+}
+
+/* ── 출결 카드: 입실 완료 / 최종 확정 두 막대 ─────────────── */
+.ops-rates {
+  margin: 2px 0 8px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.ops-rates div {
+  display: grid;
+  grid-template-columns: 62px 1fr 96px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.ops-rates dt {
+  color: #4b5563;
+  font-weight: 600;
+}
+
+.ops-rates dd {
+  margin: 0;
+}
+
+.ops-rates .ops-progress {
+  height: 10px;
+  margin: 0;
+  background: #e1e7f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.ops-rates .ops-progress span {
+  display: block;
+  height: 100%;
+  background: #7fb08f;
+}
+
+.ops-rates .ops-progress.final span {
+  background: #3d7350;
+}
+
+.ops-rate-num {
+  text-align: right;
+  color: #374151;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 상태 배지 색 표준 ─────────────────────────────────────
+   빨강=즉시 확인, 주황=확인 필요·조치, 파랑=진행 중, 초록=완료, 회색=그 외 */
+.badge-attention {
+  background: #fde3c8;
+  color: #8a3b00;
+}
+
+.badge-action {
+  background: #fbd0a8;
+  color: #7a3300;
+}
+
+.badge-danger {
+  background: #f9d7d2;
+  color: #a4271c;
+}
+
+.badge-info {
+  background: #dde9fa;
+  color: #1f4a8a;
+}
+
+.badge-done {
+  background: #dcf0e3;
+  color: #17603a;
+  box-shadow: none;
+}
+
+.ops-case {
+  border-top-color: #d9822b;
+}
+
+.ops-alert {
+  background: #fff6ec;
+}
+
+.ops-alert .ops-value {
+  color: #a24a00;
+}
+
+.group-count {
+  background: #fde3c8;
+  color: #8a3b00;
+}

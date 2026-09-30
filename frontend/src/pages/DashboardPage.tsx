@@ -6,15 +6,15 @@ import { useApi } from '../api/useApi'
 import { useAuth, useCurrentUser } from '../auth/auth-context'
 import { Bar, Gauge } from '../components/Charts'
 import { EmptyText, ErrorText, Loading } from '../components/Feedback'
-import { CaseStatusBadge } from '../components/StatusBadge'
+import { CaseStatusBadge, ScheduleStatusBadge } from '../components/StatusBadge'
 import { formatDateTime, formatTime, formatTrainees } from '../format'
-import { ATTENDANCE_STATUS_LABELS, CASE_STATUS_LABELS, CASE_STATUS_ORDER, label, RULE_LABELS, SCHEDULE_STATUS_LABELS } from '../labels'
+import { ATTENDANCE_STATUS_LABELS, CASE_STATUS_LABELS, CASE_STATUS_ORDER, label, RULE_LABELS } from '../labels'
 
 // 도식 색: 색만으로 구분하지 않도록 항상 텍스트(범례·표)를 함께 표시한다. 채도를 낮춰 쓰고, 노랑=확인 필요, 주황=조치·지각·조퇴, 빨강=결석, 파랑=확인 중·인정결석, 초록=정상·완료
 const ATTENDANCE_COLORS: Record<string, string> = { PRESENT: '#5a9a6e', LATE: '#c98a3a', EARLY_LEAVE: '#d9ac66', ABSENT: '#c0524a', EXCUSED: '#5b7db1', NOT_CHECKED: '#a8afba' }
 
 // 확인 필요 카드의 상태별 막대 색(같은 상태는 같은 색)
-const CASE_BAR: Record<string, string> = { NEEDS_CHECK: '#c98f00', PRIORITY_CHECK: '#c26f1c', FOLLOW_UP: '#b45a1a', ACTION_REQUIRED: '#9c4a1a', IN_REVIEW: '#4a6fa8', CONFIRMED: '#4d8a63', ACTION_DONE: '#3d7350' }
+const CASE_BAR: Record<string, string> = { NEEDS_CHECK: '#d9822b', PRIORITY_CHECK: '#c0392b', FOLLOW_UP: '#e39a4b', ACTION_REQUIRED: '#b8601a', IN_REVIEW: '#3f6fb5', CONFIRMED: '#4d8a63', ACTION_DONE: '#3d7350' }
 
 // S01 대시보드(system-design 7.1). 조회 전용이며 역할별 범위는 서버가 정한다(INSTRUCTOR 는 본인 과정만).
 // 필터(날짜·과정·담당)는 URL 쿼리에 두어 새로고침·공유 시에도 유지된다.
@@ -70,29 +70,37 @@ export function DashboardPage() {
   const needsCheck = (byStatus.get('NEEDS_CHECK') ?? 0) + (byStatus.get('PRIORITY_CHECK') ?? 0)
   const actionRequired = (byStatus.get('ACTION_REQUIRED') ?? 0) + (byStatus.get('FOLLOW_UP') ?? 0)
   const dayParam = date || data?.date || ''
+  // 상단 날짜·과정 필터를 하단 링크(확인 필요·미출결 등)에도 그대로 넘긴다
+  const courseQ = courseId ? `&course_id=${courseId}` : ''
 
   // 처리할 업무 목록: 접근 권한이 있는 화면만 [확인하기] 링크로 연결한다. 확인/승인 건을 맨 앞에 두고, 0건인 항목도 목록에 남겨 점검표처럼 쓴다.
   const to = (screen: string, path: string) => (can(screen, 'R') ? path : null)
   const todo: { key: string; group: string; text: string; count: number; to: string | null; emphasis: boolean }[] = data
     ? [
-        { key: 'needs', group: '확인·승인', text: '확인 필요 사항', count: needsCheck, to: to('S22', '/verification-cases?status=NEEDS_CHECK,PRIORITY_CHECK'), emphasis: true },
-        { key: 'action', group: '확인·승인', text: '조치 필요·추가 확인 사항', count: actionRequired, to: to('S22', '/verification-cases?status=ACTION_REQUIRED,FOLLOW_UP'), emphasis: true },
+        { key: 'needs', group: '확인·승인', text: '확인 필요 사항', count: needsCheck, to: to('S22', `/verification-cases?status=NEEDS_CHECK,PRIORITY_CHECK${courseQ}&to=${dayParam}`), emphasis: true },
+        { key: 'action', group: '확인·승인', text: '조치 필요·추가 확인 사항', count: actionRequired, to: to('S22', `/verification-cases?status=ACTION_REQUIRED,FOLLOW_UP${courseQ}&to=${dayParam}`), emphasis: true },
         { key: 'excuse', group: '확인·승인', text: '공결 승인 대기', count: excusePending.data?.total ?? 0, to: canExcuse ? '/excuse-requests' : null, emphasis: true },
-        { key: 'att', group: '출결', text: '미출결', count: data.counts.notCheckedIn, to: to('S07', `/attendance/daily?date=${dayParam}`), emphasis: false },
-        { key: 'out', group: '출결', text: '퇴실 미확인', count: data.counts.checkoutMissing, to: to('S07', `/attendance/daily?date=${dayParam}`), emphasis: false },
-        { key: 'log', group: '운영', text: '운영일지 미작성', count: data.counts.operationLogMissing, to: to('S17', '/operation-logs'), emphasis: false },
-        { key: 'sub', group: '결과물', text: '결과물 미제출', count: data.counts.submissionMissing, to: to('S19', '/submissions/missing'), emphasis: false },
-        { key: 'rev', group: '결과물', text: '결과물 미검토', count: data.counts.reviewPending, to: to('S19', '/submissions'), emphasis: false },
+        { key: 'att', group: '출결', text: '미출결', count: data.counts.notCheckedIn, to: to('S07', `/attendance/daily?date=${dayParam}${courseQ}`), emphasis: false },
+        { key: 'out', group: '출결', text: '퇴실 미확인', count: data.counts.checkoutMissing, to: to('S07', `/attendance/daily?date=${dayParam}${courseQ}`), emphasis: false },
+        { key: 'log', group: '운영', text: '운영일지 미작성', count: data.counts.operationLogMissing, to: to('S17', `/operation-logs?${courseQ.slice(1)}`), emphasis: false },
+        { key: 'sub', group: '결과물', text: '결과물 미제출', count: data.counts.submissionMissing, to: to('S19', `/submissions/missing?${courseQ.slice(1)}`), emphasis: false },
+        { key: 'rev', group: '결과물', text: '결과물 미검토', count: data.counts.reviewPending, to: to('S19', `/submissions?${courseQ.slice(1)}`), emphasis: false },
       ]
     : []
   // 상단 "오늘 운영 상태" 밴드: 수업 진행 / 출결 입력 / 확인 필요(업무 수치는 아래 처리할 업무 표에서 본다)
-  const rosterAll = attendanceToday.data ?? []
-  const rosterTotal = rosterAll.filter((r) => r.displayStatus).length
-  const rosterDone = rosterAll.filter((r) => r.displayStatus && r.displayStatus !== 'NOT_CHECKED').length
+  // 출결 지표 정의(착시 방지): 입실 완료 = 입실 시각이 기록된 사람 / 최종 확정 = 출결이 마무리된 사람
+  //   (퇴실까지 기록됐거나, 입실 없이 결석·인정결석으로 확정된 사람). 입력만 되고 퇴실 미확인이면 입실 완료에는 들어가도 최종 확정은 아니다.
+  const rosterAll = (attendanceToday.data ?? []).filter((r) => r.displayStatus)
+  const rosterTotal = rosterAll.length
+  const checkedIn = rosterAll.filter((r) => r.checkInTime !== null).length
+  const finalized = rosterAll.filter((r) => r.displayStatus !== 'NOT_CHECKED' && (r.checkOutTime !== null || r.displayStatus === 'ABSENT' || r.displayStatus === 'EXCUSED')).length
   const lessons = data?.todaySchedules.filter((x) => x.displayStatus !== 'CANCELLED') ?? []
   const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
   const lessonsDone = lessons.filter((x) => x.displayStatus === 'COMPLETED').length
   const caseTotal = CASE_STATUS_ORDER.reduce((sum, st) => sum + (byStatus.get(st) ?? 0), 0)
+  // 섹션 제목은 날짜가 아니라 회차("10회차", 여러 개면 "9·10회차"), 날짜는 제목 아래에 표기한다.
+  const rounds = [...new Set((data?.todaySchedules ?? []).map((x) => x.roundNo))].sort((a, b) => a - b)
+  const roundTitle = rounds.length > 0 ? `${rounds.join('·')}회차` : '오늘 회차'
   const AXIS_FROM = 8
   const AXIS_TO = 19
 
@@ -163,22 +171,39 @@ export function DashboardPage() {
             </div>
             <div className="ops-item ops-att">
               <div className="ops-top">
-                <span className="ops-label">출결 입력</span>
-                <span className="ops-pct">{rosterTotal > 0 ? `${Math.round((rosterDone / rosterTotal) * 100)}%` : ''}</span>
+                <span className="ops-label">최종 출결 확정</span>
+                <span className="ops-pct">{rosterTotal > 0 ? `${Math.round((finalized / rosterTotal) * 100)}%` : ''}</span>
               </div>
               <span className="ops-value">
-                {rosterTotal > 0 ? `${rosterDone}/${rosterTotal}` : '-'}
+                {rosterTotal > 0 ? `${finalized}/${rosterTotal}` : '-'}
                 {rosterTotal > 0 && <small>명</small>}
               </span>
               {rosterTotal > 0 ? (
-                <div className="ops-progress" aria-hidden="true">
-                  <span style={{ width: `${(rosterDone / rosterTotal) * 100}%` }} />
-                </div>
+                <dl className="ops-rates">
+                  <div>
+                    <dt>입실 완료</dt>
+                    <dd className="ops-progress" aria-hidden="true">
+                      <span style={{ width: `${(checkedIn / rosterTotal) * 100}%` }} />
+                    </dd>
+                    <dd className="ops-rate-num">
+                      {checkedIn}/{rosterTotal} · {Math.round((checkedIn / rosterTotal) * 100)}%
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>최종 확정</dt>
+                    <dd className="ops-progress final" aria-hidden="true">
+                      <span style={{ width: `${(finalized / rosterTotal) * 100}%` }} />
+                    </dd>
+                    <dd className="ops-rate-num">
+                      {finalized}/{rosterTotal} · {Math.round((finalized / rosterTotal) * 100)}%
+                    </dd>
+                  </div>
+                </dl>
               ) : (
                 <span className="ops-sub">오늘 출결 명단 없음</span>
               )}
               {can('S07', 'R') && (
-                <Link className="ops-go" to={`/attendance/daily?date=${dayParam}`}>
+                <Link className="ops-go" to={`/attendance/daily?date=${dayParam}${courseId ? `&course_id=${courseId}` : ''}`}>
                   출결 입력
                 </Link>
               )}
@@ -240,7 +265,8 @@ export function DashboardPage() {
           </section>
 
           <section className="dash-today" aria-labelledby="today-title">
-            <h2 id="today-title">{data.date} 회차</h2>
+            <h2 id="today-title">{roundTitle}</h2>
+            <p className="section-date">{data.date}</p>
             {data.todaySchedules.length === 0 ? (
               <EmptyText>{date ? '해당 날짜에 예정된 교육이 없습니다.' : '오늘 예정된 교육이 없습니다.'}</EmptyText>
             ) : (
@@ -249,8 +275,9 @@ export function DashboardPage() {
                   <li key={s.scheduleId}>
                     {canOpenCourse ? <Link to={`/courses/${s.courseId}`}>{s.courseName}</Link> : <span className="session-name">{s.courseName}</span>}
                     <span className="session-meta">
-                      <strong>{s.roundNo}회차</strong> {formatTime(s.startTime)}~{formatTime(s.endTime)} · {s.instructorName ?? '-'} · {label(SCHEDULE_STATUS_LABELS, s.displayStatus)}
+                      <strong>{s.roundNo}회차</strong> {formatTime(s.startTime)}~{formatTime(s.endTime)} · {s.instructorName ?? '-'}
                     </span>
+                    <ScheduleStatusBadge status={s.displayStatus} />
                   </li>
                 ))}
               </ul>
@@ -280,12 +307,18 @@ function AttendanceToday({ roster }: { roster: RosterItem[] }) {
   const counts = new Map<string, number>()
   for (const r of roster) if (r.displayStatus) counts.set(r.displayStatus, (counts.get(r.displayStatus) ?? 0) + 1)
   const total = [...counts.values()].reduce((a, b) => a + b, 0)
-  const done = total - (counts.get('NOT_CHECKED') ?? 0)
+  const checkedIn = roster.filter((r) => r.displayStatus && r.checkInTime !== null).length
+  const finalizedCount = roster.filter((r) => r.displayStatus && r.displayStatus !== 'NOT_CHECKED' && (r.checkOutTime !== null || r.displayStatus === 'ABSENT' || r.displayStatus === 'EXCUSED')).length
   return (
     <div className="att-today">
-      <h3>오늘 출결 현황 <span className="muted">(입력 {done}/{total}명)</span></h3>
+      <h3>
+        오늘 출결 현황{' '}
+        <span className="muted">
+          (입실 완료 {checkedIn}/{total}명 · 최종 확정 {finalizedCount}/{total}명)
+        </span>
+      </h3>
       <div className="att-donut">
-        <Gauge value={total === 0 ? 0 : done / total} label="출결 입력률" width={210} />
+        <Gauge value={total === 0 ? 0 : finalizedCount / total} label="최종 출결 확정률" width={210} />
         <ul className="att-legend">
           {order.map((k) => (
             <li key={k}>

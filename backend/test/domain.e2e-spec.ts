@@ -641,6 +641,20 @@ describe.skipIf(!process.env.DATABASE_URL)('도메인 API (실제 DB, HTTP)', ()
 
   // ── 대시보드 ────────────────────────────────────────────────────────────
   describe('대시보드 (S01)', () => {
+    it('상단 날짜 필터는 확인 필요 건에도 적용된다: 선택한 날 끝까지 발생한 건만 집계·표시', async () => {
+      const manual = await one(`SELECT rule_id id FROM detection_rule WHERE rule_code = 'MANUAL'`);
+      const mk = (at: string) =>
+        one(`INSERT INTO verification_case (course_id, detection_rule_id, detected_at, evidence, status) VALUES ($1, $2, $3, '{"dedupe_key":"d","items":[{"id":"d"}]}', 'NEEDS_CHECK') RETURNING case_id id`, [c1, manual, at]);
+      const old = await mk('2026-01-01T10:00:00+09:00');
+      await mk('2026-03-01T10:00:00+09:00');
+      const ops1 = await as('ops');
+      const past = (await ops1.get('/api/v1/dashboard?date=2026-01-01').expect(200)).body.verificationSummary;
+      expect(past.recent.map((c: { caseId: number }) => c.caseId)).toEqual([old]);
+      expect(past.byStatus).toEqual([{ status: 'NEEDS_CHECK', count: 1 }]);
+      const later = (await ops1.get('/api/v1/dashboard?date=2026-03-01').expect(200)).body.verificationSummary;
+      expect(later.recent).toHaveLength(2);
+    });
+
     it('오늘 회차·집계 카운트: date 파라미터, 종료 체크리스트 항목(1·2·4·5·6) 합산 재사용, INSTRUCTOR 는 본인 과정만', async () => {
       await one(
         `INSERT INTO class_schedule (course_id, round_no, class_date, start_time, end_time, instructor_id) VALUES ($1, 98, '2020-01-01', '09:00', '10:00', $2) RETURNING schedule_id id`,

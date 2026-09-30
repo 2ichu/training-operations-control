@@ -1,9 +1,10 @@
 import { ATTENDANCE_SHORT_LABELS, EXCUSE_STATUS_LABELS, ATTENDANCE_STATUS_LABELS, CASE_STATUS_LABELS, COURSE_STATUS_LABELS, INSTRUCTOR_STATUS_LABELS, label, REVIEW_STATUS_LABELS, SCHEDULE_STATUS_LABELS, SUBMIT_STATUS_LABELS } from '../labels'
 
-// 상태 색 의미: 확인 필요=노랑, 조치 필요·우선·추가 확인=주황, 확인 중=파랑, 완료=초록. 색만으로 구분하지 않고 항상 텍스트를 함께 표시한다.
-const TONE: Record<string, 'attention' | 'action' | 'info' | 'done' | 'muted' | 'neutral'> = {
+// 상태 색 표준: 즉시 확인(우선확인)=빨강, 확인 필요·조치 필요·추가 확인=주황, 확인 중·진행=파랑, 완료=초록, 그 외=회색.
+// 색만으로 구분하지 않고 항상 텍스트를 함께 표시한다.
+const TONE: Record<string, 'attention' | 'action' | 'danger' | 'info' | 'done' | 'muted' | 'neutral'> = {
   NEEDS_CHECK: 'attention',
-  PRIORITY_CHECK: 'action',
+  PRIORITY_CHECK: 'danger',
   FOLLOW_UP: 'action',
   ACTION_REQUIRED: 'action',
   IN_REVIEW: 'info',
@@ -44,7 +45,9 @@ export function InstructorStatusBadge({ status }: { status: string }) {
 
 // 회차 상태(baseline 3-6): 저장값 예정·휴강 + 계산값 진행완료. 휴강·진행완료는 흐리게, 예정은 기본
 export function ScheduleStatusBadge({ status }: { status: string }) {
-  return <span className={status === 'SCHEDULED' ? 'badge badge-neutral' : 'badge badge-muted'}>{label(SCHEDULE_STATUS_LABELS, status)}</span>
+  // 예정=파랑(진행 중), 진행완료=초록, 휴강=회색
+  const tone = status === 'SCHEDULED' ? 'info' : status === 'COMPLETED' ? 'done' : 'muted'
+  return <span className={`badge badge-${tone}`}>{label(SCHEDULE_STATUS_LABELS, status)}</span>
 }
 
 // 제출 상태: "미제출"은 행이 없는 계산값이라 점선(출결 미출결과 같은 표시, C1)
@@ -54,11 +57,11 @@ export function SubmitStatusBadge({ status }: { status: string }) {
 
 // 검토 상태: 강조색은 확인필요 전용이라 쓰지 않는다(7.1). 적합만 완료색, 보완요청·부적합은 흐리게, 대기는 기본
 export function ReviewStatusBadge({ status }: { status: string }) {
-  const tone = status === 'APPROVED' ? 'done' : status === 'PENDING' ? 'neutral' : 'muted'
+  const tone = status === 'APPROVED' ? 'done' : status === 'PENDING' ? 'info' : 'muted'
   return <span className={`badge badge-${tone}`}>{label(REVIEW_STATUS_LABELS, status)}</span>
 }
 
-// 공결 신청 상태: 승인 대기=노랑(확인 필요), 승인=초록, 반려=회색
+// 공결 신청 상태: 승인 대기=주황(확인 필요), 승인=초록, 반려=회색
 export function ExcuseStatusBadge({ status }: { status: string }) {
   const tone = status === 'PENDING' ? 'attention' : status === 'APPROVED' ? 'done' : 'muted'
   return <span className={`badge badge-${tone}`}>{label(EXCUSE_STATUS_LABELS, status)}</span>
