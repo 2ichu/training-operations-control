@@ -31,7 +31,7 @@ export function TraineeListPage() {
   const items = list.data?.items ?? []
 
   return (
-    <section className="page list-page">
+    <section className="page">
       <div className="page-header">
         <h1>훈련생 목록</h1>
         {can('S04', 'C') && (

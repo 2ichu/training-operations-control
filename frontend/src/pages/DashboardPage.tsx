@@ -106,7 +106,7 @@ export function DashboardPage() {
   const AXIS_TO = 19
 
   return (
-    <section className="page">
+    <section className="page dash-page">
       <div className="page-header">
         <h1>대시보드</h1>
         <form className="filters" onSubmit={(e) => e.preventDefault()}>

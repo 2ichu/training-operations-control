@@ -3473,37 +3473,37 @@ table.todo td.num,
 }
 
 /* ════════════════════════════════════════════════════════════
-   목록형 화면(일일 출결·훈련생 목록): 대시보드와 같은 박스·헤더·글자 크기
+   대시보드를 제외한 모든 화면: 대시보드와 같은 박스·헤더·글자 크기
    ════════════════════════════════════════════════════════════ */
-.list-page .filters {
+.page:not(.dash-page) .filters {
   padding: 12px 18px;
   border: 1px solid #d5dbe6;
   border-radius: 10px;
   background: linear-gradient(180deg, #f5f8fc 0%, #ffffff 100%);
 }
 
-.list-page .filters label {
+.page:not(.dash-page) .filters label {
   font-size: 13px;
   font-weight: 600;
   color: #374151;
 }
 
-.list-page .board {
+.page:not(.dash-page) .board {
   border: 1px solid #d5dbe6;
   border-radius: 10px;
   background: linear-gradient(180deg, #f5f8fc 0%, #ffffff 100%);
   overflow: hidden;
 }
 
-.list-page .board-card {
+.page:not(.dash-page) .board-card {
   flex: 1 1 0;
 }
 
-.list-page .board-card + .board-card {
+.page:not(.dash-page) .board-card + .board-card {
   border-left-color: #d5dbe6;
 }
 
-.list-page .board-card button {
+.page:not(.dash-page) .board-card button {
   width: 100%;
   flex-direction: column;
   align-items: flex-start;
@@ -3511,40 +3511,40 @@ table.todo td.num,
   padding: 9px 18px;
 }
 
-.list-page .board-card button:hover {
+.page:not(.dash-page) .board-card button:hover {
   background: #edf3fb;
 }
 
-.list-page .board-label {
+.page:not(.dash-page) .board-label {
   font-size: 14px;
   font-weight: 700;
   color: #374151;
 }
 
-.list-page .board-value {
+.page:not(.dash-page) .board-value {
   font-size: 22px;
   font-weight: 800;
   color: #1f2937;
 }
 
-.list-page .board-tone-ok .board-value,
-.list-page .board-present .board-value {
+.page:not(.dash-page) .board-tone-ok .board-value,
+.page:not(.dash-page) .board-present .board-value {
   color: #2f6b47;
 }
 
-.list-page .board-total {
+.page:not(.dash-page) .board-total {
   padding: 0 18px;
   font-size: 14px;
   font-weight: 600;
   color: #374151;
 }
 
-.list-page .hint {
+.page:not(.dash-page) .hint {
   font-size: 13.5px;
   color: #4b5563;
 }
 
-.list-page table {
+.page:not(.dash-page) table {
   border: 1px solid #d5dbe6;
   border-radius: 10px;
   border-collapse: separate;
@@ -3552,7 +3552,7 @@ table.todo td.num,
   overflow: hidden;
 }
 
-.list-page thead th {
+.page:not(.dash-page) thead th {
   padding: 9px 12px;
   border-bottom: 1px solid #d5dbe6;
   background: #f3f6fa;
@@ -3561,22 +3561,76 @@ table.todo td.num,
   color: #4b5563;
 }
 
-.list-page tbody td {
+.page:not(.dash-page) tbody td {
   padding: 9px 12px;
   border-bottom: 1px solid #e8ecf2;
-  font-size: 15px;
-  color: #1f2937;
+  font-size: 16px;
+  line-height: 1.45;
+  color: #111827;
 }
 
-.list-page tbody tr:last-child td {
+.page:not(.dash-page) tbody tr:last-child td {
   border-bottom: 0;
 }
 
-.list-page tbody tr:hover td {
+.page:not(.dash-page) tbody tr:hover td {
   background: #edf3fb;
 }
 
-.list-page .filters input,
-.list-page .filters select {
+.page:not(.dash-page) .filters input,
+.page:not(.dash-page) .filters select {
   font-weight: 400;
+}
+
+/* 가독성: 본문·보조 글자 확대, 폼·안내문·탭·상세 정보 정리 */
+.page:not(.dash-page) {
+  font-size: 15px;
+}
+
+.page:not(.dash-page) h2 {
+  font-size: 18px;
+  color: #1f2937;
+}
+
+.page:not(.dash-page) .notice,
+.page:not(.dash-page) .form-error,
+.page:not(.dash-page) .empty {
+  font-size: 15px;
+}
+
+.page:not(.dash-page) label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.page:not(.dash-page) input,
+.page:not(.dash-page) select,
+.page:not(.dash-page) textarea {
+  font-size: 15px;
+}
+
+.page:not(.dash-page) dt {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.page:not(.dash-page) dd {
+  font-size: 15.5px;
+  color: #111827;
+}
+
+.page:not(.dash-page) button {
+  font-size: 14.5px;
+}
+
+.page:not(.dash-page) .tabs button,
+.page:not(.dash-page) [role='tab'] {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.page:not(.dash-page) .calendar tbody tr:hover td {
+  background: inherit;
 }

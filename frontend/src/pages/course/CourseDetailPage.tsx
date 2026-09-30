@@ -90,7 +90,7 @@ export function CourseDetailPage() {
                 <dd>{course.totalHours}시간</dd>
               </div>
               <div>
-                <dt>교육장</dt>
+                <dt>훈련장소</dt>
                 <dd>{course.trainingSite}</dd>
               </div>
               <div>

@@ -98,7 +98,7 @@ export function CourseListPage() {
               <tr>
                 <th>과정명</th>
                 <th>기간</th>
-                <th>교육장</th>
+                <th>훈련장소</th>
                 <th>담당자</th>
                 <th>상태</th>
                 <th className="num">확정 훈련생</th>

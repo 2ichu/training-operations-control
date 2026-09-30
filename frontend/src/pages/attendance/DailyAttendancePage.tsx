@@ -48,7 +48,7 @@ export function DailyAttendancePage() {
   const selected = scheduleList.find((s) => String(s.scheduleId) === get('schedule_id')) ?? scheduleList[0]
 
   return (
-    <section className="page list-page">
+    <section className="page">
       <div className="page-header">
         <h1>일일 출결</h1>
       </div>

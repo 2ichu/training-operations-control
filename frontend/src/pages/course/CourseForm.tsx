@@ -112,7 +112,7 @@ export function CourseForm({
         </div>
       </div>
       <div className="field">
-        <label htmlFor="course-trainingSite">교육장</label>
+        <label htmlFor="course-trainingSite">훈련장소</label>
         <input {...field('trainingSite')} maxLength={200} />
         {error('trainingSite')}
       </div>
@@ -163,7 +163,7 @@ function validate(v: CourseFormValues): Errors {
   if (!v.endDate) errors.endDate = '종료일을 입력해 주세요.'
   else if (v.startDate && v.endDate < v.startDate) errors.endDate = '종료일은 시작일보다 빠를 수 없습니다.'
   if (!/^\d+$/.test(v.totalHours) || Number(v.totalHours) < 1) errors.totalHours = '1 이상의 정수로 입력해 주세요.'
-  if (!v.trainingSite.trim()) errors.trainingSite = '교육장을 입력해 주세요.'
+  if (!v.trainingSite.trim()) errors.trainingSite = '훈련장소를 입력해 주세요.'
   if (!v.managerUserId) errors.managerUserId = '담당자를 선택해 주세요.'
   return errors
 }
