@@ -3,32 +3,10 @@ import { api } from '../api/client'
 import type { CourseSummary, DashboardSummary, RosterItem } from '../api/types'
 import { useApi } from '../api/useApi'
 import { useAuth, useCurrentUser } from '../auth/auth-context'
-import { Bar, Donut, type Segment, TimeSpan } from '../components/Charts'
 import { EmptyText, ErrorText, Loading } from '../components/Feedback'
 import { CaseStatusBadge } from '../components/StatusBadge'
 import { formatDateTime, formatTime, formatTrainees } from '../format'
 import { ATTENDANCE_STATUS_LABELS, CASE_STATUS_LABELS, CASE_STATUS_ORDER, label, RULE_LABELS, SCHEDULE_STATUS_LABELS } from '../labels'
-
-// 대시보드 집계 건수(backend dashboard.service aggregateCounts — 종료 체크리스트 항목 1·2·4·5·6 합산)
-const COUNT_ROWS: { key: keyof DashboardSummary['counts']; label: string }[] = [
-  { key: 'notCheckedIn', label: '미출결' },
-  { key: 'checkoutMissing', label: '퇴실 미확인' },
-  { key: 'operationLogMissing', label: '운영일지 미작성' },
-  { key: 'submissionMissing', label: '결과물 미제출' },
-  { key: 'reviewPending', label: '결과물 미검토' },
-]
-
-// 도식 색: 색만으로 구분하지 않도록 항상 텍스트(범례·표)를 함께 표시한다. 노랑=확인 필요, 주황=조치 필요·지각·조퇴, 빨강=결석, 파랑=확인 중·인정결석, 초록=정상·완료
-const ATTENDANCE_COLORS: Record<string, string> = { PRESENT: '#16a34a', LATE: '#d97706', EARLY_LEAVE: '#f59e0b', ABSENT: '#dc2626', EXCUSED: '#2563eb', NOT_CHECKED: '#98a2b3' }
-const CASE_COLORS: Record<string, string> = {
-  NEEDS_CHECK: '#e3a008',
-  PRIORITY_CHECK: '#d97706',
-  FOLLOW_UP: '#ea580c',
-  ACTION_REQUIRED: '#c2410c',
-  IN_REVIEW: '#2563eb',
-  CONFIRMED: '#16a34a',
-  ACTION_DONE: '#15803d',
-}
 
 // S01 대시보드(system-design 7.1). 조회 전용이며 역할별 범위는 서버가 정한다(INSTRUCTOR 는 본인 과정만).
 // 필터(날짜·과정·담당)는 URL 쿼리에 두어 새로고침·공유 시에도 유지된다.
@@ -85,25 +63,18 @@ export function DashboardPage() {
   const actionRequired = (byStatus.get('ACTION_REQUIRED') ?? 0) + (byStatus.get('FOLLOW_UP') ?? 0)
   const dayParam = date || data?.date || ''
 
-  // 처리할 일: 화면 접근 권한이 있는 항목만 링크로 연결한다. 확인/조치 사항을 맨 앞에 둔다.
-  const todo: { key: string; text: string; count: number; to: string | null; tone: 'attention' | 'action' | 'muted' }[] = data
+  // 처리할 업무 목록: 접근 권한이 있는 화면만 [확인하기] 링크로 연결한다. 확인/승인 건을 맨 앞에 두고, 0건인 항목도 목록에 남겨 점검표처럼 쓴다.
+  const to = (screen: string, path: string) => (can(screen, 'R') ? path : null)
+  const todo: { key: string; group: string; text: string; count: number; to: string | null; emphasis: boolean }[] = data
     ? [
-        { key: 'needs', text: '확인 필요 사항', count: needsCheck, to: can('S22', 'R') ? '/verification-cases?status=NEEDS_CHECK,PRIORITY_CHECK' : null, tone: 'attention' },
-        { key: 'action', text: '조치 필요·추가 확인 사항', count: actionRequired, to: can('S22', 'R') ? '/verification-cases?status=ACTION_REQUIRED,FOLLOW_UP' : null, tone: 'action' },
-        { key: 'excuse', text: '공결 승인 대기', count: excusePending.data?.total ?? 0, to: canExcuse ? '/excuse-requests' : null, tone: 'attention' },
-        { key: 'att', text: '출결 미입력 훈련생', count: data.counts.notCheckedIn, to: can('S07', 'R') ? `/attendance/daily?date=${dayParam}` : null, tone: 'muted' },
-        { key: 'out', text: '퇴실 미확인', count: data.counts.checkoutMissing, to: can('S07', 'R') ? `/attendance/daily?date=${dayParam}` : null, tone: 'muted' },
-        { key: 'log', text: '운영일지 미작성 회차', count: data.counts.operationLogMissing, to: can('S17', 'R') ? '/operation-logs' : null, tone: 'muted' },
-        { key: 'sub', text: '결과물 미제출', count: data.counts.submissionMissing, to: can('S19', 'R') ? '/submissions/missing' : null, tone: 'muted' },
-        { key: 'rev', text: '결과물 미검토', count: data.counts.reviewPending, to: can('S19', 'R') ? '/submissions' : null, tone: 'muted' },
-      ]
-    : []
-  const kpis: { key: string; text: string; value: number; to: string | null; tone: string }[] = data
-    ? [
-        { key: 'today', text: '오늘 수업', value: data.todaySchedules.length, to: null, tone: '' },
-        { key: 'needs', text: '확인 필요', value: needsCheck, to: todo[0].to, tone: needsCheck > 0 ? 'attention' : '' },
-        { key: 'att', text: '미출결', value: data.counts.notCheckedIn, to: todo[3].to, tone: '' },
-        { key: 'log', text: '운영일지 미작성', value: data.counts.operationLogMissing, to: todo[5].to, tone: '' },
+        { key: 'needs', group: '확인·승인', text: '확인 필요 사항', count: needsCheck, to: to('S22', '/verification-cases?status=NEEDS_CHECK,PRIORITY_CHECK'), emphasis: true },
+        { key: 'action', group: '확인·승인', text: '조치 필요·추가 확인 사항', count: actionRequired, to: to('S22', '/verification-cases?status=ACTION_REQUIRED,FOLLOW_UP'), emphasis: true },
+        { key: 'excuse', group: '확인·승인', text: '공결 승인 대기', count: excusePending.data?.total ?? 0, to: canExcuse ? '/excuse-requests' : null, emphasis: true },
+        { key: 'att', group: '출결', text: '미출결', count: data.counts.notCheckedIn, to: to('S07', `/attendance/daily?date=${dayParam}`), emphasis: false },
+        { key: 'out', group: '출결', text: '퇴실 미확인', count: data.counts.checkoutMissing, to: to('S07', `/attendance/daily?date=${dayParam}`), emphasis: false },
+        { key: 'log', group: '운영', text: '운영일지 미작성', count: data.counts.operationLogMissing, to: to('S17', '/operation-logs'), emphasis: false },
+        { key: 'sub', group: '결과물', text: '결과물 미제출', count: data.counts.submissionMissing, to: to('S19', '/submissions/missing'), emphasis: false },
+        { key: 'rev', group: '결과물', text: '결과물 미검토', count: data.counts.reviewPending, to: to('S19', '/submissions'), emphasis: false },
       ]
     : []
 
@@ -140,61 +111,34 @@ export function DashboardPage() {
 
       {data && (
         <div className={summary.status === 'loading' ? 'dashboard is-refreshing' : 'dashboard'}>
-          <ul className="kpi-strip panel-wide" aria-label="주요 현황">
-            {kpis.map((k) => (
-              <li key={k.key} className={k.tone ? `kpi kpi-${k.tone}` : 'kpi'}>
-                {k.to ? (
-                  <Link to={k.to}>
-                    <span className="kpi-label">{k.text}</span>
-                    <span className="kpi-value">{k.value}건</span>
-                  </Link>
-                ) : (
-                  <div>
-                    <span className="kpi-label">{k.text}</span>
-                    <span className="kpi-value">{k.value}건</span>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-
-          <section className="panel dash-todo" aria-labelledby="todo-title">
-            <h2 id="todo-title">처리할 일</h2>
-            {todo.every((t) => t.count === 0) ? (
-              <EmptyText>처리할 일이 없습니다.</EmptyText>
-            ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>구분</th>
-                    <th className="num">건수</th>
-                    <th className="bar-col">비중</th>
-                    <th>처리</th>
+          <section className="dash-todo" aria-labelledby="todo-title">
+            <h2 id="todo-title">처리할 업무</h2>
+            <p className="hint">종료되지 않은 과정 전체 기준, 현재 시점 집계(날짜 필터 미적용). 확인 필요 건은 기간과 무관하게 진행 중인 전체입니다.</p>
+            <table className="todo">
+              <thead>
+                <tr>
+                  <th>구분</th>
+                  <th>업무</th>
+                  <th className="num">건수</th>
+                  <th>상태</th>
+                  <th>처리</th>
+                </tr>
+              </thead>
+              <tbody>
+                {todo.map((t, i) => (
+                  <tr key={t.key} className={t.count > 0 ? undefined : 'zero'}>
+                    <td className="group">{i === 0 || todo[i - 1].group !== t.group ? t.group : ''}</td>
+                    <th scope="row">{t.text}</th>
+                    <td className="num">{t.count}</td>
+                    <td>{t.count > 0 ? <span className={t.emphasis ? 'badge badge-attention' : 'badge badge-neutral'}>{t.emphasis ? '확인 필요' : '미처리'}</span> : ''}</td>
+                    <td>{t.count > 0 && t.to ? <Link to={t.to}>확인하기</Link> : ''}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {todo
-                    .filter((t) => t.count > 0)
-                    .map((t) => (
-                      <tr key={t.key}>
-                        <td>
-                          <span className={`badge badge-${t.tone}`}>{t.text}</span>
-                        </td>
-                        <td className="num">{t.count}건</td>
-                        <td className="bar-col">
-                          <Bar value={t.count} max={Math.max(...todo.map((x) => x.count))} color={t.tone === 'attention' ? '#e3a008' : t.tone === 'action' ? '#d97706' : '#98a2b3'} />
-                        </td>
-                        <td>{t.to ? <Link to={t.to}>[확인하기]</Link> : <span className="muted">-</span>}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            )}
+                ))}
+              </tbody>
+            </table>
           </section>
 
-          {attendanceToday.data && attendanceToday.data.length > 0 && <AttendanceToday roster={attendanceToday.data} date={data.date} />}
-
-          <section className="panel dash-today" aria-labelledby="today-title">
+          <section className="dash-today" aria-labelledby="today-title">
             <h2 id="today-title">{data.date} 회차</h2>
             {data.todaySchedules.length === 0 ? (
               <EmptyText>{date ? '해당 날짜에 예정된 교육이 없습니다.' : '오늘 예정된 교육이 없습니다.'}</EmptyText>
@@ -205,7 +149,6 @@ export function DashboardPage() {
                     <th>과정</th>
                     <th>회차</th>
                     <th>시간</th>
-                    <th className="bar-col">시간대(08~19시)</th>
                     <th>강사</th>
                     <th>상태</th>
                   </tr>
@@ -218,9 +161,6 @@ export function DashboardPage() {
                       <td>
                         {formatTime(s.startTime)}~{formatTime(s.endTime)}
                       </td>
-                      <td className="bar-col">
-                        <TimeSpan start={s.startTime} end={s.endTime} />
-                      </td>
                       <td>{s.instructorName ?? '-'}</td>
                       <td>{label(SCHEDULE_STATUS_LABELS, s.displayStatus)}</td>
                     </tr>
@@ -228,55 +168,28 @@ export function DashboardPage() {
                 </tbody>
               </table>
             )}
+            {attendanceToday.data && attendanceToday.data.length > 0 && <AttendanceToday roster={attendanceToday.data} />}
           </section>
 
-          <section className="panel dash-pending" aria-labelledby="pending-title">
-            <h2 id="pending-title">미처리 현황</h2>
-            <p className="hint">종료되지 않은 과정 전체 기준, 현재 시점 집계(날짜 필터 미적용)</p>
-            <table className="fill">
-              <tbody>
-                {COUNT_ROWS.map((row) => (
-                  <tr key={row.key}>
-                    <th scope="row">{row.label}</th>
-                    <td className="num">{data.counts[row.key]}</td>
-                    <td className="bar-col">
-                      <Bar value={data.counts[row.key]} max={Math.max(1, ...COUNT_ROWS.map((r) => data.counts[r.key]))} color={data.counts[row.key] > 0 ? '#d97706' : '#cfd4dc'} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
-
-          <section className="panel panel-wide" aria-labelledby="case-title">
+          <section className="dash-cases" aria-labelledby="case-title">
             <h2 id="case-title">확인 필요 사항</h2>
             <div className="case-overview">
-              <div className="case-donut">
-                <Donut
-                  segments={CASE_STATUS_ORDER.map((status): Segment => ({ key: status, label: label(CASE_STATUS_LABELS, status), value: byStatus.get(status) ?? 0, color: CASE_COLORS[status] ?? '#98a2b3' }))}
-                  centerValue={CASE_STATUS_ORDER.reduce((sum, status) => sum + (byStatus.get(status) ?? 0), 0)}
-                  centerLabel="전체 건"
-                />
-                <table className="compact legend">
-                  <thead>
-                    <tr>
-                      <th>상태</th>
-                      <th className="num">건수</th>
+              <table className="compact">
+                <thead>
+                  <tr>
+                    <th>상태</th>
+                    <th className="num">건수</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {CASE_STATUS_ORDER.map((status) => (
+                    <tr key={status}>
+                      <td>{label(CASE_STATUS_LABELS, status)}</td>
+                      <td className="num">{byStatus.get(status) ?? 0}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {CASE_STATUS_ORDER.map((status) => (
-                      <tr key={status}>
-                        <td>
-                          <span className="swatch" aria-hidden="true" style={{ background: CASE_COLORS[status] }} />
-                          {label(CASE_STATUS_LABELS, status)}
-                        </td>
-                        <td className="num">{byStatus.get(status) ?? 0}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
 
               <div className="case-recent">
                 <h3>최근 발생 건</h3>
@@ -319,32 +232,21 @@ export function DashboardPage() {
   )
 }
 
-// 오늘 회차 출결 현황(도넛 + 범례). 회차별 명단을 합산한 값이며, 휴강 회차는 뺀다.
-function AttendanceToday({ roster, date }: { roster: RosterItem[]; date: string }) {
+// 오늘 회차 출결 요약: 회차별 명단을 합산한 한 줄 텍스트(휴강 회차 제외)
+function AttendanceToday({ roster }: { roster: RosterItem[] }) {
   const order = ['PRESENT', 'LATE', 'EARLY_LEAVE', 'ABSENT', 'EXCUSED', 'NOT_CHECKED']
   const counts = new Map<string, number>()
   for (const r of roster) if (r.displayStatus) counts.set(r.displayStatus, (counts.get(r.displayStatus) ?? 0) + 1)
   const total = [...counts.values()].reduce((a, b) => a + b, 0)
-  const done = total - (counts.get('NOT_CHECKED') ?? 0)
   return (
-    <section className="panel dash-att" aria-labelledby="att-title">
-      <h2 id="att-title">오늘 출결 현황</h2>
-      <p className="hint">{date} 회차 합산 · 출결 입력 {done}/{total}명</p>
-      <div className="att-donut">
-        <Donut
-          segments={order.map((k): Segment => ({ key: k, label: label(ATTENDANCE_STATUS_LABELS, k), value: counts.get(k) ?? 0, color: ATTENDANCE_COLORS[k] }))}
-          centerValue={total === 0 ? '-' : `${Math.round((done / total) * 100)}%`}
-          centerLabel="입력률"
-        />
-        <ul className="legend-list">
-          {order.map((k) => (
-            <li key={k}>
-              <span className="swatch" aria-hidden="true" style={{ background: ATTENDANCE_COLORS[k] }} />
-              {label(ATTENDANCE_STATUS_LABELS, k)} <strong>{counts.get(k) ?? 0}명</strong>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
+    <p className="att-summary">
+      <span className="muted">출결 현황</span> 전체 {total}명 ·{' '}
+      {order.map((k, i) => (
+        <span key={k}>
+          {i > 0 && ' · '}
+          {label(ATTENDANCE_STATUS_LABELS, k)} {counts.get(k) ?? 0}
+        </span>
+      ))}
+    </p>
   )
 }

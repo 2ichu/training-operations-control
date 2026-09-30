@@ -112,9 +112,10 @@ describe('대시보드 (S01)', () => {
     expect(within(cases).getByText('동일 환경 복수 출결')).toBeInTheDocument()
     expect(within(cases).getByText('미지정')).toBeInTheDocument()
 
-    const pending = screen.getByRole('region', { name: '미처리 현황' })
-    expect(within(pending).getByRole('row', { name: '미출결 4' })).toBeInTheDocument()
-    expect(within(pending).getByRole('row', { name: '결과물 미검토 3' })).toBeInTheDocument()
+    const pending = screen.getByRole('region', { name: '처리할 업무' })
+    expect(within(pending).getByRole('row', { name: /미출결 4 / })).toBeInTheDocument()
+    expect(within(pending).getByRole('row', { name: /결과물 미검토 3 / })).toBeInTheDocument()
+    expect(within(pending).getByRole('row', { name: /확인 필요 사항 2 / })).toBeInTheDocument()
 
     const nav = screen.getByRole('navigation', { name: '주 메뉴' })
     expect(within(nav).getByRole('link', { name: '확인 필요 목록' })).toBeInTheDocument()
