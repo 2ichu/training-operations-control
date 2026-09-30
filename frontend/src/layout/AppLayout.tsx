@@ -54,6 +54,17 @@ export function AppLayout() {
   const { user, permissions } = useCurrentUser()
   const menu = visibleMenu(permissions)
   const { pathname } = useLocation()
+  // 좁은 화면에서는 메뉴가 왼쪽 서랍으로 열린다(넓은 화면에서는 항상 보이는 사이드바)
+  // 화면을 옮기면(경로가 바뀌면) 저절로 닫힌다
+  const [openedAt, setOpenedAt] = useState<string | null>(null)
+  const navOpen = openedAt === pathname
+  const setNavOpen = (v: boolean) => setOpenedAt(v ? pathname : null)
+  useEffect(() => {
+    if (!navOpen) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpenedAt(null)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [navOpen])
   const here = locate(pathname)
   // 좌측 메뉴는 그룹별로 접고 펼친다(아코디언). 현재 화면이 속한 그룹은 항상 펼쳐지고, 사용자가 연 그룹은 기억한다.
   const [opened, setOpened] = useState<string[]>(loadOpen)
@@ -74,6 +85,9 @@ export function AppLayout() {
   return (
     <div className="app-shell">
       <header className="app-header">
+        <button type="button" className="nav-burger" aria-label={navOpen ? '메뉴 닫기' : '메뉴 열기'} aria-expanded={navOpen} onClick={() => setNavOpen(!navOpen)}>
+          <span aria-hidden="true" />
+        </button>
         <span className="app-title">훈련과정 통합관리</span>
         <div className="breadcrumb" role="group" aria-label="현재 위치">
           {here ? (
@@ -100,7 +114,8 @@ export function AppLayout() {
           </button>
         </div>
       </header>
-      <nav className="app-nav" aria-label="주 메뉴">
+      {navOpen && <div className="nav-backdrop" onClick={() => setNavOpen(false)} aria-hidden="true" />}
+      <nav className={navOpen ? 'app-nav is-open' : 'app-nav'} aria-label="주 메뉴">
         <div className="app-nav-inner">
           {menu.map((group) => (
             <div key={group.label} className={group.items.length > 1 || group.items[0].label !== group.label ? 'nav-group' : 'nav-group nav-single'}>
@@ -133,6 +148,9 @@ export function AppLayout() {
               )}
             </div>
           ))}
+          <NavLink to="/change-password" className="nav-mobile-only">
+            비밀번호 변경
+          </NavLink>
         </div>
       </nav>
       <main className="app-main">
