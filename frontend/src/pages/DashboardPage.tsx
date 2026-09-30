@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { api } from '../api/client'
 import type { CourseSummary, DashboardSummary, RosterItem } from '../api/types'
@@ -8,7 +7,7 @@ import { Bar, Donut, type Segment } from '../components/Charts'
 import { EmptyText, ErrorText, Loading } from '../components/Feedback'
 import { CaseStatusBadge } from '../components/StatusBadge'
 import { formatDateTime, formatTime, formatTrainees } from '../format'
-import { ATTENDANCE_STATUS_LABELS, CASE_STATUS_ORDER, label, RULE_LABELS, SCHEDULE_STATUS_LABELS } from '../labels'
+import { ATTENDANCE_STATUS_LABELS, label, RULE_LABELS, SCHEDULE_STATUS_LABELS } from '../labels'
 
 // 도식 색: 색만으로 구분하지 않도록 항상 텍스트(범례·표)를 함께 표시한다. 채도를 낮춰 쓰고, 노랑=확인 필요, 주황=조치·지각·조퇴, 빨강=결석, 파랑=확인 중·인정결석, 초록=정상·완료
 const ATTENDANCE_COLORS: Record<string, string> = { PRESENT: '#5a9a6e', LATE: '#c98a3a', EARLY_LEAVE: '#d9ac66', ABSENT: '#c0524a', EXCUSED: '#5b7db1', NOT_CHECKED: '#a8afba' }
@@ -82,71 +81,13 @@ export function DashboardPage() {
         { key: 'rev', group: '결과물', text: '결과물 미검토', count: data.counts.reviewPending, to: to('S19', '/submissions'), emphasis: false },
       ]
     : []
-  // 상단 요약 카드 오른쪽의 링 도식(각 항목의 "얼마나 진행/처리됐는가"): 수업 진행률 / 확인 건 처리율 / 출결 입력률 / 미처리 구성
+  // 상단 브리핑: 오늘 처리할 업무 총건수 + 업무별 구성 막대(각 구간은 해당 화면 링크)
   const rosterAll = attendanceToday.data ?? []
   const rosterTotal = rosterAll.filter((r) => r.displayStatus).length
   const rosterDone = rosterAll.filter((r) => r.displayStatus && r.displayStatus !== 'NOT_CHECKED').length
-  const ring = (segments: Segment[], text: string): ReactNode => (
-    <div className="kpi-ring">
-      <Donut size={58} segments={segments} centerValue="" centerLabel="" />
-      <span>{text}</span>
-    </div>
-  )
-  const pct = (n: number, d: number) => (d === 0 ? '-' : `${Math.round((n / d) * 100)}%`)
-  const lessons = data?.todaySchedules.filter((x) => x.displayStatus !== 'CANCELLED') ?? []
-  const lessonsDone = lessons.filter((x) => x.displayStatus === 'COMPLETED').length
-  const caseTotal = CASE_STATUS_ORDER.reduce((sum, st) => sum + (byStatus.get(st) ?? 0), 0)
-  const caseDone = (byStatus.get('CONFIRMED') ?? 0) + (byStatus.get('ACTION_DONE') ?? 0)
-  const vizToday =
-    data && lessons.length > 0
-      ? ring(
-          [
-            { key: 'd', label: '진행완료', value: lessonsDone, color: '#3f6fb5' },
-            { key: 'r', label: '예정', value: lessons.length - lessonsDone, color: '#cfe0f8' },
-          ],
-          `진행 ${lessonsDone}/${lessons.length}`,
-        )
-      : null
-  const vizCases =
-    data && caseTotal > 0
-      ? ring(
-          [
-            { key: 'd', label: '처리', value: caseDone, color: '#5a9a6e' },
-            { key: 'r', label: '진행 중', value: caseTotal - caseDone, color: '#e3b64a' },
-          ],
-          `처리율 ${pct(caseDone, caseTotal)}`,
-        )
-      : null
-  const vizAtt =
-    data && rosterTotal > 0
-      ? ring(
-          [
-            { key: 'd', label: '입력', value: rosterDone, color: '#5a9a6e' },
-            { key: 'r', label: '미입력', value: rosterTotal - rosterDone, color: '#e3a06a' },
-          ],
-          `입력 ${rosterDone}/${rosterTotal}명`,
-        )
-      : null
-  const missing = data ? [data.counts.notCheckedIn + data.counts.checkoutMissing, data.counts.operationLogMissing, data.counts.submissionMissing + data.counts.reviewPending] : [0, 0, 0]
-  const vizLog =
-    missing.some((n) => n > 0)
-      ? ring(
-          [
-            { key: 'a', label: '출결', value: missing[0], color: '#c9683a' },
-            { key: 'b', label: '운영일지', value: missing[1], color: '#6b7f9e' },
-            { key: 'c', label: '결과물', value: missing[2], color: '#b3bac6' },
-          ],
-          '미처리 구성',
-        )
-      : null
-  const kpis: { key: string; text: string; value: number; to: string | null; tone: 'info' | 'alert' | 'warn' | 'plain'; viz: ReactNode }[] = data
-    ? [
-        { key: 'today', text: '오늘 수업', value: data.todaySchedules.length, to: null, tone: 'info', viz: vizToday },
-        { key: 'needs', text: '확인 필요', value: needsCheck, to: todo[0].to, tone: needsCheck > 0 ? 'alert' : 'plain', viz: vizCases },
-        { key: 'att', text: '미출결', value: data.counts.notCheckedIn, to: todo[3].to, tone: data.counts.notCheckedIn > 0 ? 'warn' : 'plain', viz: vizAtt },
-        { key: 'log', text: '운영일지 미작성', value: data.counts.operationLogMissing, to: todo[5].to, tone: 'plain', viz: vizLog },
-      ]
-    : []
+  const BRIEF_COLORS: Record<string, string> = { needs: '#d99a00', action: '#e8b94a', excuse: '#f0d078', att: '#c9683a', out: '#dc8f66', log: '#5f7396', sub: '#8d99ad', rev: '#b8c0cd' }
+  const openTotal = todo.reduce((sum, t) => sum + t.count, 0)
+  const topTask = todo.length > 0 ? todo.reduce((m, t) => (t.count > m.count ? t : m), todo[0]) : null
 
   return (
     <section className="page">
@@ -181,32 +122,69 @@ export function DashboardPage() {
 
       {data && (
         <div className={summary.status === 'loading' ? 'dashboard is-refreshing' : 'dashboard'}>
-          <ul className="kpi-strip" aria-label="주요 현황">
-            {kpis.map((k) => {
-              const body = (
-                <>
-                  <span className="kpi-label">
-                    {k.text}
-                    {k.to && (
-                      <span className="kpi-go" aria-hidden="true">
-                        ›
-                      </span>
-                    )}
-                  </span>
-                  <span className="kpi-value">
-                    {k.value}
-                    <span className="kpi-unit">건</span>
-                  </span>
-                  {k.viz}
-                </>
-              )
-              return (
-                <li key={k.key} className={`kpi kpi-${k.tone}`}>
-                  {k.to ? <Link to={k.to}>{body}</Link> : <div>{body}</div>}
+          <section className="brief" aria-label="주요 현황">
+            <div className="brief-head">
+              <div className="brief-total">
+                <span className="brief-caption">처리할 업무</span>
+                <span className="brief-number">
+                  {openTotal}
+                  <span className="brief-unit">건</span>
+                </span>
+              </div>
+              <ul className="brief-facts">
+                <li>
+                  <span>확인 필요</span>
+                  <strong className={needsCheck > 0 ? 'fact-alert' : undefined}>{needsCheck}건</strong>
                 </li>
-              )
-            })}
-          </ul>
+                <li>
+                  <span>오늘 수업</span>
+                  <strong>{data.todaySchedules.length}건</strong>
+                </li>
+                <li>
+                  <span>미출결</span>
+                  <strong>{data.counts.notCheckedIn}건</strong>
+                </li>
+                <li>
+                  <span>운영일지 미작성</span>
+                  <strong>{data.counts.operationLogMissing}건</strong>
+                </li>
+                {rosterTotal > 0 && (
+                  <li>
+                    <span>출결 입력</span>
+                    <strong>
+                      {rosterDone}/{rosterTotal}명
+                    </strong>
+                  </li>
+                )}
+              </ul>
+            </div>
+            {openTotal > 0 && (
+              <>
+                <div className="brief-bar" aria-hidden="true">
+                  {todo
+                    .filter((t) => t.count > 0)
+                    .map((t) => (
+                      <span key={t.key} style={{ flex: t.count, background: BRIEF_COLORS[t.key] }} />
+                    ))}
+                </div>
+                <ul className="brief-legend">
+                  {todo
+                    .filter((t) => t.count > 0)
+                    .map((t) => (
+                      <li key={t.key}>
+                        <span className="swatch" aria-hidden="true" style={{ background: BRIEF_COLORS[t.key] }} />
+                        {t.to ? <Link to={t.to}>{t.text}</Link> : t.text} <strong>{t.count}</strong>
+                      </li>
+                    ))}
+                </ul>
+              </>
+            )}
+            {topTask && topTask.count > 0 && (
+              <p className="brief-note">
+                가장 많은 업무는 <strong>{topTask.text}</strong> {topTask.count}건입니다.
+              </p>
+            )}
+          </section>
 
           <section className="dash-todo" aria-labelledby="todo-title">
             <h2 id="todo-title">처리할 업무</h2>

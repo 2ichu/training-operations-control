@@ -2828,3 +2828,123 @@ table.legend th {
 .kpi-go {
   margin-left: 2px;
 }
+
+/* ════════════════════════════════════════════════════════════
+   상단 브리핑: 카드 4개 대신 "처리할 업무 총건수 + 업무 구성 막대" 한 덩어리
+   ════════════════════════════════════════════════════════════ */
+.brief {
+  grid-column: 1 / -1;
+  padding: 16px 20px 14px;
+  border: 1px solid #dfe4ec;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f7f9fc 0%, #ffffff 100%);
+}
+
+.brief-head {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.brief-total {
+  display: flex;
+  flex-direction: column;
+  padding-right: 32px;
+  border-right: 1px solid #dfe4ec;
+}
+
+.brief-caption {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.brief-number {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--text-strong);
+}
+
+.brief-unit {
+  margin-left: 4px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: #6b7280;
+}
+
+.brief-facts {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 36px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.brief-facts li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brief-facts span {
+  font-size: 12.5px;
+  color: #5b6474;
+}
+
+.brief-facts strong {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.brief-facts .fact-alert {
+  color: #a35c00;
+}
+
+.brief-bar {
+  display: flex;
+  gap: 3px;
+  height: 14px;
+  margin-top: 14px;
+}
+
+.brief-bar span {
+  min-width: 6px;
+  border-radius: 3px;
+}
+
+.brief-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.brief-legend strong {
+  margin-left: 4px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.brief-note {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.brief-note strong {
+  color: var(--text-strong);
+}
