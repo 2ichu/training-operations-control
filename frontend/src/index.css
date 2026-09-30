@@ -3374,3 +3374,97 @@ table.todo td.num,
   position: absolute;
   inset: 0;
 }
+
+/* ════════════════════════════════════════════════════════════
+   회차·오늘 출결 현황 / 확인 필요 사항: 우선 처리 업무와 같은 박스·헤더·글자 크기
+   ════════════════════════════════════════════════════════════ */
+.dash-today,
+.dash-cases {
+  padding: 0;
+  border: 1px solid #d5dbe6;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.dash-today > h2,
+.dash-cases > h2 {
+  margin: 0;
+  padding: 11px 18px;
+  border: 0;
+  border-bottom: 1px solid #d5dbe6;
+  background: linear-gradient(180deg, #f5f8fc 0%, #ffffff 100%);
+  font-size: 16px;
+  color: #1f2937;
+}
+
+.dash-today > h2::before,
+.dash-cases > h2::before {
+  display: none;
+}
+
+.dash-today .session-list li {
+  padding: 10px 18px;
+  font-size: 15px;
+}
+
+.dash-today .session-list a {
+  font-weight: 700;
+}
+
+.dash-today .att-today {
+  padding: 12px 18px 14px;
+  border-top: 1px solid #e3e8f0;
+}
+
+.dash-today .att-today h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.dash-today .att-legend li,
+.dash-today .att-legend strong {
+  font-size: 15px;
+}
+
+.dash-today .att-legend strong {
+  font-weight: 800;
+}
+
+.dash-today .att-pct {
+  font-size: 14px;
+  color: #374151;
+}
+
+.dash-cases .empty,
+.dash-cases > .case-recent > p {
+  margin: 0;
+  padding: 14px 18px;
+}
+
+.dash-cases table {
+  width: 100%;
+  border: 0;
+}
+
+.dash-cases thead th {
+  padding: 8px 12px;
+  border-top: 0;
+  border-bottom: 1px solid #e3e8f0;
+  background: #fafbfd;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.dash-cases tbody td {
+  padding: 10px 12px;
+  font-size: 15px;
+  color: #1f2937;
+}
+
+.dash-cases tbody tr.clickable:hover {
+  background: #edf3fb;
+}
