@@ -275,7 +275,7 @@ export function DashboardPage() {
           </section>
 
           <section className="dash-todo" aria-labelledby="todo-title">
-            <h2 id="todo-title">처리할 업무</h2>
+            <h2 id="todo-title">우선 처리 업무</h2>
             {openTodo.length === 0 ? (
               <EmptyText>처리할 업무가 없습니다.</EmptyText>
             ) : (
@@ -292,7 +292,7 @@ export function DashboardPage() {
                 </thead>
                 <tbody>
                   {openTodo.map((t, i) => (
-                    <tr key={t.key} className={i === 0 || openTodo[i - 1].group !== t.group ? 'group-start' : undefined}>
+                    <tr key={t.key} className={(i === 0 || openTodo[i - 1].group !== t.group ? 'group-start' : '') + (t.emphasis ? ' is-hot' : '') || undefined}>
                       <td className="group">{i === 0 || openTodo[i - 1].group !== t.group ? t.group : ''}</td>
                       <th scope="row">{t.text}</th>
                       <td className="num">{t.count}</td>
@@ -302,7 +302,7 @@ export function DashboardPage() {
                       <td className="bar-col">
                         <Bar value={t.count} max={Math.max(1, ...openTodo.map((x) => x.count))} color={t.emphasis ? '#d1a63a' : '#a8afba'} />
                       </td>
-                      <td>{t.to ? <Link to={t.to}>확인하기</Link> : ''}</td>
+                      <td>{t.to ? <Link className="todo-go" to={t.to}>확인하기</Link> : ''}</td>
                     </tr>
                   ))}
                 </tbody>

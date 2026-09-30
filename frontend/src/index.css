@@ -3281,3 +3281,96 @@ table.todo td.num,
     border-top: 1px solid #d5dbe6;
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   우선 처리 업무: 상단 요약 띠와 같은 톤(테두리 박스 · 15px 라벨 · 큰 숫자 · 행 전체 클릭)
+   ════════════════════════════════════════════════════════════ */
+.dash-todo {
+  align-self: start;
+  padding: 0;
+  border: 1px solid #d5dbe6;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.dash-todo > h2 {
+  margin: 0;
+  padding: 11px 18px;
+  border: 0;
+  border-bottom: 1px solid #d5dbe6;
+  background: linear-gradient(180deg, #f5f8fc 0%, #ffffff 100%);
+  font-size: 16px;
+  color: #1f2937;
+}
+
+.dash-todo > h2::before {
+  display: none;
+}
+
+.dash-todo table.todo {
+  width: 100%;
+  border: 0;
+}
+
+.dash-todo table.todo thead th {
+  padding: 8px 12px;
+  border-top: 0;
+  border-bottom: 1px solid #e3e8f0;
+  background: #fafbfd;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.dash-todo table.todo tbody tr {
+  position: relative;
+  transition: background 0.12s;
+}
+
+.dash-todo table.todo tbody tr:hover {
+  background: #edf3fb;
+}
+
+.dash-todo table.todo tbody tr.is-hot {
+  background: #fff9ec;
+}
+
+.dash-todo table.todo tbody tr.is-hot:hover {
+  background: #ffefd0;
+}
+
+.dash-todo table.todo th[scope='row'],
+.dash-todo table.todo td {
+  padding: 10px 12px;
+  font-size: 15px;
+  color: #1f2937;
+}
+
+.dash-todo table.todo td.group {
+  font-size: 13px;
+  font-weight: 700;
+  color: #4b5563;
+}
+
+.dash-todo table.todo td.num {
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-todo table.todo .bar-col {
+  min-width: 110px;
+}
+
+.dash-todo table.todo td a.todo-go {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* 행 어디를 눌러도 이동 */
+.dash-todo table.todo td a.todo-go::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+}

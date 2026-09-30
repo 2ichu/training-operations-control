@@ -102,7 +102,7 @@ describe('대시보드 (S01)', () => {
       'GET /courses': { status: 200, body: { items: [], page: 1, size: 100, total: 0 } },
     })
     renderAt('/')
-    const todo = await screen.findByRole('region', { name: '처리할 업무' })
+    const todo = await screen.findByRole('region', { name: '우선 처리 업무' })
     expect(within(todo).getByRole('row', { name: /미출결 4 / })).toBeInTheDocument()
     expect(within(todo).queryByRole('row', { name: /결과물 미제출/ })).not.toBeInTheDocument()
     expect(within(todo).queryByRole('row', { name: /조치 필요·추가 확인 사항/ })).not.toBeInTheDocument()
@@ -162,7 +162,7 @@ describe('대시보드 (S01)', () => {
     expect(within(cases).getByText('동일 환경 복수 출결')).toBeInTheDocument()
     expect(within(cases).getByText('미지정')).toBeInTheDocument()
 
-    const pending = screen.getByRole('region', { name: '처리할 업무' })
+    const pending = screen.getByRole('region', { name: '우선 처리 업무' })
     expect(within(pending).getByRole('row', { name: /미출결 4 / })).toBeInTheDocument()
     expect(within(pending).getByRole('row', { name: /결과물 미검토 3 / })).toBeInTheDocument()
     expect(within(pending).getByRole('row', { name: /확인 필요 사항 2 / })).toBeInTheDocument()
