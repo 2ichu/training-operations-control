@@ -247,14 +247,23 @@ export function DashboardPage() {
                         <div className="ops-track" role="group" aria-label="확인 건 처리 현황">
                           {phases.map((ph) => (
                             <span key={ph.key} style={{ flex: ph.count, background: ph.color }} title={`${ph.label} ${ph.count}건`}>
-                              {phases.length > 1 && ph.count / caseTotal >= 0.2 ? `${ph.label} ${ph.count}` : ''}
                             </span>
                           ))}
                         </div>
                         <b aria-hidden="true">{Math.round((caseDone / caseTotal) * 100)}%</b>
                       </div>
                       <span className="ops-cap">
-                        처리 완료 {caseDone}/{caseTotal}건
+                        {phases
+                          .filter((ph) => ph.key !== 'done')
+                          .map((ph) => (
+                            <span key={ph.key} className="ops-legend">
+                              <i style={{ background: ph.color }} aria-hidden="true" />
+                              {ph.label} {ph.count}
+                            </span>
+                          ))}
+                        <span>
+                          처리 완료 {caseDone}/{caseTotal}건
+                        </span>
                       </span>
                     </>
                   ) : (

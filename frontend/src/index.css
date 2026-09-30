@@ -3079,9 +3079,11 @@ table.todo td.num,
 .ops-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  position: relative;
+  gap: 6px;
   min-width: 0;
-  padding: 11px 18px 12px;
+  padding: 12px 18px 13px;
+  transition: background 0.12s;
 }
 
 .ops-item + .ops-item {
@@ -3103,9 +3105,9 @@ table.todo td.num,
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
-  color: #374151;
+  color: #1f2937;
 }
 
 .ops-dot {
@@ -3176,18 +3178,18 @@ table.todo td.num,
 .ops-trackrow i,
 .ops-trackrow b {
   flex: none;
-  font-size: 12px;
+  font-size: 13px;
   font-style: normal;
   font-weight: 600;
-  color: #4b5563;
+  color: #374151;
 }
 
 .ops-trackrow b {
-  min-width: 34px;
+  min-width: 42px;
   text-align: right;
-  font-size: 13px;
-  font-weight: 700;
-  color: #374151;
+  font-size: 15px;
+  font-weight: 800;
+  color: #1f2937;
 }
 
 .ops-track {
@@ -3195,7 +3197,7 @@ table.todo td.num,
   flex: 1;
   display: flex;
   gap: 2px;
-  height: 16px;
+  height: 18px;
   min-width: 0;
   border-radius: 3px;
   background: #e1e7f0;
@@ -3227,11 +3229,46 @@ table.todo td.num,
 }
 
 .ops-cap {
-  font-size: 12.5px;
-  color: #4b5563;
+  display: flex;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: 13.5px;
+  color: #374151;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.ops-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ops-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+/* 칸 전체를 눌러 이동: 바로가기 링크를 칸 크기로 넓힌다 */
+.ops-item:has(.ops-go):hover {
+  background: #edf3fb;
+}
+
+.ops-alert:has(.ops-go):hover {
+  background: #ffefd0;
+}
+
+.ops-go::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.ops-go:focus-visible::before {
+  outline: 2px solid #1f4f99;
+  outline-offset: -3px;
 }
 
 @media (max-width: 900px) {
