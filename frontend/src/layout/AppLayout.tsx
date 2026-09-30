@@ -55,20 +55,22 @@ export function AppLayout() {
         </div>
       </header>
       <nav className="app-nav" aria-label="주 메뉴">
-        {menu.map((group) => (
-          <div key={group.label} className="nav-group">
-            {group.items.length > 1 || group.items[0].label !== group.label ? <div className="nav-group-label">{group.label}</div> : null}
-            <ul>
-              {group.items.map((item) => (
-                <li key={item.screenId}>
-                  <NavLink to={item.path} end>
-                    {item.label}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+        <div className="app-nav-inner">
+          {menu.map((group) => (
+            <div key={group.label} className="nav-group">
+              {group.items.length > 1 || group.items[0].label !== group.label ? <div className="nav-group-label">{group.label}</div> : null}
+              <ul>
+                {group.items.map((item) => (
+                  <li key={item.screenId}>
+                    <NavLink to={item.path} end>
+                      {item.label}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
       </nav>
       <main className="app-main">
         <Outlet />

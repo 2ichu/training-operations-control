@@ -312,17 +312,23 @@ button.button-link:hover:not(:disabled) {
 
 .app-nav {
   grid-area: nav;
-  padding: 8px 0 24px;
   background: #1c2b4a;
   color: #cbd5e6;
-  overflow-y: auto;
+}
+
+/* 사이드바 배경은 페이지 끝까지 이어지고(그리드 열 전체), 메뉴는 화면에 붙어 따라오며 화면보다 길면 안에서만 스크롤한다 */
+.app-nav-inner {
   position: sticky;
   top: var(--header-h);
-  height: calc(100vh - var(--header-h));
+  max-height: calc(100vh - var(--header-h));
+  overflow-y: auto;
+  padding: 6px 0 20px;
+  scrollbar-width: thin;
+  scrollbar-color: #3b4d72 transparent;
 }
 
 .nav-group-label {
-  padding: 14px 20px 4px;
+  padding: 10px 20px 2px;
   font-size: 12px;
   font-weight: 600;
   color: #8b9bb8;
@@ -336,7 +342,7 @@ button.button-link:hover:not(:disabled) {
 
 .app-nav a {
   display: block;
-  padding: 7px 20px 7px 28px;
+  padding: 5px 20px 5px 28px;
   color: #d6deec;
   text-decoration: none;
   border-left: 3px solid transparent;
@@ -393,9 +399,9 @@ button.button-link:hover:not(:disabled) {
     display: none;
   }
 
-  .app-nav {
+  .app-nav-inner {
     position: static;
-    height: auto;
+    max-height: none;
     display: flex;
     flex-wrap: wrap;
     padding: 4px 8px;
@@ -1533,4 +1539,151 @@ tr.selected:hover {
   .board-total {
     grid-column: 1 / -1;
   }
+}
+
+/* ── 대시보드 재구성(도식) ─────────────────────────────────── */
+.dashboard {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.dash-todo,
+.dash-today {
+  grid-column: span 2;
+}
+
+.dash-att,
+.dash-pending {
+  grid-column: span 1;
+}
+
+@media (max-width: 1100px) {
+  .dashboard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dash-todo,
+  .dash-today,
+  .dash-att,
+  .dash-pending {
+    grid-column: 1 / -1;
+  }
+}
+
+.bar-col {
+  width: 34%;
+  min-width: 90px;
+}
+
+.bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--muted-bg);
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+}
+
+.timespan {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--muted-bg);
+}
+
+.timespan-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 4px;
+  background: var(--primary);
+}
+
+table.fill {
+  width: 100%;
+}
+
+.donut-value {
+  font-size: 22px;
+  font-weight: 700;
+  fill: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.donut-label {
+  font-size: 12px;
+  fill: var(--text-muted);
+}
+
+.att-donut,
+.case-donut {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.legend-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.legend-list strong {
+  margin-left: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  border-radius: 2px;
+  vertical-align: baseline;
+}
+
+.case-overview {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(0, 2fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.case-overview h3 {
+  margin-top: 0;
+}
+
+table.legend {
+  min-width: 160px;
+}
+
+table.legend td,
+table.legend th {
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+@media (max-width: 1100px) {
+  .case-overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+table.legend thead th {
+  position: static;
+}
+
+.case-donut {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+
+.case-donut .donut {
+  flex: none;
 }
