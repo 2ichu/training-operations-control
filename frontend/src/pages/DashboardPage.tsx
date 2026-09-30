@@ -82,13 +82,22 @@ export function DashboardPage() {
         { key: 'rev', group: '결과물', text: '결과물 미검토', count: data.counts.reviewPending, to: to('S19', '/submissions'), emphasis: false },
       ]
     : []
-  // 상단 브리핑: 오늘 처리할 업무 총건수 + 업무별 구성 막대(각 구간은 해당 화면 링크)
-  const rosterAll = attendanceToday.data ?? []
-  const rosterTotal = rosterAll.filter((r) => r.displayStatus).length
-  const rosterDone = rosterAll.filter((r) => r.displayStatus && r.displayStatus !== 'NOT_CHECKED').length
-  const BRIEF_COLORS: Record<string, string> = { needs: '#d99a00', action: '#e8b94a', excuse: '#f0d078', att: '#c9683a', out: '#dc8f66', log: '#5f7396', sub: '#8d99ad', rev: '#b8c0cd' }
-  const openTotal = todo.reduce((sum, t) => sum + t.count, 0)
-  const topTask = todo.length > 0 ? todo.reduce((m, t) => (t.count > m.count ? t : m), todo[0]) : null
+  // 상단 요약은 "구분(그룹)" 단위로만 보여 주고, 개별 업무 건수는 아래 처리할 업무 표에서 본다(중복 제거).
+  const GROUP_COLORS: Record<string, string> = { '확인·승인': '#d99a00', 출결: '#c9683a', 운영: '#5f7396', 결과물: '#8d99ad' }
+  const groups = [...new Set(todo.map((t) => t.group))].map((name, index) => {
+    const items = todo.filter((t) => t.group === name)
+    return { name, index, count: items.reduce((sum, t) => sum + t.count, 0), main: items.find((t) => t.to) ?? items[0], color: GROUP_COLORS[name] ?? '#a8afba' }
+  })
+  const openTotal = groups.reduce((sum, g) => sum + g.count, 0)
+  // 그룹을 누르면 아래 표의 해당 구분으로 이동하고 잠시 강조한다
+  const goToGroup = (index: number) => {
+    const el = document.getElementById(`todo-group-${index}`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const rows = document.querySelectorAll(`[data-group-index="${index}"]`)
+    rows.forEach((r) => r.classList.add('flash'))
+    window.setTimeout(() => rows.forEach((r) => r.classList.remove('flash')), 1600)
+  }
 
   return (
     <section className="page">
@@ -126,65 +135,43 @@ export function DashboardPage() {
           <section className="brief" aria-label="주요 현황">
             <div className="brief-head">
               <div className="brief-total">
-                <span className="brief-caption">처리할 업무</span>
+                <span className="brief-caption">오늘 처리할 업무</span>
                 <span className="brief-number">
                   {openTotal}
                   <span className="brief-unit">건</span>
                 </span>
               </div>
-              <ul className="brief-facts">
-                <li>
-                  <span>확인 필요</span>
-                  <strong className={needsCheck > 0 ? 'fact-alert' : undefined}>{needsCheck}건</strong>
-                </li>
-                <li>
-                  <span>오늘 수업</span>
-                  <strong>{data.todaySchedules.length}건</strong>
-                </li>
-                <li>
-                  <span>미출결</span>
-                  <strong>{data.counts.notCheckedIn}건</strong>
-                </li>
-                <li>
-                  <span>운영일지 미작성</span>
-                  <strong>{data.counts.operationLogMissing}건</strong>
-                </li>
-                {rosterTotal > 0 && (
-                  <li>
-                    <span>출결 입력</span>
-                    <strong>
-                      {rosterDone}/{rosterTotal}명
-                    </strong>
-                  </li>
-                )}
-              </ul>
-            </div>
-            {openTotal > 0 && (
-              <>
-                <div className="brief-bar" aria-hidden="true">
-                  {todo
-                    .filter((t) => t.count > 0)
-                    .map((t) => (
-                      <span key={t.key} style={{ flex: t.count, background: BRIEF_COLORS[t.key] }} />
+              {openTotal > 0 && (
+                <div className="brief-bar" role="group" aria-label="업무 구분별 비율">
+                  {groups
+                    .filter((g) => g.count > 0)
+                    .map((g) => (
+                      <button key={g.name} type="button" className="brief-seg" style={{ flex: g.count, background: g.color }} title={`${g.name} ${g.count}건 (${Math.round((g.count / openTotal) * 100)}%)`} aria-label={`${g.name} ${g.count}건 — 아래 표에서 보기`} onClick={() => goToGroup(g.index)}>
+                        <span>{g.name} {g.count}</span>
+                      </button>
                     ))}
                 </div>
-                <ul className="brief-legend">
-                  {todo
-                    .filter((t) => t.count > 0)
-                    .map((t) => (
-                      <li key={t.key}>
-                        <span className="swatch" aria-hidden="true" style={{ background: BRIEF_COLORS[t.key] }} />
-                        {t.to ? <Link to={t.to}>{t.text}</Link> : t.text} <strong>{t.count}</strong>
-                      </li>
-                    ))}
-                </ul>
-              </>
-            )}
-            {topTask && topTask.count > 0 && (
-              <p className="brief-note">
-                가장 많은 업무는 <strong>{topTask.text}</strong> {topTask.count}건입니다.
-              </p>
-            )}
+              )}
+            </div>
+            <ul className="brief-groups">
+              {groups.map((g) => (
+                <li key={g.name} style={{ borderTopColor: g.color }} className={g.count === 0 ? 'zero' : undefined}>
+                  <button type="button" className="brief-group-main" onClick={() => goToGroup(g.index)} aria-label={`${g.name} ${g.count}건 — 아래 표에서 보기`}>
+                    <span className="brief-group-name">{g.name}</span>
+                    <span className="brief-group-num">
+                      {g.count}
+                      <small>건</small>
+                    </span>
+                    <span className="brief-group-pct">{openTotal > 0 ? `${Math.round((g.count / openTotal) * 100)}%` : '-'}</span>
+                  </button>
+                  {g.main?.to && g.count > 0 && (
+                    <Link className="brief-group-go" to={g.main.to}>
+                      화면으로 ›
+                    </Link>
+                  )}
+                </li>
+              ))}
+            </ul>
           </section>
 
           <section className="dash-todo" aria-labelledby="todo-title">
@@ -202,7 +189,7 @@ export function DashboardPage() {
               </thead>
               <tbody>
                 {todo.map((t, i) => (
-                  <tr key={t.key} className={[t.count > 0 ? '' : 'zero', i === 0 || todo[i - 1].group !== t.group ? 'group-start' : ''].filter(Boolean).join(' ') || undefined}>
+                  <tr key={t.key} data-group-index={groups.findIndex((g) => g.name === t.group)} id={i === 0 || todo[i - 1].group !== t.group ? `todo-group-${groups.findIndex((g) => g.name === t.group)}` : undefined} className={[t.count > 0 ? '' : 'zero', i === 0 || todo[i - 1].group !== t.group ? 'group-start' : ''].filter(Boolean).join(' ') || undefined}>
                     <td className="group">{i === 0 || todo[i - 1].group !== t.group ? t.group : ''}</td>
                     <th scope="row">{t.text}</th>
                     <td className="num">{t.count}</td>

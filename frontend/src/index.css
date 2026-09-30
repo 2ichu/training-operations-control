@@ -2830,11 +2830,11 @@ table.legend th {
 }
 
 /* ════════════════════════════════════════════════════════════
-   상단 브리핑: 카드 4개 대신 "처리할 업무 총건수 + 업무 구성 막대" 한 덩어리
+   상단 브리핑: 총건수 + 구분별 누적 막대(구간을 누르면 표로 이동) + 구분별 요약 4칸
    ════════════════════════════════════════════════════════════ */
 .brief {
   grid-column: 1 / -1;
-  padding: 16px 20px 14px;
+  padding: 16px 20px 16px;
   border: 1px solid #dfe4ec;
   border-radius: 10px;
   background: linear-gradient(180deg, #f7f9fc 0%, #ffffff 100%);
@@ -2843,15 +2843,13 @@ table.legend th {
 .brief-head {
   display: flex;
   align-items: center;
-  gap: 32px;
-  flex-wrap: wrap;
+  gap: 28px;
 }
 
 .brief-total {
   display: flex;
+  flex: none;
   flex-direction: column;
-  padding-right: 32px;
-  border-right: 1px solid #dfe4ec;
 }
 
 .brief-caption {
@@ -2876,77 +2874,211 @@ table.legend th {
   color: #6b7280;
 }
 
-.brief-facts {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 36px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.brief-facts li {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.brief-facts span {
-  font-size: 12.5px;
-  color: #5b6474;
-}
-
-.brief-facts strong {
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.1;
-  color: var(--text-strong);
-  font-variant-numeric: tabular-nums;
-}
-
-.brief-facts .fact-alert {
-  color: #a35c00;
-}
-
+/* 누적 막대: 구간 안에 건수를 직접 표시, 구간 색 = 아래 구분 카드의 윗선 색 */
 .brief-bar {
+  flex: 1;
   display: flex;
   gap: 3px;
-  height: 14px;
-  margin-top: 14px;
+  height: 34px;
 }
 
-.brief-bar span {
-  min-width: 6px;
-  border-radius: 3px;
+.brief-seg {
+  min-width: 34px;
+  overflow: hidden;
+  white-space: nowrap;
+  min-height: 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.18);
+  transition: filter 0.12s, transform 0.12s;
 }
 
-.brief-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 20px;
-  margin: 10px 0 0;
+button.brief-seg:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.brief-groups {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0 0;
   padding: 0;
   list-style: none;
+}
+
+.brief-groups li {
+  position: relative;
+  border: 1px solid #dfe4ec;
+  border-top: 4px solid #a8afba;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.brief-groups li.zero {
+  opacity: 0.6;
+}
+
+.brief-group-main {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'name pct'
+    'num pct';
+  align-items: end;
+  width: 100%;
+  padding: 8px 12px 6px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+}
+
+button.brief-group-main:hover:not(:disabled) {
+  background: #f4f7fb;
+}
+
+.brief-group-name {
+  grid-area: name;
   font-size: 13.5px;
-  color: var(--text);
-}
-
-.brief-legend strong {
-  margin-left: 4px;
-  font-weight: 700;
-  color: var(--text-strong);
-}
-
-.brief-note {
-  margin: 8px 0 0;
-  font-size: 13px;
+  font-weight: 600;
   color: #4b5563;
 }
 
-.brief-note strong {
+.brief-group-num {
+  grid-area: num;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
   color: var(--text-strong);
+}
+
+.brief-group-num small {
+  margin-left: 3px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.brief-group-pct {
+  grid-area: pct;
+  align-self: end;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.brief-group-go {
+  display: block;
+  padding: 0 12px 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+/* 표의 구분으로 이동했을 때 잠깐 강조 */
+tr.flash td,
+tr.flash th {
+  animation: flash-row 1.6s ease-out;
+}
+
+@keyframes flash-row {
+  0%,
+  40% {
+    background: #fff3c4;
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+@media (max-width: 900px) {
+  .brief-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .brief-groups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ── 그룹 요약 행 ─────────────────────────────────────────── */
+tr.group-row {
+  background: #f8f9fc;
+}
+
+tr.group-row td {
+  font-weight: 500;
+}
+
+.group-count {
+  margin-left: 4px;
+  padding: 0 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #7a4300;
+  background: var(--accent-bg);
+  border-radius: 3px;
+}
+
+.row-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-weight: 600;
+  color: var(--link);
+}
+
+button.row-toggle:hover:not(:disabled) {
+  background: none;
+  text-decoration: underline;
+}
+
+.row-chevron {
+  width: 6px;
+  height: 6px;
+  border-right: 1.6px solid currentColor;
+  border-bottom: 1.6px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s;
+}
+
+.row-toggle[aria-expanded='true'] .row-chevron {
+  transform: rotate(45deg);
+}
+
+tr.child-row td {
+  background: #fcfcfd;
+  color: #374151;
+}
+
+tr.child-row td:first-child {
+  padding-left: 30px;
+}
+
+.gauge-value {
+  font-size: 30px;
+  font-weight: 800;
+  fill: var(--text-strong);
+}
+
+.gauge-label {
+  font-size: 12.5px;
+  fill: var(--text-muted);
+}
+
+.att-donut .gauge {
+  flex: none;
 }
 
 /* ── LNB 아코디언 ─────────────────────────────────────────── */
@@ -3039,64 +3171,6 @@ table.legend th {
   .nav-icon {
     display: none;
   }
-}
-
-/* ── 그룹 요약 행 ─────────────────────────────────────────── */
-tr.group-row {
-  background: #f8f9fc;
-}
-
-tr.group-row td {
-  font-weight: 500;
-}
-
-.group-count {
-  margin-left: 4px;
-  padding: 0 6px;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: #7a4300;
-  background: var(--accent-bg);
-  border-radius: 3px;
-}
-
-.row-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  font-weight: 600;
-  color: var(--link);
-}
-
-button.row-toggle:hover:not(:disabled) {
-  background: none;
-  text-decoration: underline;
-}
-
-.row-chevron {
-  width: 6px;
-  height: 6px;
-  border-right: 1.6px solid currentColor;
-  border-bottom: 1.6px solid currentColor;
-  transform: rotate(-45deg);
-  transition: transform 0.15s;
-}
-
-.row-toggle[aria-expanded='true'] .row-chevron {
-  transform: rotate(45deg);
-}
-
-tr.child-row td {
-  background: #fcfcfd;
-  color: #374151;
-}
-
-tr.child-row td:first-child {
-  padding-left: 30px;
 }
 
 .gauge-value {
