@@ -92,6 +92,42 @@ describe('인증 흐름', () => {
 })
 
 describe('대시보드 (S01)', () => {
+  it('불필요한 표시를 줄인다: 0건 업무는 처리할 업무 표에서 빠지고, 대상이 없는 확인 건 표는 대상 열을 숨기며, 상태가 하나뿐이면 구성 막대를 생략한다', async () => {
+    const base = dashboard()
+    const noTrainee = base.verificationSummary.recent.map((c) => ({ ...c, trainees: [] }))
+    mockApi({
+      'GET /auth/me': { status: 200, body: me() },
+      // 결과물 미제출 0건, 조치 필요·추가 확인 0건, 확인 건 상태는 확인필요 하나뿐
+      'GET /dashboard': { status: 200, body: dashboard({ verificationSummary: { byStatus: [{ status: 'NEEDS_CHECK', count: 2 }], recent: noTrainee } }) },
+      'GET /courses': { status: 200, body: { items: [], page: 1, size: 100, total: 0 } },
+    })
+    renderAt('/')
+    const todo = await screen.findByRole('region', { name: '처리할 업무' })
+    expect(within(todo).getByRole('row', { name: /미출결 4 / })).toBeInTheDocument()
+    expect(within(todo).queryByRole('row', { name: /결과물 미제출/ })).not.toBeInTheDocument()
+    expect(within(todo).queryByRole('row', { name: /조치 필요·추가 확인 사항/ })).not.toBeInTheDocument()
+    const cases = screen.getByRole('region', { name: '확인 필요 사항' })
+    expect(within(cases).queryByRole('columnheader', { name: '대상' })).not.toBeInTheDocument()
+    expect(within(cases).getByRole('columnheader', { name: '탐지유형' })).toBeInTheDocument()
+    const band = screen.getByRole('region', { name: '오늘 운영 상태' })
+    expect(within(band).queryByRole('group', { name: '확인 건 상태별 비율' })).not.toBeInTheDocument()
+    expect(within(band).queryByText(/전체 \d+건 중/)).not.toBeInTheDocument()
+  })
+
+  it('확인 건 상태가 둘 이상이면 상태 구성 막대를 보여주고, 대상이 있는 건이 있으면 대상 열을 보여준다', async () => {
+    const base = dashboard()
+    mockApi({
+      'GET /auth/me': { status: 200, body: me() },
+      'GET /dashboard': { status: 200, body: dashboard({ verificationSummary: { byStatus: [{ status: 'NEEDS_CHECK', count: 2 }, { status: 'IN_REVIEW', count: 1 }], recent: base.verificationSummary.recent } }) },
+      'GET /courses': { status: 200, body: { items: [], page: 1, size: 100, total: 0 } },
+    })
+    renderAt('/')
+    const band = await screen.findByRole('region', { name: '오늘 운영 상태' })
+    expect(within(band).getByRole('group', { name: '확인 건 상태별 비율' })).toBeInTheDocument()
+    const cases = screen.getByRole('region', { name: '확인 필요 사항' })
+    expect(within(cases).getByRole('columnheader', { name: '대상' })).toBeInTheDocument()
+  })
+
   it('같은 발생일시·과정의 확인 건은 대표 한 줄로 묶고 펼치면 개별 건을 보여준다', async () => {
     const base = dashboard()
     const one = base.verificationSummary.recent[0]

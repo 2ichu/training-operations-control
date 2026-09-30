@@ -71,7 +71,7 @@ export function DashboardPage() {
   const actionRequired = (byStatus.get('ACTION_REQUIRED') ?? 0) + (byStatus.get('FOLLOW_UP') ?? 0)
   const dayParam = date || data?.date || ''
 
-  // 처리할 업무 목록: 접근 권한이 있는 화면만 [확인하기] 링크로 연결한다. 확인/승인 건을 맨 앞에 두고, 0건인 항목도 목록에 남겨 점검표처럼 쓴다.
+  // 처리할 업무 목록: 접근 권한이 있는 화면만 [확인하기] 링크로 연결한다. 확인/승인 건을 맨 앞에 두고, 0건인 항목은 표에서 뺀다.
   const to = (screen: string, path: string) => (can(screen, 'R') ? path : null)
   const todo: { key: string; group: string; text: string; count: number; to: string | null; emphasis: boolean }[] = data
     ? [
@@ -85,6 +85,7 @@ export function DashboardPage() {
         { key: 'rev', group: '결과물', text: '결과물 미검토', count: data.counts.reviewPending, to: to('S19', '/submissions'), emphasis: false },
       ]
     : []
+  const openTodo = todo.filter((t) => t.count > 0)
   // 상단 "오늘 운영 상태" 밴드: 수업 진행 / 출결 입력 / 확인 필요(업무 수치는 아래 처리할 업무 표에서 본다)
   const rosterAll = attendanceToday.data ?? []
   const rosterTotal = rosterAll.filter((r) => r.displayStatus).length
@@ -92,7 +93,7 @@ export function DashboardPage() {
   const lessons = data?.todaySchedules.filter((x) => x.displayStatus !== 'CANCELLED') ?? []
   const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
   const lessonsDone = lessons.filter((x) => x.displayStatus === 'COMPLETED').length
-  const caseTotal = CASE_STATUS_ORDER.reduce((sum, st) => sum + (byStatus.get(st) ?? 0), 0)
+  const caseStatuses = CASE_STATUS_ORDER.filter((st) => (byStatus.get(st) ?? 0) > 0)
   const AXIS_FROM = 8
   const AXIS_TO = 19
 
@@ -186,23 +187,23 @@ export function DashboardPage() {
             <div className={needsCheck > 0 ? 'ops-item ops-case ops-alert' : 'ops-item ops-case'}>
               <div className="ops-top">
                 <span className="ops-label">확인 필요</span>
-                <span className="ops-pct">{caseTotal > 0 ? `전체 ${caseTotal}건 중` : ''}</span>
               </div>
               <span className="ops-value">
                 {needsCheck}
                 <small>건</small>
               </span>
-              {caseTotal > 0 ? (
+              {caseStatuses.length > 1 ? (
+                // 상태 구성 막대는 상태가 2개 이상일 때만(하나뿐이면 위 숫자와 같은 내용이라 생략)
                 <div className="ops-stack" role="group" aria-label="확인 건 상태별 비율">
-                  {CASE_STATUS_ORDER.filter((st) => (byStatus.get(st) ?? 0) > 0).map((st) => (
+                  {caseStatuses.map((st) => (
                     <span key={st} style={{ flex: byStatus.get(st) ?? 0, background: CASE_BAR[st] ?? '#a8afba' }} title={`${label(CASE_STATUS_LABELS, st)} ${byStatus.get(st)}건`}>
                       {label(CASE_STATUS_LABELS, st)} {byStatus.get(st)}
                     </span>
                   ))}
                 </div>
-              ) : (
+              ) : caseStatuses.length === 0 ? (
                 <span className="ops-sub">처리할 건 없음</span>
-              )}
+              ) : null}
               {todo[0]?.to && (
                 <Link className="ops-go" to={todo[0].to}>
                   확인하기
@@ -213,30 +214,38 @@ export function DashboardPage() {
 
           <section className="dash-todo" aria-labelledby="todo-title">
             <h2 id="todo-title">처리할 업무</h2>
-            <table className="todo">
-              <thead>
-                <tr>
-                  <th>구분</th>
-                  <th>업무</th>
-                  <th className="num">건수</th>
-                  <th>상태</th>
-                  <th className="bar-col">비중</th>
-                  <th>처리</th>
-                </tr>
-              </thead>
-              <tbody>
-                {todo.map((t, i) => (
-                  <tr key={t.key} className={[t.count > 0 ? '' : 'zero', i === 0 || todo[i - 1].group !== t.group ? 'group-start' : ''].filter(Boolean).join(' ') || undefined}>
-                    <td className="group">{i === 0 || todo[i - 1].group !== t.group ? t.group : ''}</td>
-                    <th scope="row">{t.text}</th>
-                    <td className="num">{t.count}</td>
-                    <td>{t.count > 0 ? <span className={t.emphasis ? 'badge badge-attention' : 'badge badge-neutral'}>{t.emphasis ? '확인 필요' : '미처리'}</span> : ''}</td>
-                    <td className="bar-col">{t.count > 0 && <Bar value={t.count} max={Math.max(1, ...todo.map((x) => x.count))} color={t.emphasis ? '#d1a63a' : '#a8afba'} />}</td>
-                    <td>{t.count > 0 && t.to ? <Link to={t.to}>확인하기</Link> : ''}</td>
+            {openTodo.length === 0 ? (
+              <EmptyText>처리할 업무가 없습니다.</EmptyText>
+            ) : (
+              <table className="todo">
+                <thead>
+                  <tr>
+                    <th>구분</th>
+                    <th>업무</th>
+                    <th className="num">건수</th>
+                    <th>상태</th>
+                    <th className="bar-col">비중</th>
+                    <th>처리</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {openTodo.map((t, i) => (
+                    <tr key={t.key} className={i === 0 || openTodo[i - 1].group !== t.group ? 'group-start' : undefined}>
+                      <td className="group">{i === 0 || openTodo[i - 1].group !== t.group ? t.group : ''}</td>
+                      <th scope="row">{t.text}</th>
+                      <td className="num">{t.count}</td>
+                      <td>
+                        <span className={t.emphasis ? 'badge badge-attention' : 'badge badge-neutral'}>{t.emphasis ? '확인 필요' : '미처리'}</span>
+                      </td>
+                      <td className="bar-col">
+                        <Bar value={t.count} max={Math.max(1, ...openTodo.map((x) => x.count))} color={t.emphasis ? '#d1a63a' : '#a8afba'} />
+                      </td>
+                      <td>{t.to ? <Link to={t.to}>확인하기</Link> : ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </section>
 
           <section className="dash-today" aria-labelledby="today-title">
@@ -283,21 +292,23 @@ function AttendanceToday({ roster }: { roster: RosterItem[] }) {
   const done = total - (counts.get('NOT_CHECKED') ?? 0)
   return (
     <div className="att-today">
-      <h3>오늘 출결 현황 <span className="muted">(입력 {done}/{total}명)</span></h3>
+      <h3>오늘 출결 현황</h3>
       <div className="att-donut">
         <Gauge value={total === 0 ? 0 : done / total} label="출결 입력률" width={210} />
         <ul className="att-legend">
-          {order.map((k) => (
-            <li key={k}>
-              <span className="att-name">
-                <span className="swatch" aria-hidden="true" style={{ background: ATTENDANCE_COLORS[k] }} />
-                {label(ATTENDANCE_STATUS_LABELS, k)}
-              </span>
-              <Bar value={counts.get(k) ?? 0} max={Math.max(1, total)} color={ATTENDANCE_COLORS[k]} />
-              <strong>{counts.get(k) ?? 0}명</strong>
-              <span className="att-pct">{total === 0 ? '-' : `${Math.round(((counts.get(k) ?? 0) / total) * 100)}%`}</span>
-            </li>
-          ))}
+          {order
+            .filter((k) => (counts.get(k) ?? 0) > 0) // 0명인 상태는 범례에서 뺀다
+            .map((k) => (
+              <li key={k}>
+                <span className="att-name">
+                  <span className="swatch" aria-hidden="true" style={{ background: ATTENDANCE_COLORS[k] }} />
+                  {label(ATTENDANCE_STATUS_LABELS, k)}
+                </span>
+                <Bar value={counts.get(k) ?? 0} max={Math.max(1, total)} color={ATTENDANCE_COLORS[k]} />
+                <strong>{counts.get(k) ?? 0}명</strong>
+                <span className="att-pct">{total === 0 ? '-' : `${Math.round(((counts.get(k) ?? 0) / total) * 100)}%`}</span>
+              </li>
+            ))}
         </ul>
       </div>
     </div>
@@ -320,12 +331,14 @@ function RecentCases({ cases, canOpenCase, onOpen }: { cases: DashboardRecentCas
       return next
     })
   const same = <T,>(values: T[]) => values.every((v) => v === values[0])
+  // 모든 건에 대상 훈련생이 없으면(회차 단위 이슈 등) '대상' 열은 정보가 없어 뺀다
+  const showTrainees = cases.some((c) => c.trainees.length > 0)
 
   const caseRow = (c: DashboardRecentCase, child = false) => (
     <tr key={c.caseId} className={[canOpenCase ? 'clickable' : '', child ? 'child-row' : ''].filter(Boolean).join(' ') || undefined} onClick={canOpenCase ? () => onOpen(c.caseId) : undefined}>
       <td>{canOpenCase ? <Link to={`/verification-cases/${c.caseId}`}>{formatDateTime(c.detectedAt)}</Link> : formatDateTime(c.detectedAt)}</td>
       <td>{c.courseName}</td>
-      <td>{formatTrainees(c.trainees.map((t) => t.name))}</td>
+      {showTrainees && <td>{formatTrainees(c.trainees.map((t) => t.name))}</td>}
       <td>{label(RULE_LABELS, c.ruleCode)}</td>
       <td>
         <CaseStatusBadge status={c.status} />
@@ -340,7 +353,7 @@ function RecentCases({ cases, canOpenCase, onOpen }: { cases: DashboardRecentCas
         <tr>
           <th>발생일시</th>
           <th>과정</th>
-          <th>대상</th>
+          {showTrainees && <th>대상</th>}
           <th>탐지유형</th>
           <th>상태</th>
           <th>담당자</th>
@@ -363,7 +376,7 @@ function RecentCases({ cases, canOpenCase, onOpen }: { cases: DashboardRecentCas
               <td>
                 <strong>{head.courseName}</strong> <span className="group-count">외 {list.length - 1}건</span>
               </td>
-              <td>{trainees.size > 0 ? `${trainees.size}명` : '-'}</td>
+              {showTrainees && <td>{trainees.size > 0 ? `${trainees.size}명` : '-'}</td>}
               <td>{same(list.map((c) => c.ruleCode)) ? label(RULE_LABELS, head.ruleCode) : `${new Set(list.map((c) => c.ruleCode)).size}개 유형`}</td>
               <td>{same(list.map((c) => c.status)) ? <CaseStatusBadge status={head.status} /> : <span className="muted">복수</span>}</td>
               <td>{same(list.map((c) => c.assigneeName ?? '')) ? (head.assigneeName ?? '미지정') : '복수'}</td>
