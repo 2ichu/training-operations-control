@@ -111,6 +111,8 @@ function Roster({ schedule, canCheckIn, canCheckOut, canAbsence }: { schedule: S
   const notChecked = picked.filter((r) => r.attendanceId === null)
   // 퇴실 확인: 기록이 있고 퇴실 시각이 비어 있으며 공식 출결이 아닌 행(공식 값은 읽기전용 — S07 예외 상황)
   const checkOutTargets = picked.filter((r) => r.attendanceId !== null && r.checkOutTime === null && r.sourceType !== 'OFFICIAL')
+  // 출처가 모두 같으면(예: 전원 공식) 정보가 없는 열이라 뺀다
+  const showSource = new Set(all.map((r) => r.sourceType ?? '')).size > 1
   const selectable = canCheckIn || canCheckOut || canAbsence
 
   // 1-Click 일괄: 기록이 없는 훈련생 전원을 한 번에 입실 확인(출석) 처리한다. 이후 결석·지각 등 예외만 개별 수정한다.
@@ -232,7 +234,7 @@ function Roster({ schedule, canCheckIn, canCheckOut, canAbsence }: { schedule: S
                 <th>입실</th>
                 <th>퇴실</th>
                 <th>출결상태</th>
-                <th>출처</th>
+                {showSource && <th>출처</th>}
                 <th />
               </tr>
             </thead>
@@ -262,7 +264,7 @@ function Roster({ schedule, canCheckIn, canCheckOut, canAbsence }: { schedule: S
                   <td>
                     <AttendanceBadge status={r.displayStatus} />
                   </td>
-                  <td>{r.sourceType ? label(SOURCE_TYPE_LABELS, r.sourceType) : ''}</td>
+                  {showSource && <td>{r.sourceType ? label(SOURCE_TYPE_LABELS, r.sourceType) : ''}</td>}
                   <td>
                     {r.attendanceId !== null && can('S09', 'R') && (
                       <button type="button" className="button-link" onClick={() => setEditing(r)}>

@@ -29,6 +29,8 @@ export function TraineeListPage() {
   const [contact, setContact] = useState(get('contact'))
   const [contactError, setContactError] = useState<string | null>(null)
   const items = list.data?.items ?? []
+  const showCourse = !get('course_id') && new Set(items.map((t) => t.courseId)).size > 1
+  const showConfirmed = new Set(items.map((t) => formatDateTime(t.confirmedAt).slice(0, 10))).size > 1
 
   return (
     <section className="page">
@@ -96,14 +98,15 @@ export function TraineeListPage() {
         ) : items.length === 0 ? (
           <EmptyText>조건에 맞는 훈련생이 없습니다.</EmptyText>
         ) : (
+          // 모든 행이 같은 값이면 정보가 없는 열이라 뺀다(한 과정만 보일 때 과정명, 확정일이 모두 같은 날일 때 확정일)
           <table>
             <thead>
               <tr>
                 <th>성명</th>
                 <th>생년월일</th>
                 <th>연락처</th>
-                <th>과정명</th>
-                <th>확정일</th>
+                {showCourse && <th>과정명</th>}
+                {showConfirmed && <th>확정일</th>}
                 <th>상태</th>
               </tr>
             </thead>
@@ -115,8 +118,8 @@ export function TraineeListPage() {
                   </td>
                   <td>{t.birthDate ?? '-'}</td>
                   <td>{t.contact ?? '-'}</td>
-                  <td>{t.courseName}</td>
-                  <td>{formatDateTime(t.confirmedAt)}</td>
+                  {showCourse && <td>{t.courseName}</td>}
+                  {showConfirmed && <td>{formatDateTime(t.confirmedAt)}</td>}
                   <td>
                     <span className="badge badge-neutral">{label(ENROLLMENT_STATUS_LABELS, t.status)}</span>
                   </td>
