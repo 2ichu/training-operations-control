@@ -127,8 +127,18 @@ export function DashboardPage() {
             {kpis.map((k) => {
               const body = (
                 <>
-                  <span className="kpi-label">{k.text}</span>
-                  <span className="kpi-value">{k.value}건</span>
+                  <span className="kpi-label">
+                    {k.text}
+                    {k.to && (
+                      <span className="kpi-go" aria-hidden="true">
+                        ›
+                      </span>
+                    )}
+                  </span>
+                  <span className="kpi-value">
+                    {k.value}
+                    <span className="kpi-unit">건</span>
+                  </span>
                 </>
               )
               return (
