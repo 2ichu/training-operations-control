@@ -2829,174 +2829,6 @@ table.legend th {
   margin-left: 2px;
 }
 
-/* ════════════════════════════════════════════════════════════
-   상단 "오늘 운영 상태": 둥근 요약 영역 안에 3칸(색 윗선·큰 숫자·바로가기), 처리할 업무 수치는 넣지 않는다
-   ════════════════════════════════════════════════════════════ */
-.ops-band {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: 1.15fr 1.15fr 1.3fr;
-  gap: 12px;
-  padding: 14px 16px 16px;
-  border: 1px solid #dfe4ec;
-  border-radius: 10px;
-  background: linear-gradient(180deg, #f7f9fc 0%, #ffffff 100%);
-}
-
-.ops-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 10px 14px 10px;
-  border: 1px solid #dfe4ec;
-  border-top: 4px solid #a8afba;
-  border-radius: 6px;
-  background: #fff;
-}
-
-.ops-lesson {
-  border-top-color: #3f6fb5;
-}
-
-.ops-att {
-  border-top-color: #4d8a63;
-}
-
-.ops-case {
-  border-top-color: #c98f00;
-}
-
-.ops-alert {
-  background: #fffaf0;
-}
-
-.ops-top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.ops-label {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: #4b5563;
-}
-
-.ops-pct {
-  font-size: 13px;
-  font-weight: 600;
-  color: #6b7280;
-}
-
-.ops-value {
-  font-size: 34px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  color: var(--text-strong);
-  font-variant-numeric: tabular-nums;
-}
-
-.ops-value small {
-  margin-left: 3px;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0;
-  color: #6b7280;
-}
-
-.ops-alert .ops-value {
-  color: #8a4b00;
-}
-
-.ops-sub {
-  font-size: 13px;
-  color: #5b6474;
-}
-
-.ops-go {
-  margin-top: auto;
-  padding-top: 2px;
-  font-size: 12.5px;
-  font-weight: 700;
-}
-
-/* 수업 시간축 */
-.ops-axis {
-  position: relative;
-  height: 34px;
-  margin-top: 2px;
-}
-
-.ops-axis::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 4px;
-  height: 14px;
-  border-radius: 3px;
-  background: #e1e7f0;
-}
-
-.ops-block {
-  position: absolute;
-  top: 4px;
-  height: 14px;
-  min-width: 6px;
-  border-radius: 3px;
-  background: #3f6fb5;
-}
-
-.ops-tick {
-  position: absolute;
-  top: 20px;
-  font-size: 11px;
-  font-style: normal;
-  color: #6b7686;
-}
-
-/* 출결 입력 진행 막대 */
-.ops-progress {
-  height: 14px;
-  margin: 2px 0 20px;
-  border-radius: 3px;
-  background: #e1e7f0;
-  overflow: hidden;
-}
-
-.ops-progress span {
-  display: block;
-  height: 100%;
-  background: #4d8a63;
-}
-
-/* 확인 건 상태별 누적 막대(구간 안에 이름·건수) */
-.ops-stack {
-  display: flex;
-  gap: 3px;
-  height: 22px;
-  margin: 2px 0 12px;
-}
-
-.ops-stack span {
-  min-width: 22px;
-  padding: 0 7px;
-  overflow: hidden;
-  border-radius: 3px;
-  color: #fff;
-  font-size: 12.5px;
-  font-weight: 700;
-  line-height: 22px;
-  white-space: nowrap;
-}
-
-@media (max-width: 900px) {
-  .ops-band {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 /* ── 그룹 요약 행 ─────────────────────────────────────────── */
 tr.group-row {
   background: #f8f9fc;
@@ -3195,57 +3027,14 @@ table.todo td a::after,
   content: ' ›';
 }
 
-.ops-go {
-  /* 텍스트에 이미 › 가 있어 중복 방지 */
-}
-
 table.todo td a:hover,
 .ops-go:hover {
   text-decoration: underline;
 }
 
-/* 보조 글자: 최소 12.5px, 대비 확보 */
-.ops-pct,
-.ops-sub {
-  font-size: 13px;
-  color: #4b5563;
-}
-
-.ops-tick {
-  font-size: 12px;
-  color: #4b5563;
-}
-
-.ops-stack span {
-  font-size: 13px;
-}
-
-.ops-label {
-  font-size: 14px;
-  color: #374151;
-}
-
-.ops-value {
-  font-size: 36px;
-}
-
-.ops-alert .ops-value {
-  font-size: 36px;
-}
-
 /* 구역 간격: 상단 영역과 본문 영역 사이, 본문 구역 사이를 같은 값으로 */
 .dashboard {
   gap: 24px 36px;
-}
-
-.ops-band {
-  padding: 16px 18px 18px;
-  gap: 16px;
-}
-
-.ops-item {
-  padding: 12px 16px 12px;
-  gap: 6px;
 }
 
 /* 표 행 높이와 숫자 열 일관성 */
@@ -3272,4 +3061,186 @@ table.todo td.num,
 
 .dashboard h2 {
   font-size: 17px;
+}
+
+/* ════════════════════════════════════════════════════════════
+   상단 "오늘 운영 상태": 한 덩어리 요약 띠. 칸마다 [라벨 · 바로가기] 아래에 [큰 숫자 + 도식(막대·캡션)]을 가로로 배치해 여백을 줄인다.
+   ════════════════════════════════════════════════════════════ */
+.ops-band {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.15fr;
+  border: 1px solid #d5dbe6;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f5f8fc 0%, #ffffff 100%);
+  overflow: hidden;
+}
+
+.ops-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 11px 18px 12px;
+}
+
+.ops-item + .ops-item {
+  border-left: 1px solid #d5dbe6;
+}
+
+.ops-alert {
+  background: #fff6e6;
+}
+
+.ops-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ops-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.ops-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: #a8afba;
+}
+
+.ops-lesson .ops-dot {
+  background: #3f6fb5;
+}
+
+.ops-att .ops-dot {
+  background: #4d8a63;
+}
+
+.ops-case .ops-dot {
+  background: #c98f00;
+}
+
+.ops-alert .ops-label {
+  color: #7a4300;
+}
+
+.ops-body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 18px;
+}
+
+.ops-value {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ops-value small {
+  margin-left: 3px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: #6b7280;
+}
+
+.ops-alert .ops-value {
+  color: #8a4b00;
+}
+
+.ops-viz {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.ops-trackrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ops-trackrow i,
+.ops-trackrow b {
+  flex: none;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.ops-trackrow b {
+  min-width: 34px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.ops-track {
+  position: relative;
+  flex: 1;
+  display: flex;
+  gap: 2px;
+  height: 16px;
+  min-width: 0;
+  border-radius: 3px;
+  background: #e1e7f0;
+  overflow: hidden;
+}
+
+.ops-track > span {
+  min-width: 4px;
+  overflow: hidden;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+
+.ops-fill {
+  display: block;
+  height: 100%;
+}
+
+.ops-block {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 6px;
+  background: #3f6fb5;
+}
+
+.ops-cap {
+  font-size: 12.5px;
+  color: #4b5563;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 900px) {
+  .ops-band {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ops-item + .ops-item {
+    border-left: 0;
+    border-top: 1px solid #d5dbe6;
+  }
 }

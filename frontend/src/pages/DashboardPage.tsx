@@ -8,13 +8,18 @@ import { Bar, Gauge } from '../components/Charts'
 import { EmptyText, ErrorText, Loading } from '../components/Feedback'
 import { CaseStatusBadge } from '../components/StatusBadge'
 import { formatDateTime, formatTime, formatTrainees } from '../format'
-import { ATTENDANCE_STATUS_LABELS, CASE_STATUS_LABELS, CASE_STATUS_ORDER, label, RULE_LABELS, SCHEDULE_STATUS_LABELS } from '../labels'
+import { ATTENDANCE_STATUS_LABELS, label, RULE_LABELS, SCHEDULE_STATUS_LABELS } from '../labels'
 
 // 도식 색: 색만으로 구분하지 않도록 항상 텍스트(범례·표)를 함께 표시한다. 채도를 낮춰 쓰고, 노랑=확인 필요, 주황=조치·지각·조퇴, 빨강=결석, 파랑=확인 중·인정결석, 초록=정상·완료
 const ATTENDANCE_COLORS: Record<string, string> = { PRESENT: '#5a9a6e', LATE: '#c98a3a', EARLY_LEAVE: '#d9ac66', ABSENT: '#c0524a', EXCUSED: '#5b7db1', NOT_CHECKED: '#a8afba' }
 
-// 확인 필요 카드의 상태별 막대 색(같은 상태는 같은 색)
-const CASE_BAR: Record<string, string> = { NEEDS_CHECK: '#c98f00', PRIORITY_CHECK: '#c26f1c', FOLLOW_UP: '#b45a1a', ACTION_REQUIRED: '#9c4a1a', IN_REVIEW: '#4a6fa8', CONFIRMED: '#4d8a63', ACTION_DONE: '#3d7350' }
+// 확인 필요 카드의 처리 현황 구간(같은 구간은 같은 색). 큰 숫자 "확인 필요"는 첫 구간(확인필요·우선확인)의 건수다.
+const CASE_PHASES = [
+  { key: 'open', label: '확인 필요', statuses: ['NEEDS_CHECK', 'PRIORITY_CHECK'], color: '#c98f00' },
+  { key: 'action', label: '조치·추가 확인', statuses: ['ACTION_REQUIRED', 'FOLLOW_UP'], color: '#b8601a' },
+  { key: 'review', label: '확인 중', statuses: ['IN_REVIEW'], color: '#3f6fb5' },
+  { key: 'done', label: '완료', statuses: ['CONFIRMED', 'ACTION_DONE'], color: '#4d8a63' },
+]
 
 // S01 대시보드(system-design 7.1). 조회 전용이며 역할별 범위는 서버가 정한다(INSTRUCTOR 는 본인 과정만).
 // 필터(날짜·과정·담당)는 URL 쿼리에 두어 새로고침·공유 시에도 유지된다.
@@ -93,7 +98,10 @@ export function DashboardPage() {
   const lessons = data?.todaySchedules.filter((x) => x.displayStatus !== 'CANCELLED') ?? []
   const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
   const lessonsDone = lessons.filter((x) => x.displayStatus === 'COMPLETED').length
-  const caseStatuses = CASE_STATUS_ORDER.filter((st) => (byStatus.get(st) ?? 0) > 0)
+  const phases = CASE_PHASES.map((ph) => ({ ...ph, count: ph.statuses.reduce((sum, st) => sum + (byStatus.get(st) ?? 0), 0) })).filter((ph) => ph.count > 0)
+  const caseTotal = phases.reduce((sum, ph) => sum + ph.count, 0)
+  const caseDone = phases.find((ph) => ph.key === 'done')?.count ?? 0
+  const attCount = (st: string) => rosterAll.filter((r) => r.displayStatus === st).length
   const AXIS_FROM = 8
   const AXIS_TO = 19
 
@@ -132,83 +140,128 @@ export function DashboardPage() {
         <div className={summary.status === 'loading' ? 'dashboard is-refreshing' : 'dashboard'}>
           <section className="ops-band" aria-label="오늘 운영 상태">
             <div className="ops-item ops-lesson">
-              <div className="ops-top">
-                <span className="ops-label">오늘 수업</span>
-                <span className="ops-pct">{lessons.length > 0 ? `진행 ${lessonsDone}/${lessons.length}` : ''}</span>
+              <div className="ops-head">
+                <span className="ops-label">
+                  <i className="ops-dot" aria-hidden="true" />
+                  오늘 수업
+                </span>
+                {lessons.length > 0 && canOpenCourse && (
+                  <Link className="ops-go" to={`/courses/${lessons[0].courseId}`}>
+                    과정 보기
+                  </Link>
+                )}
               </div>
-              <span className="ops-value">
-                {lessons.length}
-                <small>건</small>
-              </span>
-              {lessons.length > 0 ? (
-                <div className="ops-axis" aria-hidden="true">
-                  {lessons.slice(0, 3).map((x) => (
-                    <span
-                      key={x.scheduleId}
-                      className="ops-block"
-                      style={{ left: `${((minutes(x.startTime) - AXIS_FROM * 60) / ((AXIS_TO - AXIS_FROM) * 60)) * 100}%`, width: `${((minutes(x.endTime) - minutes(x.startTime)) / ((AXIS_TO - AXIS_FROM) * 60)) * 100}%` }}
-                    />
-                  ))}
-                  <i className="ops-tick" style={{ left: '0%' }}>08시</i>
-                  <i className="ops-tick" style={{ left: '44%' }}>13시</i>
-                  <i className="ops-tick" style={{ right: '0%' }}>19시</i>
+              <div className="ops-body">
+                <span className="ops-value">
+                  {lessons.length}
+                  <small>건</small>
+                </span>
+                <div className="ops-viz">
+                  {lessons.length > 0 ? (
+                    <>
+                      <div className="ops-trackrow" aria-hidden="true">
+                        <i>08시</i>
+                        <div className="ops-track">
+                          {lessons.slice(0, 3).map((x) => (
+                            <span
+                              key={x.scheduleId}
+                              className="ops-block"
+                              style={{ left: `${((minutes(x.startTime) - AXIS_FROM * 60) / ((AXIS_TO - AXIS_FROM) * 60)) * 100}%`, width: `${((minutes(x.endTime) - minutes(x.startTime)) / ((AXIS_TO - AXIS_FROM) * 60)) * 100}%` }}
+                            />
+                          ))}
+                        </div>
+                        <i>19시</i>
+                      </div>
+                      <span className="ops-cap">
+                        진행 {lessonsDone}/{lessons.length} · {lessons[0].roundNo}회차 {formatTime(lessons[0].startTime)}~{formatTime(lessons[0].endTime)}
+                        {lessons.length > 1 ? ` 외 ${lessons.length - 1}건` : ''}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="ops-cap">예정된 수업 없음</span>
+                  )}
                 </div>
-              ) : (
-                <span className="ops-sub">예정된 수업 없음</span>
-              )}
-              {lessons.length > 0 && canOpenCourse && (
-                <Link className="ops-go" to={`/courses/${lessons[0].courseId}`}>
-                  과정 보기
-                </Link>
-              )}
+              </div>
             </div>
+
             <div className="ops-item ops-att">
-              <div className="ops-top">
-                <span className="ops-label">출결 입력</span>
-                <span className="ops-pct">{rosterTotal > 0 ? `${Math.round((rosterDone / rosterTotal) * 100)}%` : ''}</span>
-              </div>
-              <span className="ops-value">
-                {rosterTotal > 0 ? `${rosterDone}/${rosterTotal}` : '-'}
-                {rosterTotal > 0 && <small>명</small>}
-              </span>
-              {rosterTotal > 0 ? (
-                <div className="ops-progress" aria-hidden="true">
-                  <span style={{ width: `${(rosterDone / rosterTotal) * 100}%` }} />
-                </div>
-              ) : (
-                <span className="ops-sub">오늘 출결 명단 없음</span>
-              )}
-              {can('S07', 'R') && (
-                <Link className="ops-go" to={`/attendance/daily?date=${dayParam}`}>
+              <div className="ops-head">
+                <span className="ops-label">
+                  <i className="ops-dot" aria-hidden="true" />
                   출결 입력
-                </Link>
-              )}
-            </div>
-            <div className={needsCheck > 0 ? 'ops-item ops-case ops-alert' : 'ops-item ops-case'}>
-              <div className="ops-top">
-                <span className="ops-label">확인 필요</span>
+                </span>
+                {can('S07', 'R') && (
+                  <Link className="ops-go" to={`/attendance/daily?date=${dayParam}`}>
+                    출결 입력
+                  </Link>
+                )}
               </div>
-              <span className="ops-value">
-                {needsCheck}
-                <small>건</small>
-              </span>
-              {caseStatuses.length > 1 ? (
-                // 상태 구성 막대는 상태가 2개 이상일 때만(하나뿐이면 위 숫자와 같은 내용이라 생략)
-                <div className="ops-stack" role="group" aria-label="확인 건 상태별 비율">
-                  {caseStatuses.map((st) => (
-                    <span key={st} style={{ flex: byStatus.get(st) ?? 0, background: CASE_BAR[st] ?? '#a8afba' }} title={`${label(CASE_STATUS_LABELS, st)} ${byStatus.get(st)}건`}>
-                      {label(CASE_STATUS_LABELS, st)} {byStatus.get(st)}
-                    </span>
-                  ))}
+              <div className="ops-body">
+                <span className="ops-value">
+                  {rosterTotal > 0 ? `${rosterDone}/${rosterTotal}` : '-'}
+                  {rosterTotal > 0 && <small>명</small>}
+                </span>
+                <div className="ops-viz">
+                  {rosterTotal > 0 ? (
+                    <>
+                      <div className="ops-trackrow" aria-hidden="true">
+                        <div className="ops-track">
+                          <span className="ops-fill" style={{ width: `${(rosterDone / rosterTotal) * 100}%`, background: '#4d8a63' }} />
+                        </div>
+                        <b>{Math.round((rosterDone / rosterTotal) * 100)}%</b>
+                      </div>
+                      <span className="ops-cap">
+                        {attCount('LATE') + attCount('EARLY_LEAVE') + attCount('ABSENT') > 0
+                          ? `지각 ${attCount('LATE')} · 조퇴 ${attCount('EARLY_LEAVE')} · 결석 ${attCount('ABSENT')}`
+                          : '지각·조퇴·결석 없음'}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="ops-cap">오늘 출결 명단 없음</span>
+                  )}
                 </div>
-              ) : caseStatuses.length === 0 ? (
-                <span className="ops-sub">처리할 건 없음</span>
-              ) : null}
-              {todo[0]?.to && (
-                <Link className="ops-go" to={todo[0].to}>
-                  확인하기
-                </Link>
-              )}
+              </div>
+            </div>
+
+            <div className={needsCheck > 0 ? 'ops-item ops-case ops-alert' : 'ops-item ops-case'}>
+              <div className="ops-head">
+                <span className="ops-label">
+                  <i className="ops-dot" aria-hidden="true" />
+                  확인 필요
+                </span>
+                {todo[0]?.to && (
+                  <Link className="ops-go" to={todo[0].to}>
+                    확인하기
+                  </Link>
+                )}
+              </div>
+              <div className="ops-body">
+                <span className="ops-value">
+                  {needsCheck}
+                  <small>건</small>
+                </span>
+                <div className="ops-viz">
+                  {caseTotal > 0 ? (
+                    <>
+                      <div className="ops-trackrow">
+                        <div className="ops-track" role="group" aria-label="확인 건 처리 현황">
+                          {phases.map((ph) => (
+                            <span key={ph.key} style={{ flex: ph.count, background: ph.color }} title={`${ph.label} ${ph.count}건`}>
+                              {phases.length > 1 && ph.count / caseTotal >= 0.2 ? `${ph.label} ${ph.count}` : ''}
+                            </span>
+                          ))}
+                        </div>
+                        <b aria-hidden="true">{Math.round((caseDone / caseTotal) * 100)}%</b>
+                      </div>
+                      <span className="ops-cap">
+                        처리 완료 {caseDone}/{caseTotal}건
+                      </span>
+                    </>
+                  ) : (
+                    <span className="ops-cap">처리할 건 없음</span>
+                  )}
+                </div>
+              </div>
             </div>
           </section>
 

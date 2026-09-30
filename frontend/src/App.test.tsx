@@ -92,7 +92,7 @@ describe('인증 흐름', () => {
 })
 
 describe('대시보드 (S01)', () => {
-  it('불필요한 표시를 줄인다: 0건 업무는 처리할 업무 표에서 빠지고, 대상이 없는 확인 건 표는 대상 열을 숨기며, 상태가 하나뿐이면 구성 막대를 생략한다', async () => {
+  it('불필요한 표시를 줄인다: 0건 업무는 처리할 업무 표에서 빠지고, 대상이 없는 확인 건 표는 대상 열을 숨기며, 상단 띠에 전체 건수 문구를 두지 않는다', async () => {
     const base = dashboard()
     const noTrainee = base.verificationSummary.recent.map((c) => ({ ...c, trainees: [] }))
     mockApi({
@@ -110,7 +110,6 @@ describe('대시보드 (S01)', () => {
     expect(within(cases).queryByRole('columnheader', { name: '대상' })).not.toBeInTheDocument()
     expect(within(cases).getByRole('columnheader', { name: '탐지유형' })).toBeInTheDocument()
     const band = screen.getByRole('region', { name: '오늘 운영 상태' })
-    expect(within(band).queryByRole('group', { name: '확인 건 상태별 비율' })).not.toBeInTheDocument()
     expect(within(band).queryByText(/전체 \d+건 중/)).not.toBeInTheDocument()
   })
 
@@ -123,7 +122,7 @@ describe('대시보드 (S01)', () => {
     })
     renderAt('/')
     const band = await screen.findByRole('region', { name: '오늘 운영 상태' })
-    expect(within(band).getByRole('group', { name: '확인 건 상태별 비율' })).toBeInTheDocument()
+    expect(within(band).getByRole('group', { name: '확인 건 처리 현황' })).toBeInTheDocument()
     const cases = screen.getByRole('region', { name: '확인 필요 사항' })
     expect(within(cases).getByRole('columnheader', { name: '대상' })).toBeInTheDocument()
   })
